@@ -8,5 +8,22 @@
   The Chinese (Simplified) Translation of the PCSE Documentation.
 </p>
 
-> 中文翻译基于 `PCSE version: 6.0.12（2025年11月6日） <https://github.com/ajwdewit/pcse/tree/3b232476dd1215c0218c4251882e991c4fc12ead>`_
-> This Chinese translation is based on `PCSE version: 6.0.12 (6 Nov 2025) <https://github.com/ajwdewit/pcse/tree/3b232476dd1215c0218c4251882e991c4fc12ead>`_.
+> This Chinese translation is based on [PCSE version: 6.0.12（2025年11月6日）](https://github.com/ajwdewit/pcse/tree/3b232476dd1215c0218c4251882e991c4fc12ead)
+
+## Download the Chinese Manual
+
+The Chinese manual is available for download on [GitHub Releases](https://github.com/duirixuanyan/pcse_docs_zh_CN/releases).
+
+## PCSE Manual
+
+The [PCSE 6.0 documentation](https://pcse.readthedocs.io/en/stable/) is available online.
+
+## PCSE Code
+
+You can find it at [Python Crop Simulation Environment - PCSE](https://github.com/ajwdewit/pcse).
+
+## PCSE Notebooks
+
+Available at [A collection of PCSE notebooks](https://github.com/ajwdewit/pcse_notebooks).
+
+
