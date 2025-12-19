@@ -10,9 +10,11 @@
 
 > 中文翻译基于 [PCSE version: 6.0.12（2025年11月6日）](https://github.com/ajwdewit/pcse/tree/3b232476dd1215c0218c4251882e991c4fc12ead)
 
-## 中文手册下载
+## 中文手册
 
 我在 [GitHub Releases](https://github.com/duirixuanyan/pcse_docs_zh_CN/releases) 上提供中文手册的下载。
+
+也可以在 [readthedocs](https://pcse-docs-zh-cn.readthedocs.io/zh-cn/latest/) 上查看。
 
 ## PCSE手册
 

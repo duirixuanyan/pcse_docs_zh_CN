@@ -10,9 +10,11 @@
 
 > This Chinese translation is based on [PCSE version: 6.0.12（2025年11月6日）](https://github.com/ajwdewit/pcse/tree/3b232476dd1215c0218c4251882e991c4fc12ead)
 
-## Download the Chinese Manual
+## Chinese Manual
 
 The Chinese manual is available for download on [GitHub Releases](https://github.com/duirixuanyan/pcse_docs_zh_CN/releases).
+
+You can also view it online at [Read the Docs](https://pcse-docs-zh-cn.readthedocs.io/zh-cn/latest/).
 
 ## PCSE Manual
 
