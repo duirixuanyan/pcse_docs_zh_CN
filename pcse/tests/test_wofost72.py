@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
-"""Module defines code for running unittests on the complete PCSE/WOFOST model.
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
+"""该模块定义了在整个PCSE/WOFOST模型上运行单元测试的代码。
 
-Unit tests for individual components are included in the sources files of these
-components.
+各个组件的单元测试包含在这些组件的源文件中。
 
-Classes defined here:
+此处定义的类:
 * WofostBenchmarkRetriever
 * WofostOutputRetriever
-* WofostTestingTemplate (and derived classes for testing)
+* WofostTestingTemplate（以及用于测试的派生类）
 
-Functions defined here:
+此处定义的函数:
 * run_units_tests
 
 """
@@ -32,14 +31,13 @@ def dict_factory(cursor, row):
 
 
 class WofostBenchmarkRetriever:
-    """Retrieves benchmark results for PCSE WOFOST.
+    """用于检索PCSE WOFOST的基准结果。
     
-    Class retrieves benchmarks from the PCSE DB that are being used to
-    unittest (benchmark) the WOFOST output. The benchmarks are stored in the
-    table 'wofost_unittest_benchmarks'.
+    本类从PCSE数据库中检索基准结果，这些基准用于对WOFOST输出进行单元测试（基准测试）。
+    基准数据存储在表"wofost_unittest_benchmarks"中。
     
-    Example:
-    retriever = WofostBenchmarkRetriever('data source name', crop, grid, mode)
+    示例：
+    retriever = WofostBenchmarkRetriever('数据源名称', crop, grid, mode)
     benchmark_data = retriever('development_stage')
     """
 
@@ -59,8 +57,7 @@ class WofostBenchmarkRetriever:
         self.member_id = 0
     
     def __call__(self, variable):
-        """Retrieves benchmark data for specified variable: [(day, variable),..]
-        """
+        """检索指定变量的基准数据: [(day, variable),..]"""
         if not variable in self.df_benchmarks.columns:
             msg = f"variable {variable} not available in DataFrame!"
             raise RuntimeError(msg)
@@ -70,16 +67,15 @@ class WofostBenchmarkRetriever:
 
 
 class WofostOutputRetriever:
-    """Retrieves results from a Wofost simulation.
+    """用于检索Wofost模拟的结果。
     
-    Class retrieves results from a Wofost simulation based on the table
-    'sim_results_timeseries'. These results are then compared to the benchmark
-    results for unit testing. This procedure assumes that there is only a single
-    simulation (grid, crop, year) present in the table 'sim_results_timeseries'
-    as no selection on (grid, crop, year) is being done.
+    本类从表'sim_results_timeseries'中检索Wofost模拟结果。
+    这些结果随后将与基准数据进行比较，以进行单元测试。
+    本过程假设表'sim_results_timeseries'中仅存在单一模拟（grid, crop, year），
+    因为没有对(grid, crop, year)进行筛选。
     
-    Example:
-    retriever = WofostOutputRetriever('data source name')
+    示例:
+    retriever = WofostOutputRetriever('数据源名称')
     
     one_day = retriever(date(2000,1,1), 'development_stage')
     last_day = retriever.getWofostOutputLastDay('development_stage')
@@ -97,7 +93,7 @@ class WofostOutputRetriever:
         DBconn.close()
 
     def __call__(self, day, variable):
-        """Returns the specified WOFOST variable for specified day."""
+        """返回指定日的指定WOFOST变量。"""
 
         ix = self.df_sim_results.index == day
         if not ix.any():
@@ -108,17 +104,14 @@ class WofostOutputRetriever:
 
 
 class WofostTestingTemplate(unittest.TestCase):
-    """Template for executing WOFOST unit tests.
+    """执行WOFOST单元测试的模板。
     
-    The template defines the setUp() and runTest() routines that are common to
-    all WOFOST unit testing runs. Most of functionality comes from
-    subclassing 'unittest.TestCase'. Note that each unittest is simply defined
-    as a subclass of this template. Only the crop, grid, year and mode are
-    test-specific and thus defined as test class attributes.
+    该模板定义了setUp()和runTest()，这是所有WOFOST单元测试运行所共有的。
+    大部分功能来自于对'unittest.TestCase'的子类化。
+    注意每个单元测试都只是此模板的子类。只有crop, grid, year和mode是特定于测试的，
+    因此以测试类属性的形式定义。
     
-    To prevent false FAILS caused by different python versions, databases and
-    cpu architectures, biomass values are only checked for accuracy up to one
-    or three decimals.    
+    为防止因不同python版本、数据库和CPU架构导致的错误FAILS，生物量值只校验到一位或三位小数精度。    
     """
 
     benchmark_vars = [("DVS",3), ("TRA",3), ("RD",3),("SM", 3), ("LAI",2),
@@ -130,7 +123,7 @@ class WofostTestingTemplate(unittest.TestCase):
         unittest.TestCase.__init__(self, testname)
         
     def setUp(self):
-        "Sets up the simulation in order to verify the results"
+        "设置模拟，以验证结果"
         run_wofost(dsn=self.dsn, crop=self.crop, year=self.year,
                      grid=self.grid, mode=self.mode, clear_table=True)
         self.OutputRetriever = WofostOutputRetriever(dsn=self.dsn)
@@ -153,10 +146,8 @@ class WofostTestingTemplate(unittest.TestCase):
                         (day, var_to_benchmark, benchmark, value)
             self.assertAlmostEqual(diff, 0., precision, assertmsg)
             n_assert += 1
-        # Test if any assertions were done at all which can occur
-        # due to missing records (e.g dekadal or monthly output),
-        # a mis-spelled variable name, or a full series of records with
-        # NULL (e.g. None) values in the database.
+        # 检查是否进行了任何断言。这可能由于缺失记录（如旬/月输出）、
+        # 变量名拼写错误，或数据库中该变量全为NULL（如None）而未断言。
         msg = "No data found in sim_results_timeseries table for variable '%s'"
         msg = msg % var_to_benchmark
         self.assertGreater(n_assert, 0, msg)
@@ -251,10 +242,10 @@ class TestWaterlimitedSunflower(WofostTestingTemplate):
 
 
 def suite():
-    """returns the unit tests for the PCSE/WOFOST model.
-    
-    keyword parameters:
-    dsn : SQLAlchemy data source name for the database that should be used.
+    """返回PCSE/WOFOST模型的单元测试。
+
+    关键字参数:
+    dsn : 应使用的数据库的SQLAlchemy数据源名称。
     """
 
     suite = unittest.TestSuite()
@@ -271,8 +262,7 @@ def suite():
              TestPotentialSunflower('runTest'),
              TestWaterlimitedSunflower('runTest')]
 
-    # Shuffle tests in random order in order to test whether different results
-    # are obtained when tests are run in a different order.
+    # 随机打乱测试顺序，以测试在不同执行顺序下是否会获得不同的结果。
     random.shuffle(tests)
     suite.addTests(tests)
     return suite

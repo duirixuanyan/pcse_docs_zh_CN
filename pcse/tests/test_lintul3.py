@@ -1,5 +1,5 @@
 '''
-Created on 30 Apr 2015
+创建于 2015年4月30日
 
 @author: winte005
 '''
@@ -33,10 +33,10 @@ class TestLINTUL3_SpringWheat(unittest.TestCase):
             self._write_ref_results()
 
     def _write_ref_results(self):
-        """writes simulation results to CSV file.
+        """将模拟结果写入CSV文件。
 
-        Useful only for generating a new reference simulation result
-        if you change the set of state variables in conf/lintul3.conf"""
+        仅当您更改 conf/lintul3.conf 中的状态变量集合时，才用于生成新的参考模拟结果
+        """
         header = sorted(self.output[0].keys())
         with open("d:\lintul3_reference_results.csv", "wb") as fp:
             writer = csv.DictWriter(fp, header)
@@ -44,8 +44,8 @@ class TestLINTUL3_SpringWheat(unittest.TestCase):
             writer.writerows(self.output)
 
     def _safe_cast_float(self, ref):
-        """The reference data come in as strings from the CSV file.
-        This function tries to convert to float or returns None
+        """引用数据作为字符串从CSV文件读取进来。
+        此函数尝试转为float或返回None
         """
         try:
             return float(ref)
@@ -78,7 +78,7 @@ class TestLINTUL3_SpringWheat(unittest.TestCase):
 
 
 def suite():
-    """ This defines all the tests of a module"""
+    """ 定义该模块下的所有测试"""
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(TestLINTUL3_SpringWheat))
     return suite

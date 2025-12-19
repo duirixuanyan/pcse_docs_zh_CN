@@ -1,111 +1,65 @@
-Background of PCSE
+PCSE 背景
 ==================
 
-Crop models in Wageningen
+瓦赫宁根的作物模型
 -------------------------
 
-The `Python Crop Simulation Environment` was developed because of a need to re-implement crop simulation
-models that were developed in Wageningen. Many of the Wageningen crop simulation models were originally developed in
-FORTRAN77 or using the `FORTRAN Simulation Translator (FST)`. Although this approach has yielded high quality models
-with high numerical performance, the inherent limitations of models written in FORTRAN is also becoming increasingly
-evident:
+`Python Crop Simulation Environment` 的开发源于需要对瓦赫宁根开发的作物模拟模型进行重新实现。许多瓦赫宁根的作物模拟模型最初是用 FORTRAN77 或 `FORTRAN Simulation Translator (FST)` 开发的。尽管这种方式产生了高质量且计算性能良好的模型，但 FORTRAN 语言固有的限制也越来越明显：
 
-* The structure of the models is often rather monolithic and the different parts are very tightly coupled.
-  Replacing parts of the model with another simulation approach is not easy.
+* 模型的结构通常较为单一，内部各部分高度耦合。替换某部分为其他模拟方法并不容易。
 
-* The models rely on file-based I/O which is difficult to change. For example, interfacing with databases
-  is complicated in FORTRAN.
+* 模型依赖于基于文件的输入/输出（I/O），这很难调整。例如，在 FORTRAN 中与数据库的接口开发非常繁琐。
 
-* In general, with low-level languages like FORTRAN, simple things already take many lines of code and mistakes
-  are easily made, particularly by agronomists and crop scientist that have limited experience in developing or
-  adapting software.
+* 一般来说，对于像 FORTRAN 这样的低级语言，即使是很简单的功能也需要写很多代码，而且容易出错，尤其是对于只具备有限编程开发经验的农学家和作物科学家来说更是如此。
 
-To overcome many of the limitations above, the Python Crop Simulation Environment (PCSE) was developed. It provides
-an environment for developing simulation models as well as a number of implementations of crop simulation models.
-PCSE is written in pure Python code which makes it more flexible, easier to modify and extensible allowing easy
-interfacing with databases, graphical user interfaces, visualization tools and numerical/statistical packages. PCSE has
-several interesting features:
+为了解决以上这些局限性，开发了 Python Crop Simulation Environment (PCSE)。它为开发模拟模型提供了一个环境，并内置了多种作物模拟模型的实现。PCSE 采用纯 Python 编写，这使得它更加灵活、易于修改和扩展，可以方便地与数据库、图形用户界面、可视化工具以及数值/统计包集成。PCSE 还有若干有趣的特点：
 
-* Implementation in pure Python. The core system has a small number of dependencies outside the Python standard
-  library. However many data providers require certain packages to be installed. Most of these can be automatically
-  installed from the Python Package Index (PyPI) (`SQLAlchemy`, `PyYAML`, `openpyxl`, `requests`) and in
-  processing of the output of models is most easily done with `pandas` DataFrames.
+* 采用纯 Python 实现。核心系统本身只依赖很少的标准库之外的包。但是很多数据提供者需要另外安装特定包。这些包大多数可以通过 Python Package Index (PyPI) 自动安装（如 `SQLAlchemy`, `PyYAML`, `openpyxl`, `requests`），而模型输出结果的处理则推荐用 `pandas` DataFrames 完成。
 
-* Modular design allowing you to add or change components relatively quickly with a simple but powerful approach
-  to communicate variables between modules.
+* 模块化设计，可以灵活快捷地新增或更换组件，同时具备一个简洁但功能强大的模块间变量通信方法。
 
-* Similar to FST, it enforces good model design by explicitly separating parameters, rate variables and state
-  variables. Moreover PCSE takes care of the module initialization, calculation of rates of changes, updating
-  of state variables and actions needed to finalize the simulation.
+* 类似于 FST，PCSE 通过显式区分参数、变化率变量和状态变量来促进良好模型设计。除此之外，PCSE 会自动负责模块初始化、变化率的计算、状态变量的更新及仿真结束时需要的动作。
 
-* Input/Output is completely separated from the simulation model itself. Therefore PCSE models can easily
-  read from and write to text files, databases and scientific formats such as HDF or NetCDF. Moreover, PCSE
-  models can be easily embedded in, for example, docker containers to build a web API around a crop model.
+* 输入/输出与模拟模型本身完全隔离。因此，PCSE 的模型能轻松读取和写入文本文件、数据库，以及如 HDF 或 NetCDF 这类科学数据格式。此外，PCSE 模型还可很容易地嵌入，例如 docker 容器，以构建基于作物模型的 web API。
 
-* Built-in testing of program modules ensuring integrity of the system
+* 内置的程序模块测试功能，确保系统的完整性
 
-Why Python
-----------
-PCSE was first and foremost developed from a scientific need, to be able to quickly adapt models and test ideas.
-In science, Python is quickly becoming a tool for implementing algorithms, visualization and explorative analysis
-due to its clear syntax and ease of use. An additional advantage is that the C implementation of Python
-can be easily interfaced with routines written in FORTRAN and therefore many FORTRAN routines can be reused by
-simulation models written with PCSE.
+为什么选择 Python
+-----------------
+PCSE 最初的开发主要是出于科学研究的需要，希望能够快速适应模型并测试新想法。
+在科学领域中，Python 正迅速成为实现算法、可视化和探索性分析的工具，这得益于其清晰的语法和易用性。另一个优点是 Python 的 C 实现可以很容易与 FORTRAN 编写的例程接口，因此许多 FORTRAN 例程可以被 PCSE 实现的模拟模型重用。
 
-Many packages exist for numeric analysis (e.g. NumPy, SciPy),
-visualisation (e.g. MatPlotLib, Chaco), distributed computing (e.g. IPython, pyMPI) and interfacing with databases
-(e.g. SQLAlchemy). Moreover, for statistical analyses an interface with R-project can be established through
-Rpy or Rserve. Finally, Python is an Open Source interpreted programming language that
-runs on almost any hardware and operating system.
+目前有许多用于数值分析的包（如 NumPy, SciPy）、可视化的包（如 MatPlotLib, Chaco）、分布式计算的包（如 IPython, pyMPI）以及数据库接口的包（如 SQLAlchemy）。此外，对于统计分析，还可以通过 Rpy 或 Rserve 等与 R-project 建立接口。最后，Python 是一种开源解释型编程语言，几乎可以运行于任何硬件和操作系统上。
 
-Given the above considerations, it was quickly recognized that Python was a good choice. Although, PCSE was
-developed for scientific purposes, it has already been implemented for tasks in production environments and has been
-embedded in container-based web services.
+鉴于上述原因，很快就认识到 Python 是一个很好的选择。虽然 PCSE 是为科学目的开发的，但它已经被用于生产环境的各项任务，并被集成进基于容器的 web 服务。
 
-History of PCSE
----------------
+PCSE 的发展历史
+----------------
 
-Up until version 4.1, PCSE was called "PyWOFOST" as its primary goal was to provide a Python
-implementation of the WOFOST crop simulation model.
-However, as the system has grown it has become evident that the system can be used to implement, extend or
-hybridize (crop) simulation models. Therefore, the name "PyWOFOST" became too narrow and the name Python Crop
-Simulation Environment was selected in analog with the FORTRAN Simulation Environment (FSE).
+在 4.1 版本之前，PCSE 被称为 "PyWOFOST"，其主要目标是提供 WOFOST 作物模拟模型的 Python 实现。
+然而，随着系统的发展，事实证明该系统可以用于实现、扩展或混合（作物）模拟模型。因此，名称 "PyWOFOST" 就显得太局限了，于是选用了 Python Crop Simulation Environment 这个名字，与 FORTRAN Simulation Environment (FSE) 相呼应。
 
-
-Limitations of PCSE
+PCSE 的局限性
 -------------------
 
-PCSE also has its limitations, in fact there are several:
+PCSE 也有它的局限性，具体包括以下几个方面：
 
-* Speed: flexibility comes a at a price; PCSE is considerably slower than equivalent models written in FORTRAN or
-  another compiled language.
+* 速度：灵活性是要付出代价的；PCSE 的运行速度明显慢于用 FORTRAN 或其他编译型语言编写的等效模型。
 
-* The simulation approach in PCSE is currently limited to rectangular (Euler) integration with a fixed daily
-  time-step. Although the internal time-step of modules can be made more fine-grained if needed.
+* PCSE 的模拟方法目前仅限于固定日步长的矩形（Euler）积分。当然，如果需要，模块的内部步长可以设置得更细。
 
-* No graphical user interface. However the lack of a user interface is partly compensated by using PCSE with the
-  `pandas <http://pandas.pydata.org/>`_ package and the `Jupyter notebook <https://jupyter.org/>`_.
-  PCSE output can be easily converted to a pandas `DataFrame` which can be used to display charts in an Jupyter
-  notebook. See also my collection of notebooks with `examples using PCSE <https://github.com/ajwdewit/pcse_notebooks>`_
+* 没有图形用户界面。不过，虽然没有用户图形界面，可以通过与 `pandas <http://pandas.pydata.org/>`_ 包以及 `Jupyter notebook <https://jupyter.org/>`_ 结合来部分弥补。PCSE 的输出可以很容易地转换为 pandas 的 `DataFrame`，进而在 Jupyter notebook 中显示图表。参见我整理的 `examples using PCSE <https://github.com/ajwdewit/pcse_notebooks>`_ 示例笔记本集。
 
-License
+许可证
 -------
 
-The source code of PCSE is made available under the European Union
-Public License (EUPL), Version 1.2 or as soon they will be approved by the
-European Commission - subsequent versions of the EUPL (the "Licence").
-You may not use this work except in compliance with the Licence. You may obtain
-a copy of the Licence at: https://joinup.ec.europa.eu/community/eupl/og_page/eupl
+PCSE 的源代码以 European Union Public License (EUPL) 1.2 版发布，或者在欧洲委员会批准后使用 EUPL 的随后的版本（“许可”）。
+除非遵守许可协议，否则您不得使用本软件。许可协议可在此获取：https://joinup.ec.europa.eu/community/eupl/og_page/eupl
 
-The PCSE package contains some modules that have been taken and/or modified
-from other open source projects:
+PCSE 包包含了一些取自其他开源项目或在其基础上修改过的模块：
 
-* the `pydispatch` module obtained from http://pydispatcher.sourceforge.net/
-  which is distributed under a BSD style license.
+* 来自 http://pydispatcher.sourceforge.net/ 的 `pydispatch` 模块，遵循 BSD 风格的许可协议分发。
 
-* The `traitlets` module which was taken and adapted from the
-  `IPython` project (https://ipython.org/) which are distributed under a
-  BSD style license. A PCSE specific version of `traitlets` was created
-  and is available `here <https://pypi.org/project/traitlets-pcse/>`_
+* `traitlets` 模块取自并改编自 `IPython` 项目 (https://ipython.org/)，同样遵循 BSD 风格的许可协议。PCSE 基于此单独创建了一个专用版本的 `traitlets`，可在 `here <https://pypi.org/project/traitlets-pcse/>`_ 获取。
 
-See the project pages of both projects for exact license terms.
+具体的许可条款请参见这两个项目的项目主页。

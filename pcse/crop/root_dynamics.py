@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen 环境研究中心, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 from copy import deepcopy
 
 from ..traitlets import Float, Int, Instance
@@ -12,99 +12,78 @@ from ..base import ParamTemplate, StatesTemplate, RatesTemplate, \
 
 
 class WOFOST_Root_Dynamics(SimulationObject):
-    """Root biomass dynamics and rooting depth.
+    """根系生物量动态与根系深度。
     
-    Root growth and root biomass dynamics in WOFOST are separate processes,
-    with the only exception that root growth stops when no more biomass is sent
-    to the root system.
+    在WOFOST中，根系生长和根系生物量动态是两个独立的过程，
+    唯一的例外是当不再有生物量分配到根系时，根系生长才会停止。
     
-    Root biomass increase results from the assimilates partitioned to
-    the root system. Root death is defined as the current root biomass
-    multiplied by a relative death rate (`RDRRTB`). The latter as a function
-    of the development stage (`DVS`).
+    根系生物量的增加来源于分配到根系的同化物。根死亡定义为当前根系生物量
+    乘以相对死亡率（`RDRRTB`），该死亡率是发育阶段（`DVS`）的函数。
     
-    Increase in root depth is a simple linear expansion over time until the
-    maximum rooting depth (`RDM`) is reached.
+    根系深度的增加是随时间线性扩展，直到达到最大根系深度（`RDM`）。
     
-    **Simulation parameters**
+    **模拟参数**
     
     =======  ============================================= =======  ============
-     Name     Description                                   Type     Unit
+     名称     说明                                         类型       单位
     =======  ============================================= =======  ============
-    RDI      Initial rooting depth                          SCr      cm
-    RRI      Daily increase in rooting depth                SCr      |cm day-1|
-    RDMCR    Maximum rooting depth of the crop              SCR      cm
-    RDMSOL   Maximum rooting depth of the soil              SSo      cm
-    TDWI     Initial total crop dry weight                  SCr      |kg ha-1|
-    IAIRDU   Presence of air ducts in the root (1) or       SCr      -
-             not (0)
-    RDRRTB   Relative death rate of roots as a function     TCr      -
-             of development stage
+    RDI      初始根系深度                                  SCr       cm
+    RRI      根系深度每日增长                              SCr      |cm day-1|
+    RDMCR    作物最大根系深度                              SCR       cm
+    RDMSOL   土壤最大根系深度                              SSo       cm
+    TDWI     初始作物总干重                                SCr      |kg ha-1|
+    IAIRDU   根系内有（1）或无（0）通气道                  SCr        -
+    RDRRTB   根系相对死亡率（发育阶段的函数）              TCr        -
     =======  ============================================= =======  ============
     
 
-    **State variables**
+    **状态变量**
 
     =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
+     名称     说明                                             公布     单位
     =======  ================================================= ==== ============
-    RD       Current rooting depth                              Y     cm
-    RDM      Maximum attainable rooting depth at the minimum    N     cm
-             of the soil and crop maximum rooting depth
-    WRT      Weight of living roots                             Y     |kg ha-1|
-    DWRT     Weight of dead roots                               N     |kg ha-1|
-    TWRT     Total weight of roots                              Y     |kg ha-1|
+    RD       当前根系深度                                       Y      cm
+    RDM      可达最大根系深度为土壤和作物最大深度的最小值       N      cm
+    WRT      活根生物量                                         Y    |kg ha-1|
+    DWRT     死根生物量                                         N    |kg ha-1|
+    TWRT     根系总生物量                                       Y    |kg ha-1|
     =======  ================================================= ==== ============
 
-    **Rate variables**
+    **变化率变量**
 
     =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
+     名称     说明                                             公布     单位
     =======  ================================================= ==== ============
-    RR       Growth rate root depth                             N    cm
-    GRRT     Growth rate root biomass                           N   |kg ha-1 d-1|
-    DRRT     Death rate root biomass                            N   |kg ha-1 d-1|
-    GWRT     Net change in root biomass                         N   |kg ha-1 d-1|
+    RR       根系深度增长速率                                   N      cm
+    GRRT     根系生物量增长速率                                 N   |kg ha-1 d-1|
+    DRRT     根系生物量死亡速率                                 N   |kg ha-1 d-1|
+    GWRT     根系生物量净变化                                   N   |kg ha-1 d-1|
     =======  ================================================= ==== ============
     
-    **Signals send or handled**
+    **发送或处理的信号**
     
-    None
+    无
     
-    **External dependencies:**
+    **外部依赖：**
     
     =======  =================================== =================  ============
-     Name     Description                         Provided by         Unit
+     名称     说明                                  提供模块          单位
     =======  =================================== =================  ============
-    DVS      Crop development stage              DVS_Phenology       -
-    DMI      Total dry matter                    CropSimulation     |kg ha-1 d-1|
-             increase
-    FR       Fraction biomass to roots           DVS_Partitioning    - 
+    DVS      作物发育阶段                         DVS_Phenology       -
+    DMI      总干物质增加                         CropSimulation    |kg ha-1 d-1|
+    FR       分配给根的生物量分数                 DVS_Partitioning    - 
     =======  =================================== =================  ============
     """
+
     """
-    IMPORTANT NOTICE
-    Currently root development is linear and depends only on the fraction of assimilates
-    send to the roots (FR) and not on the amount of assimilates itself. This means that
-    roots also grow through the winter when there is no assimilation due to low 
-    temperatures. There has been a discussion to change this behaviour and make root growth 
-    dependent on the assimilates send to the roots: so root growth stops when there are
-    no assimilates available for growth.
+    重要说明
+    当前的根系发育是线性的，仅取决于分配到根系的光合产物比例（FR），而不是光合产物的绝对量。这意味着即使在冬季由于低温没有同化产物产生，根系仍然会继续生长。此前我们曾讨论过是否应改变这种行为，使根系生长依赖于分配到根系的光合产物量：也就是说，当无可用于生长的同化产物时，根系生长应停止。
     
-    Finally, we decided not to change the root model and keep the original WOFOST approach 
-    because of the following reasons:
-    - A dry top layer in the soil could create a large drought stress that reduces the 
-      assimilates to zero. In this situation the roots would not grow if dependent on the
-      assimilates, while water is available in the zone just below the root zone. Therefore
-      a dependency on the amount of assimilates could create model instability in dry
-      conditions (e.g. Southern-Mediterranean, etc.).
-    - Other solutions to alleviate the problem above were explored: only put this limitation
-      after a certain development stage, putting a dependency on soil moisture levels in the
-      unrooted soil compartment. All these solutions were found to introduce arbitrary
-      parameters that have no clear explanation. Therefore all proposed solutions were discarded.
-      
-    We conclude that our current knowledge on root development is insufficient to propose a
-    better and more biophysical approach to root development in WOFOST.  
+    最终，我们决定不改变根系模型，而保持WOFOST的原始方法，主要基于以下理由：
+    - 在干燥的土壤表层可能会造成严重的干旱胁迫，使同化物接近于零。在这种情况下，如果根系生长依赖于同化产物，根系将无法生长，而其实根区下方依然有水。因此，让根系生长依赖同化产物容易导致模型在干旱条件下（例如地中海南部等）不稳定。
+    - 为解决上述问题，曾探讨过其他方案：例如仅在某一发育阶段后才施加该限制，或令根生长取决于未生根土壤层的含水量。但所有这些解决方案都引入了没有明确解释的任意参数。因此全部被弃用。
+    
+    我们认为，目前对根系生长的认识尚不足以提出更完善、更符合生物物理学的WOFOST根系生长建模方法。  
     """
 
     class Parameters(ParamTemplate):
@@ -131,23 +110,22 @@ class WOFOST_Root_Dynamics(SimulationObject):
         
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE  instance
-        :param parvalues: `ParameterProvider` object providing parameters as
-                key/value pairs
+        :param day: 模拟开始的日期
+        :param kiosk: 当前 PCSE 实例的变量 kiosk
+        :param parvalues: 提供参数及其键值对的 `ParameterProvider` 对象
         """
 
         self.params = self.Parameters(parvalues)
         self.rates = self.RateVariables(kiosk, publish=["DRRT", "GRRT"])
         self.kiosk = kiosk
         
-        # INITIAL STATES
+        # 初始状态
         params = self.params
-        # Initial root depth states
+        # 初始根系深度状态
         rdmax = max(params.RDI, min(params.RDMCR, params.RDMSOL))
         RDM = rdmax
         RD = params.RDI
-        # initial root biomass states
+        # 初始根系生物量状态
         WRT  = params.TDWI * self.kiosk.FR
         DWRT = 0.
         TWRT = WRT + DWRT
@@ -163,15 +141,14 @@ class WOFOST_Root_Dynamics(SimulationObject):
         s = self.states
         k = self.kiosk
 
-        # Increase in root biomass
+        # 根系生物量增加量
         r.GRRT = k.FR * k.DMI
         r.DRRT = s.WRT * p.RDRRTB(k.DVS)
         r.GWRT = r.GRRT - r.DRRT
         
-        # Increase in root depth
+        # 根系深度增长量
         r.RR = min((s.RDM - s.RD), p.RRI)
-        # Do not let the roots growth if partioning to the roots
-        # (variable FR) is zero.
+        # 当分配到根（FR）为零时，不让根系生长
         if k.FR == 0.:
             r.RR = 0.
     
@@ -180,31 +157,30 @@ class WOFOST_Root_Dynamics(SimulationObject):
         rates = self.rates
         states = self.states
 
-        # Dry weight of living roots
+        # 活根干重
         states.WRT += rates.GWRT
-        # Dry weight of dead roots
+        # 死根干重
         states.DWRT += rates.DRRT
-        # Total weight dry + living roots
+        # 总根干重（活+死）
         states.TWRT = states.WRT + states.DWRT
 
-        # New root depth
+        # 新的根系深度
         states.RD += rates.RR
 
 
     @prepare_states
     def _set_variable_WRT(self, nWRT):
-        """Updates the value of WRT to to the new value provided as input.
+        """将WRT的值更新为输入的新值。
 
-        Related state variables will be updated as well and the increments
-        to all adjusted state variables will be returned as a dict.
+        相关的状态变量也将被更新，所有被调整状态变量的增量将作为字典返回。
         """
         states = self.states
 
-        # Store old values of states
+        # 存储旧的状态值
         oWRT = states.WRT
         oTWRT = states.TWRT
 
-        # Apply new root weight and adjust total (dead + live) root weight
+        # 应用新的根重并调整总（死+活）根重
         states.WRT = nWRT
         states.TWRT = states.WRT + states.DWRT
 
@@ -215,80 +191,79 @@ class WOFOST_Root_Dynamics(SimulationObject):
 
 
 class Simple_Root_Dynamics(SimulationObject):
-    """Simple class for linear root growth.
-    
-    Increase in root depth is a simple linear expansion over time until the
-    maximum rooting depth (`RDM`) is reached.
-    
-    **Simulation parameters**
-    
-    =======  ============================================= =======  ============
-     Name     Description                                   Type     Unit
-    =======  ============================================= =======  ============
-    RDI      Initial rooting depth                          SCr      cm
-    RRI      Daily increase in rooting depth                SCr      |cm day-1|
-    RDMCR    Maximum rooting depth of the crop              SCR      cm
-    RDMSOL   Maximum rooting depth of the soil              SSo      cm
-    =======  ============================================= =======  ============
-    
+    """线性根系生长的简单类。
 
-    **State variables**
+    根系深度的增加是一个随时间线性扩展的过程，直到达到最大根系深度（`RDM`）。
 
-    =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
-    =======  ================================================= ==== ============
-    RD       Current rooting depth                              Y     cm
-    RDM      Maximum attainable rooting depth at the minimum    N     cm
-             of the soil and crop maximum rooting depth
-    =======  ================================================= ==== ============
+    **模拟参数**
 
-    **Rate variables**
+    =======  =============================== =======  ============
+     名称      描述                           类型      单位
+    =======  =============================== =======  ============
+    RDI      初始根系深度                      SCr      cm
+    RRI      根系深度的日增加量                SCr      |cm day-1|
+    RDMCR    作物可达到的最大根系深度          SCR      cm
+    RDMSOL   土壤可达到的最大根系深度          SSo      cm
+    =======  =============================== =======  ============
 
-    =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
-    =======  ================================================= ==== ============
-    RR       Growth rate root depth                             N    cm
-    =======  ================================================= ==== ============
-    
-    **Signals send or handled**
-    
-    None
-    
-    **External dependencies:**
-    
-    None
+    **状态变量**
+
+    =======  ======================================= ==== ============
+     名称      描述                                   Pbl      单位
+    =======  ======================================= ==== ============
+    RD       当前根系深度                              Y     cm
+    RDM      在土壤和作物最大根系深度下                N     cm
+             可达的最大根系深度
+    =======  ======================================= ==== ============
+
+    **速率变量**
+
+    =======  ======================================= ==== ============
+     名称      描述                                   Pbl      单位
+    =======  ======================================= ==== ============
+    RR       根系深度的生长速率                         N    cm
+    =======  ======================================= ==== ============
+
+    **信号发送或处理**
+
+    无
+
+    **外部依赖：**
+
+    无
     """
 
     class Parameters(ParamTemplate):
-        """Traits-based class for storing rooting depth parameters
-        """
+        """用于存储根系深度参数的 traits-based 类"""
         RDI    = Float(-99.)    
         RRI    = Float(-99.)
         RDMCR  = Float(-99.)
         RDMSOL = Float(-99.)
                     
     class RateVariables(RatesTemplate):
+        """用于存储根系速率变量的类"""
         RR   = Float(-99.)
 
     class StateVariables(StatesTemplate):
+        """用于存储根系状态变量的类"""
         RD   = Float(-99.)
         RDM  = Float(-99.)
         
     def initialize(self, day, kiosk, parameters):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE  instance
-        :param parameters: ParameterProvider object with key/value pairs
+        :param day: 模拟开始日期
+        :param kiosk: 本 PCSE 实例的变量 kiosk
+        :param parameters: 包含键值对的 ParameterProvider 对象
         """
 
         self.params = self.Parameters(parameters)
         self.rates = self.RateVariables(kiosk)
         self.kiosk = kiosk
         
-        # INITIAL STATES
+        # 初始化状态
         params = self.params
 
-        # Initial root depth states
+        # 初始化根系深度状态
         rdmax = max(params.RDI, min(params.RDMCR, params.RDMSOL))
         RDM = rdmax
         RD = params.RDI
@@ -301,7 +276,7 @@ class Simple_Root_Dynamics(SimulationObject):
         rates = self.rates
         states = self.states
         
-        # Increase in root depth
+        # 根系深度的增加量
         rates.RR = min((states.RDM - states.RD), params.RRI)
     
     @prepare_states
@@ -309,5 +284,5 @@ class Simple_Root_Dynamics(SimulationObject):
         rates = self.rates
         states = self.states
 
-        # New root depth
+        # 新的根系深度
         states.RD += rates.RR

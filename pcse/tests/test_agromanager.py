@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 
 import unittest
 from datetime import date
@@ -10,7 +10,7 @@ from ..base import VariableKiosk
 from ..exceptions import PCSEError
 
 
-# Template for agromanagement testing
+# 作物管理测试的模板
 class TestAgroManagerSimpleTestTemplate(unittest.TestCase):
 
     agmt_input = None
@@ -183,8 +183,7 @@ class TestAgroManager5(TestAgroManagerSimpleTestTemplate):
     end_date = date(2001, 12, 15)
 
 
-# This should raise an error because the last campaign has StateEvents but no explicit end date
-# is given.
+# 这应该抛出一个错误，因为最后一个作业周期有StateEvents但是没有给出显式的结束日期
 class TestAgroManager6(unittest.TestCase):
     agmt_input = """
                 Version: 1.0
@@ -212,8 +211,7 @@ class TestAgroManager6(unittest.TestCase):
         return self.amgt.end_date
 
 
-# This should raise an error because the timed event on 2001-03-18 is not within the
-# campaign interval
+# 这应该抛出一个错误，因为2001-03-18的定时事件不在作业周期范围内
 class TestAgroManager7(unittest.TestCase):
     agmt_input = """
                 Version: 1.0
@@ -242,8 +240,7 @@ class TestAgroManager7(unittest.TestCase):
         amgt = AgroManager(kiosk, d['AgroManagement'])
 
 
-# This should raise an error because the crop start date is not within the
-# campaign interval
+# 这应该抛出一个错误，因为作物起始日期不在作业周期范围内
 class TestAgroManager8(unittest.TestCase):
     agmt_input = """
                 Version: 1.0
@@ -271,7 +268,7 @@ class TestAgroManager8(unittest.TestCase):
         amgt = AgroManager(kiosk, d['AgroManagement'])
 
 def suite():
-    """ This defines all the tests of a module"""
+    """ 该函数定义了一个模块的所有测试 """
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(TestAgroManager1))
     suite.addTest(unittest.makeSuite(TestAgroManager2))

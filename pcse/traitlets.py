@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 """
-This module is here only to ensure that all PCSE modules can import internally from .traitlets
-while this module loads the actual traitlets modules from the correct location. Moreover,
-some traits are adapted to allow `None` as default values and coercing value to float().
+该模块仅用于确保所有PCSE模块可以从 .traitlets 内部导入，
+同时该模块从正确的位置加载实际的 traitlets 模块。此外，
+部分 traits 被修改以允许 `None` 作为默认值并将其值强制转换为 float()。
 
-Currently an adapted version of the traitlets package is used 'traitlets_pcse'. In the future
-the default traitlets package may be used when the `observe()` functionality on `type=All` is implemented.
+目前使用的是适配过的 traitlets 包 'traitlets_pcse'。将来，
+当 `observe()` 在 `type=All` 上实现后，可能会使用默认的 traitlets 包。
 """
 from traitlets_pcse import *
 import traitlets_pcse as tr

@@ -7,18 +7,18 @@ from .. import exceptions as exc
 
 
 class pFCurve(Afgen):
-    """Pf curve should check that:
-    - length of array is even
-    - has at least 3 xy pairs
-    - pF should start at pF = -1 and end at pF=6
-    - SM/cond values should decrease with increase pF
+    """Pf 曲线应检查如下：
+    - 数组长度为偶数
+    - 至少有 3 对 xy 值
+    - pF 应当以 pF = -1 开始，以 pF = 6 结束
+    - 随着 pF 增大，SM/cond 的值应减少
 
     """
     pass
 
 
 class MFPCurve(Afgen):
-    """Computes Matrix Flow Potential using a Gaussian integration over the pfCurve
+    """使用对 pfCurve 的高斯积分法计算基质流势
 
     """
     elog10 = 2.302585092994
@@ -30,14 +30,14 @@ class MFPCurve(Afgen):
         CONDfromPF = pFCurve(CONDfromPF)
         MFPfromPF = np.zeros_like(SMfromPF)
 
-        # zero MFP at highest pF
+        # 在最大 pF 处，MFP 置零
         MFPfromPF[-1] = 0.
         MFPfromPF[-2] = SMfromPF[-2]
 
         for ip in range(len(SMfromPF) - 3, 0, -2):
-            # Copy corresponding pF value
+            # 拷贝对应的 pF 值
             MFPfromPF[ip - 1] = SMfromPF[ip - 1]
-            # get integral over PF range
+            # 对 PF 区间进行积分
             add = 0.0
             DeltaPF = SMfromPF[ip + 1] - SMfromPF[ip - 1]
             for i in range(len(self.Pgauss)):
@@ -49,61 +49,56 @@ class MFPCurve(Afgen):
 
 
 class SoilLayer(HasTraits):
-    """Contains the intrinsic and derived properties for each soil layers as required by the multilayer
-    waterbalance and SNOMIN.
+    """包含由多层水分平衡和SNOMIN要求的每层土壤的固有参数和衍生参数。
 
-    :param layer: a soil layer definition providing parameter values for this layer, see table below.
-    :param PFFieldcapacity: the pF value for defining Field Capacity
-    :param PFWiltingPoint: the pF value for defining the Wilting Point
+    :param layer: 一个包含该土壤层参数值的定义，详见下表。
+    :param PFFieldcapacity: 定义田间持水量的pF值
+    :param PFWiltingPoint: 定义萎蔫点的pF值
 
-    The following properties have to be defined for each layer.
+    每一层都需要定义以下属性。
 
     =============== ================================================================  =======================
-    Name             Description                                                      Unit
+    名称              描述                                                            单位
     =============== ================================================================  =======================
-    CONDfromPF      Table function of the 10-base logarithm of the unsaturated
-                    hydraulic conductivity as a function of pF.                       log10(cm water d-1), -
-    SMfromPF        Table function that describes the soil moisture
-                    content as a function of pF                                       m3 water m-3 soil, -
-    Thickness       Layer thickness                                                   cm
-    FSOMI           Initial fraction of soil organic matter in soil                   kg OM kg-1 soil
-    CNRatioSOMI     Initial C:N ratio of soil organic matter                          kg C kg-1 N
-    RHOD            Bulk density of the soil                                          g soil cm-3 soil
-    Soil_pH         pH of the soil layer                                              -
-    CRAIRC          Critical air content for aeration for root system                 m3 air m-3 soil
+    CONDfromPF      饱和度以下条件下，水力传导率的以10为底的对数值关于pF的表型函数     log10(cm water d-1), -
+    SMfromPF        土壤含水量关于pF的表型函数                                         m3 water m-3 soil, -
+    Thickness       土层厚度                                                          cm
+    FSOMI           初始土壤有机质含量比例                                             kg OM kg-1 soil
+    CNRatioSOMI     初始土壤有机质C:N比                                                kg C kg-1 N
+    RHOD            土壤容重                                                          g soil cm-3 soil
+    Soil_pH         土壤层pH值                                                        -
+    CRAIRC          根系通气所需的临界空隙率                                           m3 air m-3 soil
     =============== ================================================================  =======================
 
 
-    Based on the soil layer definition the following properties are derived from the parameters in the
-    table above.
+    根据土壤层定义，上表参数可推导出以下衍生属性。
 
     =============== ================================================================  =======================
-     Name             Description                                                      Unit
+    名称            描述                                                              单位
     =============== ================================================================  =======================
-    PFfromSM         Afgen table providing the inverted SMfromPF curve                 m3 water m-3 soil, -
-    MFPfromPF        AfTen table describing the Matric Flux Potential as a             cm2 d-1
-                     function of the hydraulic head (pF).
-    SM0              The volumetric soil moisture content at saturation (pF = -1)      m3 water m-3 soil
-    SMW              The volumetric soil moisture content at wilting point             m3 water m-3 soil
-    SMFCF            The volumetric soil moisture content at field capacity            m3 water m-3 soil
-    WC0              The soil moisture amount (cm) at saturation (pF = -1)             cm water
-    WCW              The soil moisture amount (cm) at wilting point                    cm water
-    WCFC             The soil moisture amount (cm) at field capacity                   cm water
-    CondFC           Soil hydraulic conductivity at field capacity                     cm water d-1
-    CondK0           Soil hydraulic conductivity at saturation                         cm water d-1
+    PFfromSM        提供SMfromPF反映曲线的Afgen表                                      m3 water m-3 soil, -
+    MFPfromPF       描述基质流势关于pF（水力头）关系的Afgen表                         cm2 d-1
+    SM0             饱和状态(pF = -1)时的体积含水量                                   m3 water m-3 soil
+    SMW             萎蔫点时的体积含水量                                               m3 water m-3 soil
+    SMFCF           田间持水量时的体积含水量                                           m3 water m-3 soil
+    WC0             饱和状态(pF = -1)时的水分总量（cm）                                cm water
+    WCW             萎蔫点时的水分总量（cm）                                           cm water
+    WCFC            田间持水量时水分总量（cm）                                         cm water
+    CondFC          田间持水量下的土壤水力传导率                                       cm water d-1
+    CondK0          饱和状态下的土壤水力传导率                                         cm water d-1
     =============== ================================================================  =======================
 
-    Finally `rooting_status` is initialized to None (not yet known at initialization).
+    最后，`rooting_status` 被初始化为 None（初始化时尚未知）。
     """
-    SMfromPF = Instance(pFCurve)  # soil moisture content as function of pF
-    CONDfromPF = Instance(pFCurve)  # conductivity as function of pF
-    PFfromSM = Instance(Afgen)  # Inverse from SMfromPF
-    MFPfromPF = Instance(MFPCurve)  # Matrix Flux Potential as function of pF
-    CNRatioSOMI = Float()  # Initial C:N ratio of soil organic matter
-    FSOMI = Float()  # Initial fraction of soil organic matter in soil
-    RHOD = Float()  # Bulk density of the soil
-    Soil_pH = Float()  # pH of the soil layer
-    CRAIRC = Float()  # Critical air content
+    SMfromPF = Instance(pFCurve)  # 土壤含水量关于pF的函数
+    CONDfromPF = Instance(pFCurve)  # 水力传导率关于pF的函数
+    PFfromSM = Instance(Afgen)  # SMfromPF的反函数
+    MFPfromPF = Instance(MFPCurve)  # 基质流势关于pF的函数
+    CNRatioSOMI = Float()  # 初始土壤有机质C:N比
+    FSOMI = Float()  # 初始土壤有机质含量比例
+    RHOD = Float()  # 土壤容重
+    Soil_pH = Float()  # 土壤层pH
+    CRAIRC = Float()  # 临界空隙率
     Thickness = Float()
     rooting_status = Enum(["rooted","partially rooted","potentially rooted","never rooted",])
 
@@ -134,7 +129,7 @@ class SoilLayer(HasTraits):
         self.CondK0 = 10.0 ** self.CONDfromPF(-1.0)
         self.rooting_status = None
 
-        # compute hash value of this layer based on pF curves for conductivity and SM
+        # 根据pF曲线计算本层的哈希值
         self._hash = hash((tuple(layer.SMfromPF), tuple(layer.CONDfromPF)))
 
     @property
@@ -146,7 +141,7 @@ class SoilLayer(HasTraits):
         return self.RHOD * 1e-3 * 1e06
 
     def _invert_pF(self, SMfromPF):
-        """Inverts the SMfromPF table to get pF from SM
+        """将SMfromPF表反转以获得由SM推导的pF
         """
         l = []
         for t in zip(reversed(SMfromPF[1::2]), reversed(SMfromPF[0::2])):
@@ -164,23 +159,20 @@ class SoilLayer(HasTraits):
 
 
 class SoilProfile(list):
-    """A component that represents the soil column as required by the multilayer waterbalance and SNOMIN.
+    """
+    该组件表示多层土壤水分平衡和SNOMIN所需的土壤剖面。
 
-    :param parvalues: a ParameterProvider instance that will be used to retrieve the description of the
-        soil profile which is assumed to be available under the key `SoilProfileDescription`.
+    :param parvalues: 一个 ParameterProvider 实例，用于获取土壤剖面描述，土壤参数应在`SoilProfileDescription`键下可用。
 
-    This class is basically a container that stores `SoilLayer` instances with some additional logic mainly related
-    to root growth, root status and root water extraction. For detailed information on the properties of the soil
-    layers have a look at the description of the `SoilLayer` class.
+    本类本质上是一个容器，存储多个`SoilLayer`实例，并包含与根系生长、根系状态及根区水分提取等相关的附加逻辑。
+    有关土壤层属性的详细信息请参考类 `SoilLayer` 的描述。
 
-    The description of the soil profile can be defined in YAML format with an example of the structure
-    given below. In this case first three soil physical types are defined under the section `SoilLayerTypes`.
-    Next, these SoilLayerTypes are used to define an actual soil profile using two upper layers of 10 cm of
-    type `TopSoil`, three layers of 10, 20 and 30 cm of type `MidSoil`, a lower layer of 45 cm of type `SubSoil`
-    and finally a SubSoilType with a thickness of 200 cm. Only the top 3 layers contain a certain amaount of
-    organic carbon (FSOMI).
+    土壤剖面的描述可通过YAML格式定义，下面给出了结构的示例。
+    在该例中，首先在`SoilLayerTypes`段下定义三种土壤物理类型。
+    然后，使用这些SoilLayerTypes来定义实际的剖面，包括2层10cm厚的TopSoil、3层分别为10、20和30cm厚的MidSoil、一层45cm厚的SubSoil，并最终以厚度200cm的SubSoilType结尾。
+    仅最上面3层包含一定量的有机碳（FSOMI）。
 
-    An example of a data structure for the soil profile::
+    以下是土壤剖面数据结构的示例::
 
         SoilLayerTypes:
             TopSoil: &TopSoil
@@ -294,7 +286,7 @@ class SoilProfile(list):
         SoilProfileDescription:
             PFWiltingPoint: 4.2
             PFFieldCapacity: 2.0
-            SurfaceConductivity: 70.0 # surface conductivity cm / day
+            SurfaceConductivity: 70.0 # 表层导水率 cm / day
             SoilLayers:
             -   <<: *TopSoil
                 Thickness: 10
@@ -335,16 +327,16 @@ class SoilProfile(list):
             setattr(self, attr, value)
 
     def determine_rooting_status(self, RD, RDM):
-        """Determines the rooting status of the soil layers and update layer weights.
+        """
+        确定土壤各层的生根状态并更新各层权重。
 
-        Soil layers can be rooted, partially rooted, potentially rooted or never rooted.
-        This is stored in layer.rooting_status
+        土层分为已生根、部分生根、潜在生根、从未生根四种状态。
+        状态存储在 layer.rooting_status 中。
 
-        Note that this routine expected that the maximum rooting depth coincides
-        with a layer boundary.
+        注意：本方法要求最大根系深度与土层边界重合。
 
-        :param RD:the current rooting depth
-        :param RDM: the maximum rooting depth
+        :param RD: 当前根系深度
+        :param RDM: 最大根系深度
         """
         upper_layer_boundary = 0
         lower_layer_boundary = 0
@@ -363,9 +355,10 @@ class SoilProfile(list):
         self._compute_layer_weights(RD)
 
     def _compute_layer_weights(self, RD):
-        """computes the layer weights given the current rooting depth.
+        """
+        根据当前根系深度计算各土层的权重。
 
-        :param RD: The current rooting depth
+        :param RD: 当前根系深度
         """
         lower_layer_boundary = 0
         for layer in self:
@@ -391,10 +384,10 @@ class SoilProfile(list):
                 raise exc.PCSEError(msg)
 
     def validate_max_rooting_depth(self, RDM):
-        """Validate that the maximum rooting depth coincides with a layer boundary.
+        """验证最大根系深度是否与某个土层边界重合。
 
-        :param RDM: The maximum rootable depth
-        :return: True or False
+        :param RDM: 最大可生根深度
+        :return: True 或 False
         """
         tiny = 0.01
         lower_layer_boundary = 0
@@ -402,16 +395,16 @@ class SoilProfile(list):
             lower_layer_boundary += layer.Thickness
             if abs(RDM - lower_layer_boundary) < tiny:
                 break
-        else:  # no break
+        else:  # 没有遇到 break
             msg = "Current maximum rooting depth (%f) does not coincide with a layer boundary!" % RDM
             raise exc.PCSEError(msg)
 
     def get_max_rootable_depth(self):
-        """Returns the maximum soil rootable depth.
+        """返回土壤的最大可生根深度。
 
-        here we assume that the max rootable depth is equal to the lower boundary of the last layer.
+        这里我们假设最大可生根深度等于最后一个土层的下边界。
 
-        :return: the max rootable depth in cm
+        :return: 最大可生根深度（单位：cm）
         """
         LayerThickness = [l.Thickness for l in self]
         LayerLowerBoundary = list(np.cumsum(LayerThickness))

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 import os
 import datetime as dt
 
@@ -13,7 +13,7 @@ from pcse.util import ea_from_tdew, reference_ET, check_angstromAB
 from pcse.exceptions import PCSEError
 from pcse.settings import settings
 
-# Define some lambdas to take care of unit conversions.
+# 定义一些lambda，用于单位换算
 MJ_to_J = lambda x: x * 1e6
 mm_to_cm = lambda x: x / 10.
 tdew_to_hpa = lambda x: ea_from_tdew(x) * 10.
@@ -21,62 +21,54 @@ to_date = lambda d: d.date()
 
 
 class NASAPowerWeatherDataProvider(WeatherDataProvider):
-    """WeatherDataProvider for using the NASA POWER database with PCSE
-
-    :param latitude: latitude to request weather data for
-    :param longitude: longitude to request weather data for
-    :keyword force_update: Set to True to force to request fresh data
-        from POWER website.
-    :keyword ETmodel: "PM"|"P" for selecting penman-monteith or Penman
-        method for reference evapotranspiration. Defaults to "PM".
-
-    The NASA POWER database is a global database of daily weather data
-    specifically designed for agrometeorological applications. The spatial
-    resolution of the database is 0.25x0.25 degrees (as of 2018). It is
-    derived from weather station observations in combination with satellite
-    data for parameters like radiation.
-
-    The weather data is updated with a delay of about 5 days on realtime
-    (depending on the variable) which makes
-    the database unsuitable for real-time monitoring, nevertheless the
-    POWER database is useful for many other studies and it is a major
-    improvement compared to the monthly weather data that were used with
-    WOFOST in the past.
-
-    For more information on the NASA POWER database see the documentation
-    at: https://power.larc.nasa.gov/docs/
-
-    The `NASAPowerWeatherDataProvider` retrieves the weather from the
-    th NASA POWER API and does the necessary conversions to be compatible
-    with PCSE. After the data has been retrieved and stored, the contents
-    are dumped to a binary cache file. If another request is made for the
-    same location, the cache file is loaded instead of a full request to the
-    NASA Power server.
-
-    Cache files are used until they are older then 90 days. After 90 days
-    the NASAPowerWeatherDataProvider will make a new request to obtain
-    more recent data from the NASA POWER server. If this request fails
-    it will fall back to the existing cache file. The update of the cache
-    file can be forced by setting `force_update=True`.
-
-    Finally, note that any latitude/longitude within a 0.25x0.25 degrees grid box
-    will yield the same weather data, e.g. there is no difference between
-    lat/lon 5.3/52.1 and lat/lon 5.35/52.2. Nevertheless slight differences
-    in PCSE simulations may occur due to small differences in day length.
-
     """
-    # Variable names in POWER data
+    用于 PCSE 的 NASA POWER 数据库天气数据提供者
+
+    :param latitude: 请求天气数据的纬度
+    :param longitude: 请求天气数据的经度
+    :keyword force_update: 设为True时强制从POWER网站请求最新数据
+    :keyword ETmodel: "PM" 或 "P"，用于选择Penman-Monteith或Penman方法计算参考作物蒸散。默认为 "PM"。
+
+    NASA POWER 数据库是一个专为农业气象应用设计的全球日尺度天气数据库。其空间分辨率为0.25x0.25度（截至2018年）。
+    数据库数据基于气象观测站信息联合卫星资料（如辐射）生成。
+
+    天气数据一般有约5天的实时更新延迟（具体取决于变量），因而并不适用于实时监测，但对于其他研究依然非常有用。
+    与过去WOFOST使用的月度气象数据相比，这是一项重大的进步。
+
+    关于 NASA POWER 数据库的详细信息，请参见其文档:
+    https://power.larc.nasa.gov/docs/
+
+    `NASAPowerWeatherDataProvider` 通过 NASA POWER API 获取天气数据，并进行必要的转换以适应 PCSE。
+    数据获取后将其存储为二进制缓存文件。当再次请求同一位置的数据时，
+    将优先加载缓存文件，而不是再次完整请求 NASA Power 服务器。
+
+    缓存文件只要小于90天便会被使用。超过90天，则会请求NASA POWER服务器以获得最新数据；
+    如果请求失败，则回退使用已有缓存。
+    通过设置 `force_update=True` 可强制更新缓存文件。
+
+    特别注意，同一 0.25x0.25 度网格内任意纬经度请求将返回同样的数据，
+    例如 5.3/52.1 和 5.35/52.2 的天气数据没有区别。
+    但由于白天长度的细微差别，PCSE 模拟可能仍略有不同。
+    """
+    # POWER 数据中的变量名称
     power_variables_old = ["ALLSKY_TOA_SW_DWN", "ALLSKY_SFC_SW_DWN", "T2M", "T2M_MIN",
                        "T2M_MAX", "T2MDEW", "WS2M", "PRECTOT"]
     power_variables = ["TOA_SW_DWN", "ALLSKY_SFC_SW_DWN", "T2M", "T2M_MIN",
                        "T2M_MAX", "T2MDEW", "WS2M", "PRECTOTCORR"]
-    # other constants
+    # 其他常量
     HTTP_OK = 200
     angstA = 0.29
     angstB = 0.49
 
     def __init__(self, latitude, longitude, force_update=False, ETmodel="PM"):
+        """
+        用于初始化 NASAPowerWeatherDataProvider。
 
+        :param latitude: 请求天气数据的纬度
+        :param longitude: 请求天气数据的经度
+        :param force_update: 是否强制从 NASA POWER 网站请求最新数据，默认为 False
+        :param ETmodel: "PM" 或 "P"，用于选择 Penman-Monteith 或 Penman 方法计算参考作物蒸散，默认为 "PM"
+        """
         WeatherDataProvider.__init__(self)
 
         if latitude < -90 or latitude > 90:
@@ -92,17 +84,16 @@ class NASAPowerWeatherDataProvider(WeatherDataProvider):
         msg = "Retrieving weather data from NASA Power for lat/lon: (%f, %f)."
         self.logger.info(msg % (self.latitude, self.longitude))
 
-        # Check for existence of a cache file
+        # 检查缓存文件是否存在
         cache_file = self._find_cache_file(self.latitude, self.longitude)
         if cache_file is None or force_update is True:
             msg = "No cache file or forced update, getting data from NASA Power."
             self.logger.debug(msg)
-            # No cache file, we really have to get the data from the NASA server
+            # 没有缓存文件，必须从 NASA 服务器获取数据
             self._get_and_process_NASAPower(self.latitude, self.longitude)
             return
 
-        # get age of cache file, if age < 90 days then try to load it. If loading fails retrieve data
-        # from the NASA server .
+        # 获取缓存文件的创建时间，如果小于 90 天则尝试加载；如果加载失败则重新获取数据
         r = os.stat(cache_file)
         cache_file_date = dt.date.fromtimestamp(r.st_mtime)
         age = (dt.date.today() - cache_file_date).days
@@ -114,10 +105,10 @@ class NASAPowerWeatherDataProvider(WeatherDataProvider):
             if status is not True:
                 msg = "Loading cache file failed, reloading data from NASA Power."
                 self.logger.debug(msg)
-                # Loading cache file failed!
+                # 加载缓存文件失败，重新获取 NASA 数据
                 self._get_and_process_NASAPower(self.latitude, self.longitude)
         else:
-            # Cache file is too old. Try loading new data from NASA
+            # 缓存文件过旧，尝试从 NASA 获取最新数据
             try:
                 msg = "Cache file older then 90 days, reloading data from NASA Power."
                 self.logger.debug(msg)
@@ -132,7 +123,7 @@ class NASAPowerWeatherDataProvider(WeatherDataProvider):
                     raise PCSEError(msg)
 
     def _get_and_process_NASAPower(self, latitude, longitude):
-        """Handles the retrieval and processing of the NASA Power data
+        """处理从NASA Power获取以及处理数据的过程
         """
         powerdata = self._query_NASAPower_server(latitude, longitude)
         if not powerdata:
@@ -140,50 +131,47 @@ class NASAPowerWeatherDataProvider(WeatherDataProvider):
                   "the NASA POWER server, retry again later."
             raise RuntimeError(msg)
 
-        # Store the informational header then parse variables
+        # 存储信息性header，并解析变量
         self.description = [powerdata["header"]["title"]]
         self.elevation = float(powerdata["geometry"]["coordinates"][2])
         df_power = self._process_POWER_records(powerdata)
 
-        # Determine Angstrom A/B parameters
+        # 获取Angstrom A/B参数
         self.angstA, self.angstB = self._estimate_AngstAB(df_power)
 
-        # Convert power records to PCSE compatible structure
+        # 将power数据记录转换为PCSE兼容的数据结构
         df_pcse = self._POWER_to_PCSE(df_power)
 
-        # Start building the weather data containers
+        # 开始构建气象数据容器
         self._make_WeatherDataContainers(df_pcse.to_dict(orient="records"))
 
-        # dump contents to a cache file
+        # 将内容写入缓存文件
         cache_filename = self._get_cache_filename(latitude, longitude)
         self._dump(cache_filename)
 
     def _estimate_AngstAB(self, df_power):
-        """Determine Angstrom A/B parameters from Top-of-Atmosphere (ALLSKY_TOA_SW_DWN) and
-        top-of-Canopy (ALLSKY_SFC_SW_DWN) radiation values.
+        """根据大气顶层（ALLSKY_TOA_SW_DWN）与冠层顶层（ALLSKY_SFC_SW_DWN）的辐射值计算Angstrom A/B参数。
 
-        :param df_power: dataframe with POWER data
-        :return: tuple of Angstrom A/B values
+        :param df_power: 包含POWER数据的数据框
+        :return: Angstrom A/B参数元组
 
-        The Angstrom A/B parameters are determined by dividing swv_dwn by toa_dwn
-        and taking the 0.05 percentile for Angstrom A and the 0.98 percentile for
-        Angstrom A+B: toa_dwn*(A+B) approaches the upper envelope while
-        toa_dwn*A approaches the lower envelope of the records of swv_dwn
-        values.
+        Angstrom A/B参数通过swv_dwn（地表短波下行辐射）除以toa_dwn（大气顶层短波下行辐射）得到相对辐射率，
+        然后取其0.05分位数作为Angstrom A，0.98分位数作为Angstrom A+B：toa_dwn*(A+B)接近记录swv_dwn的上包络，
+        toa_dwn*A接近下包络。
         """
 
         msg = "Start estimation of Angstrom A/B values from POWER data."
         self.logger.debug(msg)
 
-        # check if sufficient data is available to make a reasonable estimate:
-        # As a rule of thumb we want to have at least 200 days available
+        # 检查是否有足够多的数据以得到合理的估算
+        # 经验法则是至少需要200天的数据
         if len(df_power) < 200:
             msg = ("Less then 200 days of data available. Reverting to " +
                    "default Angstrom A/B coefficients (%f, %f)")
             self.logger.warn(msg % (self.angstA, self.angstB))
             return self.angstA, self.angstB
 
-        # calculate relative radiation (swv_dwn/toa_dwn) and percentiles
+        # 计算相对辐射(swv_dwn/toa_dwn)与分位数
         relative_radiation = df_power.ALLSKY_SFC_SW_DWN/df_power.TOA_SW_DWN
         ix = relative_radiation.notnull()
         angstrom_a = float(np.percentile(relative_radiation[ix].values, 5))
@@ -205,13 +193,13 @@ class NASAPowerWeatherDataProvider(WeatherDataProvider):
         return angstrom_a, angstrom_b
 
     def _query_NASAPower_server(self, latitude, longitude):
-        """Query the NASA Power server for data on given latitude/longitude
+        """查询给定纬度/经度的NASA Power服务器获取数据
         """
 
         start_date = dt.date(1983,7,1)
         end_date = dt.date.today()
 
-        # build URL for retrieving data, using new NASA POWER api
+        # 构建用于检索数据的URL，使用新的NASA POWER API
         server = "https://power.larc.nasa.gov/api/temporal/daily/point"
         payload = {"request": "execute",
                    "parameters": ",".join(self.power_variables),
@@ -237,10 +225,9 @@ class NASAPowerWeatherDataProvider(WeatherDataProvider):
         return req.json()
 
     def _find_cache_file(self, latitude, longitude):
-        """Try to find a cache file for given latitude/longitude.
+        """尝试查找给定纬度/经度的缓存文件。
 
-        Returns None if the cache file does not exist, else it returns the full path
-        to the cache file.
+        如果缓存文件不存在，则返回None，否则返回缓存文件的完整路径。
         """
         cache_filename = self._get_cache_filename(latitude, longitude)
         if os.path.exists(cache_filename):
@@ -249,10 +236,9 @@ class NASAPowerWeatherDataProvider(WeatherDataProvider):
             return None
 
     def _get_cache_filename(self, latitude, longitude):
-        """Constructs the filename used for cache files given latitude and longitude
+        """根据纬度和经度构建用于缓存文件的文件名
 
-        The latitude and longitude is coded into the filename by truncating on
-        0.1 degree. So the cache filename for a point with lat/lon 52.56/-124.78 will be:
+        纬度和经度通过截断到0.1度编码到文件名中。例如，某点(纬度/经度52.56/-124.78)的缓存文件名为：
         NASAPowerWeatherDataProvider_LAT00525_LON-1247.cache
         """
 
@@ -262,7 +248,7 @@ class NASAPowerWeatherDataProvider(WeatherDataProvider):
         return cache_filename
 
     def _write_cache_file(self):
-        """Writes the meteo data from NASA Power to a cache file.
+        """将NASA Power的气象数据写入缓存文件。
         """
         cache_filename = self._get_cache_filename(self.latitude, self.longitude)
         try:
@@ -272,7 +258,7 @@ class NASAPowerWeatherDataProvider(WeatherDataProvider):
             self.logger.warning(msg)
 
     def _load_cache_file(self):
-        """Loads the data from the cache file. Return True if successful.
+        """从缓存文件加载数据。如果成功返回True。
         """
         cache_filename = self._get_cache_filename(self.latitude, self.longitude)
         try:
@@ -286,11 +272,9 @@ class NASAPowerWeatherDataProvider(WeatherDataProvider):
             return False
 
     def _make_WeatherDataContainers(self, recs):
-        """Create a WeatherDataContainers from recs, compute ET and store the WDC's.
-        """
-
+        """从recs创建WeatherDataContainers，计算ET并存储WDC对象。"""
         for rec in recs:
-            # Reference evapotranspiration in mm/day
+            # 参考蒸散量（mm/天）
             try:
                 E0, ES0, ET0 = reference_ET(rec["DAY"], rec["LAT"], rec["ELEV"], rec["TMIN"], rec["TMAX"], rec["IRRAD"],
                                             rec["VAP"], rec["WIND"], self.angstA, self.angstB, self.ETmodel)
@@ -300,18 +284,17 @@ class NASAPowerWeatherDataProvider(WeatherDataProvider):
                        ("Due to error: %s" % e))
                 raise PCSEError(msg)
 
-            # update record with ET values value convert to cm/day
+            # 用ET值更新记录，值单位转换为cm/天
             rec.update({"E0": E0/10., "ES0": ES0/10., "ET0": ET0/10.})
 
-            # Build weather data container from dict 't'
+            # 通过字典't'创建天气数据容器
             wdc = WeatherDataContainer(**rec)
 
-            # add wdc to dictionary for thisdate
+            # 将wdc添加进以thisdate为键的字典
             self._store_WeatherDataContainer(wdc, wdc.DAY)
 
     def _process_POWER_records(self, powerdata):
-        """Process the meteorological records returned by NASA POWER
-        """
+        """处理NASA POWER返回的气象记录"""
         msg = "Start parsing of POWER records from URL retrieval."
         self.logger.debug(msg)
 
@@ -325,16 +308,16 @@ class NASAPowerWeatherDataProvider(WeatherDataProvider):
         df_power = pd.DataFrame(df_power)
         df_power["DAY"] = pd.to_datetime(df_power.index, format="%Y%m%d")
 
-        # find all rows with one or more missing values (NaN)
+        # 找出至少有一个缺失值（NaN）的所有行
         ix = df_power.isnull().any(axis=1)
-        # Get all rows without missing values
+        # 获取所有没有缺失值的行
         df_power = df_power[~ix]
 
         return df_power
 
     def _POWER_to_PCSE(self, df_power):
 
-        # Convert POWER data to a dataframe with PCSE compatible inputs
+        # 将POWER数据转换为PCSE兼容输入的dataframe
         df_pcse = pd.DataFrame({"TMAX": df_power.T2M_MAX,
                                 "TMIN": df_power.T2M_MIN,
                                 "TEMP": df_power.T2M,

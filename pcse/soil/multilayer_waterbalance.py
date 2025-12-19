@@ -11,23 +11,23 @@ from .. import signals
 
 from .soil_profile import SoilProfile
 
-REFERENCE_TEST_RUN = False  # set by testing procedure
+REFERENCE_TEST_RUN = False  # 由测试过程设置
 
 class WaterBalanceLayered_PP(SimulationObject):
-    _default_RD = Float(10.)  # default rooting depth at 10 cm
+    _default_RD = Float(10.)  # 默认生根深度为10厘米
     _RDold = _default_RD
     _RDM = Float(None)
     
-    # Counter for Days-Dince-Last-Rain
+    # 上次降雨天数计数器
     DSLR = Float(1)
     
-    # rainfall rate of previous day
+    # 前一天的降雨量
     RAINold = Float(0)
 
-    # placeholders for soil object and parameter provider
+    # 土壤对象和参数提供者的占位符
     soil_profile = None
 
-    # Indicates that a new crop has started
+    # 标记一个新作物是否开始
     crop_start = Bool(False)
 
     class Parameters(ParamTemplate):
@@ -47,7 +47,7 @@ class WaterBalanceLayered_PP(SimulationObject):
         self.soil_profile = SoilProfile(parvalues)
         parvalues._soildata["soil_profile"] = self.soil_profile
 
-        # Maximum rootable depth
+        # 最大生根深度
         self._RDM = self.soil_profile.get_max_rootable_depth()
         self.soil_profile.validate_max_rooting_depth(self._RDM)
 
@@ -67,11 +67,9 @@ class WaterBalanceLayered_PP(SimulationObject):
     @prepare_rates
     def calc_rates(self, day, drv):
         r = self.rates
-        # Transpiration and maximum soil and surface water evaporation rates
-        # are calculated by the crop Evapotranspiration module.
-        # However, if the crop is not yet emerged then set TRA=0 and use
-        # the potential soil/water evaporation rates directly because there is
-        # no shading by the canopy.
+        # 蒸腾和土壤/地表水分蒸发最大速率由作物蒸散模块计算
+        # 如果作物尚未出苗，则设置TRA=0，直接采用潜在的土壤/水分蒸发速率
+        # 因为没有冠层遮荫
         if "TRA" not in self.kiosk:
             r.WTRA = 0.
             EVSMX = drv.ES0
@@ -79,20 +77,19 @@ class WaterBalanceLayered_PP(SimulationObject):
             r.WTRA = self.kiosk["TRA"]
             EVSMX = self.kiosk["EVSMX"]
 
-        # Actual evaporation rates
+        # 实际蒸发速率
 
         if self.RAINold >= 1:
-            # If rainfall amount >= 1cm on previous day assume maximum soil
-            # evaporation
+            # 如果前一天降雨量大于等于1厘米，则视为土壤蒸发最大
             r.EVS = EVSMX
             self.DSLR = 1.
         else:
-            # Else soil evaporation is a function days-since-last-rain (DSLR)
+            # 否则，土壤蒸发为距离上次降雨天数(DSLR)的函数
             self.DSLR += 1
             EVSMXT = EVSMX * (sqrt(self.DSLR) - sqrt(self.DSLR - 1))
             r.EVS = min(EVSMX, EVSMXT + self.RAINold)
 
-        # Hold rainfall amount to keep track of soil surface wetness and reset self.DSLR if needed
+        # 记录降雨量以跟踪土壤表面湿润度，并在需要时重置DSLR
         self.RAINold = drv.RAIN
         
     @prepare_states
@@ -100,152 +97,110 @@ class WaterBalanceLayered_PP(SimulationObject):
         self.states.SM = self.states.SM
         self.states.WC = self.states.WC
 
-        # Accumulated transpiration and soil evaporation amounts
+        # 累计的蒸腾和土壤蒸发量
         self.states.EVST += self.rates.EVS * delt
         self.states.WTRAT += self.rates.WTRA * delt
         
 
 class WaterBalanceLayered(SimulationObject):
-    """This implements a layered water balance to estimate soil water availability for crop growth and water stress.
-
-    The classic free-drainage water-balance had some important limitations such as the inability to take into
-    account differences in soil texture throughout the profile and its impact on soil water flow. Moreover,
-    in the single layer water balance, rainfall or irrigation will become immediately available to the crop.
-    This is incorrect physical behaviour and in many situations it leads to a very quick recovery of the crop
-    after rainfall since all the roots have immediate access to infiltrating water. Therefore, with more detailed
-    soil data becoming available a more realistic soil water balance was deemed necessary to better simulate soil
-    processes and its impact on crop growth.
-
-    The multi-layer water balance represents a compromise between computational complexity, realistic simulation
-    of water content and availability of data to calibrate such models. The model still runs on a daily time step
-    but does implement the concept of downward and upward flow based on the concept of hydraulic head and soil
-    water conductivity. The latter are combined in the so-called Matric Flux Potential. The model computes
-    two types of flow of water in the soil:
-
-      (1) a "dry flow" from the matric flux potentials (e.g. the suction gradient between layers)
-      (2) a "wet flow" under the current layer conductivities and downward gravity.
-
-    Clearly, only the dry flow may be negative (=upward). The dry flow accounts for the large
-    gradient in water potential under dry conditions (but neglects gravity). The wet flow takes into
-    account gravity only and will dominate under wet conditions. The maximum of the dry and wet
-    flow is taken as the downward flow, which is then further limited in order the prevent
-    (a) oversaturation and (b) water content to decrease below field capacity.
-    Upward flow is just the dry flow when it is negative. In this case the flow is limited
-    to a certain fraction of what is required to get the layers at equal potential, taking
-    into account, however, the contribution of an upward flow from further down.
-
-    The configuration of the soil layers is variable but is bound to certain limitations:
-
-    - The layer thickness cannot be made too small. In practice, the top layer should not
-      be smaller than 10 to 20 cm. Smaller layers would require smaller time steps than
-      one day to simulate realistically, since rain storms will fill up the top layer very
-      quickly leading to surface runoff because the model cannot handle the infiltration of
-      the rainfall in a single timestep (a day).
-    - The crop maximum rootable depth must coincide with a layer boundary. This is to avoid
-      that roots can directly access water below the rooting depth. Of course such water may become
-      available gradually by upward flow of moisture at some point during the simulation.
-
-    The current python implementation does not yet implement the impact of shallow groundwater
-    but this will be added in future versions of the model.
-
-    For an introduction to the concept of Matric Flux Potential see for example:
-
-        Pinheiro, Everton Alves Rodrigues, et al. “A Matric Flux Potential Approach to Assess Plant Water
-        Availability in Two Climate Zones in Brazil.” Vadose Zone Journal, vol. 17, no. 1, Jan. 2018, pp. 1–10.
-        https://doi.org/10.2136/vzj2016.09.0083.
-
-    **Note**: the current implementation of the model (April 2024) is rather 'Fortran-ish'. This has been done
-    on purpose to allow comparisons with the original code in Fortran90. When we are sure that
-    the implementation performs properly, we can refactor this in to a more functional structure
-    instead of the current code which is too long and full of loops.
-
-
-    **Simulation parameters:**
-
-    Besides the parameters in the table below, the multi-layer waterbalance requires
-    a `SoilProfileDescription` which provides the properties of the different soil
-    layers. See the `SoilProfile` and `SoilLayer` classes for the details.
-
-    ========== ====================================================  ====================
-     Name      Description                                           Unit
-    ========== ====================================================  ====================
-    NOTINF     Maximum fraction of rain not-infiltrating into          -
-               the soil
-    IFUNRN     Indicates whether non-infiltrating fraction of   SSi    -
-               rain is a function of storm size (1)
-               or not (0)
-    SSI        Initial surface storage                                 cm
-    SSMAX      Maximum surface storage                                 cm
-    SMLIM      Maximum soil moisture content of top soil layer         cm3/cm3
-    WAV        Initial amount of water in the soil                     cm
-    ========== ====================================================  ====================
-
-
-    **State variables:**
-
-    =======  ========================================================  ============
-     Name     Description                                                  Unit
-    =======  ========================================================  ============
-    WTRAT     Total water lost as transpiration as calculated           cm
-              by the water balance. This can be different
-              from the CTRAT variable which only counts
-              transpiration for a crop cycle.
-    EVST      Total evaporation from the soil surface                   cm
-    EVWT      Total evaporation from a water surface                    cm
-    TSR       Total surface runoff                                      cm
-    RAINT     Total amount of rainfall (eff + non-eff)                  cm
-    WDRT      Amount of water added to root zone by increase            cm
-              of root growth
-    TOTINF    Total amount of infiltration                              cm
-    TOTIRR    Total amount of effective irrigation                      cm
-
-    SM        Volumetric moisture content in the different soil          -
-              layers (array)
-    WC        Water content in the different soil                       cm
-              layers (array)
-    W         Amount of water in root zone                              cm
-    WLOW      Amount of water in the subsoil (between current           cm
-              rooting depth and maximum rootable depth)
-    WWLOW     Total amount of water                                     cm
-              in the  soil profile (WWLOW = WLOW + W)
-    WBOT      Water below maximum rootable depth and unavailable
-              for plant growth.                                         cm
-    WAVUPP    Plant available water (above wilting point) in the        cm
-              rooted zone.
-    WAVLOW    Plant available water (above wilting point) in the        cm
-              potential root zone (below current roots)
-    WAVBOT    Plant available water (above wilting point) in the        cm
-              zone below the maximum rootable depth
-    SS        Surface storage (layer of water on surface)               cm
-    SM_MEAN   Mean water content in rooted zone                         cm3/cm3
-    PERCT     Total amount of water percolating from rooted             cm
-              zone to subsoil
-    LOSST     Total amount of water lost to deeper soil                 cm
-    =======  ========================================================  ============
-
-
-    **Rate variables**
-
-    ========== ==================================================  ====================
-     Name      Description                                          Unit
-    ========== ==================================================  ====================
-    Flow        Rate of flow from one layer to the next              cm/day
-    RIN         Rate of infiltration at the surface                  cm/day
-    WTRALY      Rate of transpiration from the different
-                soil layers (array)                                  cm/day
-    WTRA        Total crop transpiration rate accumulated over       cm/day
-                soil layers.
-    EVS         Soil evaporation rate                                cm/day
-    EVW         Open water evaporation rate                          cm/day
-    RIRR        Rate of irrigation                                   cm/day
-    DWC         Net change in water amount per layer (array)         cm/day
-    DRAINT      Change in rainfall accumlation                       cm/day
-    DSS         Change in surface storage                            cm/day
-    DTSR        Rate of surface runoff                               cm/day
-    BOTTOMFLOW  Flow of the bottom of the profile                    cm/day
-    ========== ==================================================  ====================
     """
-    _default_RD = Float(10.)  # default rooting depth at 10 cm
+    实现了多层土壤水分平衡，用于估算作物生长和水分胁迫的土壤供水能力。
+
+    传统的自由排水型水量平衡存在一些重要局限性，比如无法考虑剖面内土壤质地差异及其对水流的影响。此外，单层水分平衡模型中，降雨或灌溉会立刻为作物所用，这种物理行为并不正确，往往导致作物在降雨后恢复过快，因为所有根系都能立刻获取下渗水。因此，随着土壤数据的细化，需要更真实的水分平衡来更好地模拟土壤过程及其对作物生长的影响。
+
+    多层土壤水分平衡在计算复杂度、模拟的真实性和数据可获得性之间达到了折中。模型依然以每日为步长运行，但实现了基于水力势和土壤导水率的上下水流的概念。后者被组合为所谓的基质通量势（Matric Flux Potential）。模型计算土壤中两种类型的水流：
+
+      (1) "干流量"，来自基质通量势（如层间吸力梯度）
+      (2) "湿流量"，由当前层传导性和向下重力作用下产生
+
+    显然，只有干流量可能为负（即向上流）。在干旱情况下，干流量反映了大的水势梯度（但忽略重力）。湿流量仅考虑重力，在土壤较湿时占主导。干、湿流量取最大值作为向下流动量，并对其进行如下限制以防止：
+    (a) 过饱和；
+    (b) 含水量低于田间持水量。
+    向上的流动就是为负的干流量。在这种情况下，其大小仅为实现层间势平衡所需量的一定比例，同时要考虑到下方来的上行流量的贡献。
+
+    土壤分层可变，但受以下限制：
+
+    - 层厚不能太小。实践中，顶层不应小于10~20 cm，否则需要小于一天的步长，因为降雨会快速填满上层导致地表径流，而模型无法在单日步长内处理全部渗透。
+    - 作物最大可生根深度需与层边界一致，防止根直接从根系下方取水。当然，通过上行水流，下层水可以逐步变得可利用。
+
+    当前Python实现尚未包含浅层地下水的影响，未来版本将补充该功能。
+
+    有关基质通量势的介绍，可参见：
+
+        Pinheiro, Everton Alves Rodrigues, 等. “A Matric Flux Potential Approach to Assess Plant Water
+        Availability in Two Climate Zones in Brazil.” Vadose Zone Journal, 17卷1期, 2018年1月, 1–10页.
+        https://doi.org/10.2136/vzj2016.09.0083
+
+    **注意**：当前版本（2024年4月）的代码实现偏向“Fortran风格”，这是为了与原有Fortran90版本对照查验。当确认实现无误后，可将其重构为更函数式结构，而不是现在这种冗长且循环繁多的写法。
+
+
+    **模拟参数:**
+
+    除下表参数外，多层水分平衡还需一个 `SoilProfileDescription` 对象，提供各土壤层的属性。详情参见 `SoilProfile`、`SoilLayer` 类。
+
+    ========== ============================================  ====================
+     名称      描述                                            单位
+    ========== ============================================  ====================
+    NOTINF     降雨未渗入土壤的最大比例                         -
+    IFUNRN     是否降雨未渗入比例为暴雨量的函数(1)或否(0)         -
+    SSI        初始地表水层厚度                                 cm
+    SSMAX      最大地表水层厚度                                 cm
+    SMLIM      顶层最大土壤含水量                               cm3/cm3
+    WAV        土壤初始水量                                     cm
+    ========== ============================================  ====================
+
+
+    **状态变量:**
+
+    =======  ===============================================  ============
+     名称      描述                                                单位
+    =======  ===============================================  ============
+    WTRAT     水分平衡累计的总蒸腾损失                        cm
+              与CTRTAT变量不同, 后者仅统计作物周期蒸腾
+    EVST      土壤表面总蒸发量                                cm
+    EVWT      水面总蒸发量                                    cm
+    TSR       地表径流总量                                    cm
+    RAINT     总降雨量（有效+无效）                            cm
+    WDRT      根系生长带来的根区水分增量                      cm
+    TOTINF    入渗总量                                        cm
+    TOTIRR    有效灌溉总量                                    cm
+
+    SM        各土壤层体积含水量（数组）                       -
+    WC        各土壤层水量（数组）                            cm
+    W         根区水量                                        cm
+    WLOW      亚土层水量（当前根系深度到最大根系深度间）        cm
+    WWLOW     剖面总水量（WWLOW=WLOW + W）                     cm
+    WBOT      最大根区以下且不可利用的水量                     cm
+    WAVUPP    根区内可用水（高于萎蔫点的部分）                 cm
+    WAVLOW    潜在根区（当前根系以下）可用水                   cm
+    WAVBOT    最大根区以下可用水                               cm
+    SS        地表储水层（水膜）                               cm
+    SM_MEAN   根区平均含水量                                   cm3/cm3
+    PERCT     根区向亚土层渗漏总量                              cm
+    LOSST     流失到更深土层的总水量                           cm
+    =======  ===============================================  ============
+
+
+    **速率变量**
+
+    ========== ========================================  ====================
+     名称      描述                                         单位
+    ========== ========================================  ====================
+    Flow        各层间水流速率                              cm/天
+    RIN         地表入渗速率                                cm/天
+    WTRALY      各层蒸腾速率（数组）                        cm/天
+    WTRA        各层累计总作物蒸腾速率                      cm/天
+    EVS         土壤表面蒸发速率                            cm/天
+    EVW         开水面蒸发速率                              cm/天
+    RIRR        灌溉速率                                    cm/天
+    DWC         各层净增减水量（数组）                      cm/天
+    DRAINT      降雨累积量变化                              cm/天
+    DSS         地表储水变化量                              cm/天
+    DTSR        表面径流速率                                cm/天
+    BOTTOMFLOW  剖面底部水流速率                            cm/天
+    ========== ========================================  ====================
+    """
+    _default_RD = Float(10.)  # 默认根系深度为10厘米
     _RDold = _default_RD
     _RINold = Float(0.)
     _RIRR = Float(0.)
@@ -254,19 +209,19 @@ class WaterBalanceLayered(SimulationObject):
     _RAIN = Float(None)
     _WCI = Float(None)
 
-    # Max number of flow iterations and precision required
+    # 最大流动迭代次数和所需精度
     MaxFlowIter = 50
     TinyFlow = 0.001
 
-    # Maximum upward flow is 50% of amount needed to reach equilibrium between layers
-    # see documentation Kees Rappoldt - page 80
+    # 最大向上流动为达到各层平衡所需量的50%
+    # 参见 Kees Rappoldt 文档第80页
     UpwardFlowLimit = 0.50
 
-    # placeholders for soil object and parameter provider
+    # 土壤对象和参数提供者的占位符
     soil_profile = None
     parameter_provider = None
 
-    # Indicates that a new crop has started
+    # 指示新作物已开始
     crop_start = Bool(False)
 
     class Parameters(ParamTemplate):
@@ -320,11 +275,10 @@ class WaterBalanceLayered(SimulationObject):
         self.soil_profile = SoilProfile(parvalues)
         parvalues._soildata["soil_profile"] = self.soil_profile
 
-        # Maximum rootable depth
+        # 最大可生根深度
         RDMsoil = self.soil_profile.get_max_rootable_depth()
         if REFERENCE_TEST_RUN:
-            # Crop rooting depth (RDMCR) is required at start for comparison with
-            # results from fortran code
+            # 作物根系深度（RDMCR）在开始时需要与fortran代码结果对比
             self._RDM = min(parvalues["RDMCR"], RDMsoil)
         else:
             self._RDM = self.soil_profile.get_max_rootable_depth()
@@ -333,8 +287,7 @@ class WaterBalanceLayered(SimulationObject):
         self.params = self.Parameters(parvalues)
         p = self.params
 
-        # Store the parameterprovider because we need it to retrieve the maximum
-        # crop rooting depth when a new crop is started.
+        # 保存参数提供者，因为需要用它检索新的作物开始时的最大根系深度
         self.parameter_provider = parvalues
 
         self.soil_profile.determine_rooting_status(self._default_RD, self._RDM)
@@ -342,47 +295,45 @@ class WaterBalanceLayered(SimulationObject):
         if self.soil_profile.GroundWater:
             raise NotImplementedError("Groundwater influence not yet implemented.")
         else:
-            # AVMAX -  maximum available content of layer(s)
-            # This is calculated first to achieve an even distribution of water in the rooted top
-            # if WAV is small. Note the separate limit for initial SM in the rooted zone.
+            # AVMAX - 层的最大可用水量
+            # 首先计算此项以实现在根系顶部区域的水分均匀分布
+            # 如果WAV较小，注意根区初始SM的单独限制
             TOPLIM = 0.0
             LOWLIM = 0.0
             AVMAX = []
             for il, layer in enumerate(self.soil_profile):
                 if layer.rooting_status in ["rooted", "partially rooted"]:
-                    # Check whether SMLIM is within boundaries
+                    # 检查SMLIM是否在边界内
                     SML = limit(layer.SMW, layer.SM0, p.SMLIM)
-                    AVMAX.append((SML - layer.SMW) * layer.Thickness)   # available in cm
-                    # also if partly rooted, the total layer capacity counts in TOPLIM
-                    # this means the water content of layer ILR is set as if it would be
-                    # completely rooted. This water will become available after a little
-                    # root growth and through numerical mixing each time step.
+                    AVMAX.append((SML - layer.SMW) * layer.Thickness)   # 可用水量，单位cm
+                    # 即使是部分生根，整个层的容量也计入TOPLIM
+                    # 这意味着ILR层的含水量设置为完全生根。如有轻微根系生长、每个时间步的数值混合后，该水分将变为可用
                     TOPLIM += AVMAX[il]
                 elif layer.rooting_status == "potentially rooted":
-                    # below the rooted zone the maximum is saturation (see code for WLOW in one-layer model)
-                    # again the full layer capacity adds to LOWLIM.
+                    # 根区下方，最大水量为饱和（见一层模型WLOW的代码）
+                    # 全层容量也计入LOWLIM
                     SML = layer.SM0
-                    AVMAX.append((SML - layer.SMW) * layer.Thickness)   # available in cm
+                    AVMAX.append((SML - layer.SMW) * layer.Thickness)   # 可用水量，单位cm
                     LOWLIM += AVMAX[il]
-                else:  # Below the potentially rooted zone
+                else:  # 处于潜在生根区下方
                     break
 
         if p.WAV <= 0.0:
-            # no available water
+            # 没有可用水分
             TOPRED = 0.0
             LOWRED = 0.0
         elif p.WAV <= TOPLIM:
-            # available water fits in layer(s) 1..ILR, these layers are rooted or almost rooted
-            # reduce amounts with ratio WAV / TOPLIM
+            # 可用水分分布在1..ILR层，这些层是生根的或者接近生根的
+            # 按比例WAV / TOPLIM进行分配
             TOPRED = p.WAV / TOPLIM
             LOWRED = 0.0
         elif p.WAV < TOPLIM + LOWLIM:
-            # available water fits in potentially rooted layer
-            # rooted zone is filled at capacity ; the rest reduced
+            # 可用水分能充满潜在生根区
+            # 生根区填满；其余部分比例递减
             TOPRED = 1.0
             LOWRED = (p.WAV-TOPLIM) / LOWLIM
         else:
-            # water does not fit ; all layers "full"
+            # 水分无法完全分配；所有层“满”
             TOPRED = 1.0
             LOWRED = 1.0
 
@@ -393,34 +344,32 @@ class WaterBalanceLayered(SimulationObject):
         Flow = np.zeros(len(self.soil_profile) + 1)
         for il, layer in enumerate(self.soil_profile):
             if layer.rooting_status in ["rooted", "partially rooted"]:
-                # Part of the water assigned to ILR may not actually be in the rooted zone, but it will
-                # be available shortly through root growth (and through numerical mixing).
+                # 分配给ILR的部分水不一定实际在根区，但随着根生长（以及每步的数值混合），很快会变为可用
                 SM[il] = layer.SMW + AVMAX[il] * TOPRED / layer.Thickness
                 W += SM[il] * layer.Thickness * layer.Wtop
                 WLOW += SM[il] * layer.Thickness * layer.Wpot
-                # available water
+                # 可用水分
                 WAVUPP += (SM[il] - layer.SMW) * layer.Thickness * layer.Wtop
                 WAVLOW += (SM[il] - layer.SMW) * layer.Thickness * layer.Wpot
             elif layer.rooting_status == "potentially rooted":
                 SM[il] = layer.SMW + AVMAX[il] * LOWRED / layer.Thickness
                 WLOW += SM[il] * layer.Thickness * layer.Wpot
-                # available water
+                # 可用水分
                 WAVLOW += (SM[il] - layer.SMW) * layer.Thickness * layer.Wpot
             else:
-                # below the maximum rooting depth, set SM content to wilting point
+                # 最大根区以下，将SM含量设为萎蔫点
                 SM[il] = layer.SMW
             WC[il] = SM[il] * layer.Thickness
 
-            # set groundwater depth far away for clarity ; this prevents also
-            # the root routine to stop root growth when they reach the groundwater
+            # 将地下水位设远一些以便清晰；这还能防止根系生长例程在到达地下水时停止根生长
             ZT = 999.0
 
-        # soil evaporation, days since last rain
+        # 土壤蒸发，距上次降雨的天数
         top_layer = self.soil_profile[0]
         top_layer_half_wet = top_layer.SMW + 0.5 * (top_layer.SMFCF - top_layer.SMW)
         self._DSLR = 5 if SM[0] <= top_layer_half_wet else 1
 
-        # all summation variables of the water balance are set at zero.
+        # 水分平衡的所有累加变量初始化为零
         states = {"WTRAT": 0., "EVST": 0., "EVWT": 0., "TSR": 0., "WDRT": 0.,
                   "TOTINF": 0., "TOTIRR": 0., "BOTTOMFLOWT": 0.,
                   "CRT": 0., "RAINT": 0., "WLOW": WLOW, "W": W, "WC": WC, "SM":SM,
@@ -429,14 +378,14 @@ class WaterBalanceLayered(SimulationObject):
                   }
         self.states = self.StateVariables(kiosk, publish=["WC", "SM", "EVST"], **states)
 
-        # Initial values for profile water content
+        # 剖面含水量的初始值
         self._WCI = WC.sum()
 
-        # rate variables
+        # 速率变量
         self.rates = self.RateVariables(kiosk, publish=["RIN", "Flow", "EVS"])
         self.rates.Flow = Flow
 
-        # Connect to CROP_START/CROP_FINISH/IRRIGATE signals
+        # 连接 CROP_START/CROP_FINISH/IRRIGATE 信号
         self._connect_signal(self._on_CROP_START, signals.crop_start)
         self._connect_signal(self._on_CROP_FINISH, signals.crop_finish)
         self._connect_signal(self._on_IRRIGATE, signals.irrigate)
@@ -451,54 +400,53 @@ class WaterBalanceLayered(SimulationObject):
 
         delt = 1.0
 
-        # Update rooting setup if a new crop has started
+        # 如果有新作物开始，则更新生根设置
         if self.crop_start:
             self.crop_start = False
             self._setup_new_crop()
 
-        # Rate of irrigation (RIRR)
+        # 灌溉速率（RIRR）
         r.RIRR = self._RIRR
         self._RIRR = 0.
 
-        # copy rainfall rate for totalling in RAINT
+        # 复制降雨量用于 RAINT 的累加
         self._RAIN = drv.RAIN
 
-        # Crop transpiration and maximum evaporation rates
+        # 作物蒸腾速率及土壤/地表水最大蒸发速率
         if "TRALY" in self.kiosk:
-            # Transpiration and maximum soil and surface water evaporation rates
-            # are calculated by the crop evapotranspiration module and taken from kiosk.
+            # 蒸腾速率及土壤与地表水最大蒸发速率
+            # 由作物蒸散发模块计算，从kiosk读取
             WTRALY = k.TRALY
             r.WTRA = k.TRA
             EVWMX = k.EVWMX
             EVSMX = k.EVSMX
         else:
-            # However, if the crop is not yet emerged then set WTRALY/TRA=0 and use
-            # the potential soil/water evaporation rates directly because there is
-            # no shading by the canopy.
+            # 如果作物尚未出苗，则将 WTRALY/TRA 设为0，并直接使用
+            # 潜在土壤/水面蒸发速率，因为没有冠层遮荫
             WTRALY = np.zeros_like(s.SM)
             r.WTRA = 0.
             EVWMX = drv.E0
             EVSMX = drv.ES0
 
-        # Actual evaporation rates
+        # 实际蒸发速率
         r.EVW = 0.
         r.EVS = 0.
         if s.SS > 1.:
-            # If surface storage > 1cm then evaporate from water layer on soil surface
+            # 如果地表储水 > 1cm，则从地表水层蒸发
             r.EVW = EVWMX
         else:
-            # else assume evaporation from soil surface
+            # 否则假定从土壤表面蒸发
             if self._RINold >= 1:
-                # If infiltration >= 1cm on previous day assume maximum soil evaporation
+                # 如果前一天入渗量 >= 1cm，假定土壤最大蒸发
                 r.EVS = EVSMX
                 self._DSLR = 1
             else:
-                # Else soil evaporation is a function days-since-last-rain (DSLR)
+                # 否则土壤蒸发受“自上次降雨天数”（DSLR）影响
                 EVSMXT = EVSMX * (sqrt(self._DSLR + 1) - sqrt(self._DSLR))
                 r.EVS = min(EVSMX, EVSMXT + self._RINold)
                 self._DSLR += 1
 
-        # conductivities and Matric Flux Potentials for all layers
+        # 计算所有土层的导水率和基质通量势
         pF = np.zeros_like(s.SM)
         conductivity = np.zeros_like(s.SM)
         matricfluxpot = np.zeros_like(s.SM)
@@ -509,138 +457,124 @@ class WaterBalanceLayered(SimulationObject):
             if self.soil_profile.GroundWater:
                 raise NotImplementedError("Groundwater influence not yet implemented.")
 
-        # Potentially infiltrating rainfall
+        # 潜在可入渗降雨
         if p.IFUNRN == 0:
             RINPRE = (1. - p.NOTINF) * drv.RAIN
         else:
-            # infiltration is function of storm size (NINFTB)
+            # 入渗为暴雨量（NINFTB）的函数
             RINPRE = (1. - p.NOTINF * self.NINFTB(drv.RAIN)) * drv.RAIN
 
 
-        # Second stage preliminary infiltration rate (RINPRE)
-        # including surface storage and irrigation
+        # 二阶段预入渗速率（RINPRE），包括地表储水和灌溉
         RINPRE = RINPRE + r.RIRR + s.SS
         if s.SS > 0.1:
-            # with surface storage, infiltration limited by SOPE
+            # 有地表储水时，入渗受 SOPE 限制
             AVAIL = RINPRE + r.RIRR - r.EVW
             RINPRE = min(self.soil_profile.SurfaceConductivity, AVAIL)
 
-        # maximum flow at Top Boundary of each layer
+        # 每一层顶部的最大流量
         # ------------------------------------------
-        # DOWNWARD flows are calculated in two ways,
-        # (1) a "dry flow" from the matric flux potentials
-        # (2) a "wet flow" under the current layer conductivities and downward gravity.
-        # Clearly, only the dry flow may be negative (=upward). The dry flow accounts for the large
-        # gradient in potential under dry conditions (but neglects gravity). The wet flow takes into
-        # account gravity only and will dominate under wet conditions. The maximum of the dry and wet
-        # flow is taken as the downward flow, which is then further limited in order the prevent
-        # (a) oversaturation and (b) water content to decrease below field capacity.
+        # 向下的水流有两种计算方式：
+        # (1) 基于基质通量势的“干流”（dry flow）
+        # (2) 基于当前土层水力导率和重力的“湿流”（wet flow）
+        # 显然，只有干流可能为负（即：向上）。干流反映了干旱条件下势能的巨大梯度（但不考虑重力），而湿流只考虑重力，在潮湿条件下起主导作用。下渗流量取干流和湿流的最大值，然后再进一步限制，以防止
+        # (a) 过度饱和 和 (b) 含水量低于田间持水量。
         #
-        # UPWARD flow is just the dry flow when it is negative. In this case the flow is limited
-        # to a certain fraction of what is required to get the layers at equal potential, taking
-        # into account, however, the contribution of an upward flow from further down. Hence, in
-        # case of upward flow from the groundwater, this upward flow is propagated upward if the
-        # suction gradient is sufficiently large.
+        # 向上的水流就是负值的干流。在这种情况下，流量被限制在达到各土层等势所需量的一定比例，但同时要考虑下层传递上来的向上流动的贡献。因此，当有地下水上升时，只要吸力梯度足够大，这个向上流就会被传递到上层。
 
         FlowMX = np.zeros(len(s.SM) + 1)
-        # first get flow through lower boundary of bottom layer
+        # 首先获得通过最底层下边界的水流
         if self.soil_profile.GroundWater:
             raise NotImplementedError("Groundwater influence not yet implemented.")
-        #    the old capillairy rise routine is used to estimate flow to/from the groundwater
-        #    note that this routine returns a positive value for capillairy rise and a negative
-        #    value for downward flow, which is the reverse from the convention in WATFDGW.
+        #    使用旧的毛细上升（capillairy rise）方案来估算向/从地下水的水流
+        #    注意，该方法返回毛细上升为正值，向下渗流为负值，这和 WATFDGW 模块中的定义正好相反。
 
         # is = SubSoilType
         # if (ZT >= LBSL(NSL)) then
-        #     # groundwater below the layered system ; call the old capillairty rise routine
-        #     # the layer PF is allocated at 1/3 * TSL above the lower boundary ; this leeds
-        #     # to a reasonable result for groundwater approaching the bottom layer
+        #     # 地下水位在分层系统之下；调用旧的毛细上升计算子程序
+        #     # 层的PF位置取在下边界上方 1/3 * TSL 处；这样对于地下水接近底层时结果较为合理
         #     call SUBSOL (PF(NSL), ZT-LBSL(NSL)+TSL(NSL)/3.0, SubFlow, Soil(is)%CONDfromPF, Soil(is)%ilCOND)
         #     # write (*,*) 'call SUBSOL ', PF(NSL), ZT-LBSL(NSL)+TSL(NSL)/3.0, SubFlow
         #     if (SubFlow >= 0.0) then
-        #         # capillairy rise is limited by the amount required to reach equilibrium:
-        #         # step 1. calculate equilibrium ZT for all air between ZT and top of layer
+        #         # 毛细上升受限于达到平衡所需的水量：
+        #         # 步骤1：计算ZT与层顶之间所有空气体积达到平衡时的水气差
         #         EqAir   = WSUB0 - WSUB + (WC0(NSL)-WC(NSL))
-        #         # step 2. the groundwater level belonging to this amount of air in equilibrium
+        #         # 步骤2：找到与上述平衡空气体积对应的地下水位
         #         ZTeq1   = (LBSL(NSL)-TSL(NSL)) + AFGEN(Soil(is)%HeightFromAir, EquilTableLEN, EqAir)
-        #         # step 3. this level should normally lie below the current level (otherwise there should
-        #         # not be capillairy rise). In rare cases however, due to the use of a mid-layer height
-        #         # in subroutine SUBSOL, a deviation could occur
+        #         # 步骤3：该水位通常应低于当前水位（否则不应有毛细上升），但若子程序 SUBSOL 用了层中点，有时也会有偏差
         #         ZTeq2   = MAX(ZT, ZTeq1)
-        #         # step 4. calculate for this ZTeq2 the equilibrium amount of water in the layer
+        #         # 步骤4：用这个 ZTeq2 计算该土层的平衡含水量
         #         WCequil = AFGEN(Soil(is)%WaterFromHeight, EquilTableLEN, ZTeq2-LBSL(NSL)+TSL(NSL)) - &
         #                   AFGEN(Soil(is)%WaterFromHeight, EquilTableLEN, ZTeq2-LBSL(NSL))
-        #         # step5. use this equilibrium amount to limit the upward flow
+        #         # 步骤5：用该平衡量限制向上流速
         #         FlowMX(NSL+1) = -1.0 * MIN (SubFlow, MAX(WCequil-WC(NSL),0.0)/DELT)
         #     else:
-        #         # downward flow ; air-filled pore space of subsoil limits downward flow
+        #         # 向下流动；下覆土层的充气孔隙度限制向下流动
         #         AirSub = (ZT-LBSL(NSL))*SubSM0 - AFGEN(Soil(is)%WaterFromHeight, EquilTableLEN, ZT-LBSL(NSL))
         #         FlowMX(NSL+1) = MIN (ABS(SubFlow), MAX(AirSub,0.0)/DELT)
         #         # write (*,*) 'Limiting downward flow: AirSub, FlowMX(NSL+1) = ', AirSub, FlowMX(NSL+1)
         # else:
-        #     # groundwater is in the layered system ; no further downward flow
+        #     # 地下水位在分层系统内部；不再有向下流动
         #     FlowMX(NSL+1) = 0.0
         else:
-            # Bottom layer conductivity limits the flow. Below field capacity there is no
-            # downward flow, so downward flow through lower boundary can be guessed as
+            # 最底层的导水率限制了流量。田间持水量以下时无下渗，因此下边界处的下渗流量可近似为：
             FlowMX[-1] = max(self.soil_profile[-1].CondFC, conductivity[-1])
 
-        # drainage
+        # 排水计算
         DMAX = 0.0
 
         LIMDRY = np.zeros_like(s.SM)
         LIMWET = np.zeros_like(s.SM)
         TSL = [l.Thickness for l in self.soil_profile]
         for il in reversed(range(len(s.SM))):
-            # limiting DOWNWARD flow rate
-            # == wet conditions: the soil conductivity is larger
-            #    the soil conductivity is the flow rate for gravity only
-            #    this limit is DOWNWARD only
-            # == dry conditions: the MFP gradient
-            #    the MFP gradient is larger for dry conditions
-            #    allows SOME upward flow
-            if il == 0:  # Top soil layer
+            # 限制向下渗流速率
+            # == 湿润条件：土壤导水率较高
+            #    土壤导水率仅由重力引起
+            #    该限制仅适用于向下流动
+            # == 干旱条件：基质流势梯度决定
+            #    干旱条件下基质流势梯度较大
+            #    允许有一定的向上流动
+            if il == 0:  # 表层土壤层
                 LIMWET[il] = self.soil_profile.SurfaceConductivity
                 LIMDRY[il] = 0.0
             else:
-                # the limit under wet conditions is a unit gradient
+                # 湿润条件下的限制为单位梯度
                 LIMWET[il] = (TSL[il-1]+TSL[il]) / (TSL[il-1]/conductivity[il-1] + TSL[il]/conductivity[il])
 
-                # compute dry flow given gradients in matric flux potential
+                # 按基质流势梯度计算干流
                 if self.soil_profile[il-1] == self.soil_profile[il]:
-                    # Layers il-1 and il have same properties: flow rates are estimated from
-                    # the gradient in Matric Flux Potential
+                    # il-1和il两层为同一土壤类型：流量通过两层的基质流势梯度估算
                     LIMDRY[il] = 2.0 * (matricfluxpot[il-1]-matricfluxpot[il]) / (TSL[il-1]+TSL[il])
                     if LIMDRY[il] < 0.0:
-                        # upward flow rate ; amount required for equal water content is required below
+                        # 向上流速；需要使两层含水量相等所需的水量计算在下方
                         MeanSM = (s.WC[il-1] + s.WC[il]) / (TSL[il-1]+TSL[il])
-                        EqualPotAmount = s.WC[il-1] - TSL[il-1] * MeanSM  # should be negative like the flow
+                        EqualPotAmount = s.WC[il-1] - TSL[il-1] * MeanSM  # 应为负值，与流速符号一致
                 else:
-                    # iterative search to PF at layer boundary (by bisection)
+                    # 采用二分法迭代搜索层边界的pF值
                     il1  = il-1; il2 = il
                     PF1  = pF[il1]; PF2 = pF[il2]
                     MFP1 = matricfluxpot[il1]; MFP2 = matricfluxpot[il2]
-                    for z in range(self.MaxFlowIter):  # Loop counter not used here
+                    for z in range(self.MaxFlowIter):  # 此处计数只用于迭代次数
                         PFx = (PF1 + PF2) / 2.0
                         Flow1 = 2.0 * (+ MFP1 - self.soil_profile[il1].MFPfromPF(PFx)) / TSL[il1]
                         Flow2 = 2.0 * (- MFP2 + self.soil_profile[il2].MFPfromPF(PFx)) / TSL[il2]
                         if abs(Flow1-Flow2) < self.TinyFlow:
-                            # sufficient accuracy
+                            # 已达到足够精度
                             break
                         elif abs(Flow1) > abs(Flow2):
-                            # flow in layer 1 is larger ; PFx must shift in the direction of PF1
+                            # 第1层流量较大，PFx应向PF1方向移动
                             PF2 = PFx
                         elif abs(Flow1) < abs(Flow2):
-                            # flow in layer 2 is larger ; PFx must shift in the direction of PF2
+                            # 第2层流量较大，PFx应向PF2方向移动
                             PF1 = PFx
-                    else:  # No break
+                    else:  # 未break，迭代失败
                         msg = 'WATFDGW: LIMDRY flow iteration failed. Are your soil moisture and ' + \
                               'conductivity curves decreasing with increasing pF?'
                         raise exc.PCSEError(msg)
                     LIMDRY[il] = (Flow1 + Flow2) / 2.0
 
                     if LIMDRY[il] < 0.0:
-                        # upward flow rate ; amount required for equal potential is required below
+                        # 向上流速；需要使势能一致所需的量下方计算
                         Eq1 = -s.WC[il2]; Eq2 = 0.0
                         for z in range(self.MaxFlowIter):
                             EqualPotAmount = (Eq1 + Eq2) / 2.0
@@ -649,64 +583,62 @@ class WaterBalanceLayered(SimulationObject):
                             PF1 = self.soil_profile[il1].SMfromPF(SM1)
                             PF2 = self.soil_profile[il2].SMfromPF(SM2)
                             if abs(Eq1-Eq2) < self.TinyFlow:
-                                # sufficient accuracy
+                                # 已达到足够精度
                                 break
                             elif PF1 > PF2:
-                                # suction in top layer 1 is larger ; absolute amount should be larger
+                                # 上层吸力较大，需更大交换量
                                 Eq2 = EqualPotAmount
                             else:
-                                # suction in bottom layer 1 is larger ; absolute amount should be reduced
+                                # 下层吸力较大，需减少交换量
                                 Eq1 = EqualPotAmount
                         else:
                             msg = "WATFDGW: Limiting amount iteration in dry flow failed. Are your soil moisture " \
                                   "and conductivity curves decreasing with increase pF?"
                             raise exc.PCSEError(msg)
 
-            FlowDown = True  # default
+            FlowDown = True  # 默认向下流动
             if LIMDRY[il] < 0.0:
-                # upward flow (negative !) is limited by fraction of amount required for equilibrium
+                # 向上流（负值！）受达到平衡所需量一定比例的限制
                 FlowMax = max(LIMDRY[il], EqualPotAmount * self.UpwardFlowLimit)
                 if il > 0:
-                    # upward flow is limited by amount required to bring target layer at equilibrium/field capacity
+                    # 向上流动受限于目标土层达到平衡/田间持水量所需的量
                     # if (il==2) write (*,*) '2: ',FlowMax, LIMDRY(il), EqualPotAmount * UpwardFlowLimit
                     if self.soil_profile.GroundWater:
-                        # soil does not drain below equilibrium with groundwater
+                        # 有地下水时土壤不会排水至低于地下水平衡含水量
                         # FCequil = MAX(WCFC(il-1), EquilWater(il-1))
                         raise NotImplementedError("Groundwater influence not implemented yet.")
                     else:
-                        # free drainage
+                        # 自由排水
                         FCequil = self.soil_profile[il-1].WCFC
 
                     TargetLimit = WTRALY[il-1] + FCequil - s.WC[il-1]/delt
                     if TargetLimit > 0.0:
-                        # target layer is "dry": below field capacity ; limit upward flow
+                        # 目标层干燥，低于田间持水量；限制向上流动
                         FlowMax = max(FlowMax, -1.0 * TargetLimit)
-                        # there is no saturation prevention since upward flow leads to a decrease of WC[il]
-                        # instead flow is limited in order to prevent a negative water content
+                        # 向上流减少当前层含水量，不需再防止过饱和
+                        # 流量仅受限于避免负含水量
                         FlowMX[il] = max(FlowMax, FlowMX[il+1] + WTRALY[il] - s.WC[il]/delt)
                         FlowDown = False
                     elif self.soil_profile.GroundWater:
-                        # target layer is "wet", above field capacity. Since gravity is neglected
-                        # in the matrix potential model, this "wet" upward flow is neglected.
+                        # 目标层湿润，高于田间持水量。由于基质势模型不考虑重力，此“湿润”向上流动被忽略
                         FlowMX[il] = 0.0
                         FlowDown = True
                     else:
-                        # target layer is "wet", above field capacity, without groundwater
-                        # The free drainage model implies that upward flow is rejected here.
-                        # Downward flow is enabled and the free drainage model applies.
+                        # 目标层湿润，无地下水，自由排水模型下向上流被拒绝
+                        # 允许下渗，自由排水模型适用
                         FlowDown = True
 
             if FlowDown:
-                # maximum downward flow rate (LIMWET is always a positive number)
+                # 最大向下流速（LIMWET始终为正数）
                 FlowMax = max(LIMDRY[il], LIMWET[il])
-                # this prevents saturation of layer il
-                # maximum top boundary flow is bottom boundary flow plus saturation deficit plus sink
+                # 防止当前土层过饱和
+                # 最大上边界流量 = 下边界流量 + 饱和亏缺 + 植物吸水
                 FlowMX[il] = min(FlowMax, FlowMX[il+1] + (self.soil_profile[il].WC0 - s.WC[il])/delt + WTRALY[il])
         # end for
 
         r.RIN = min(RINPRE, FlowMX[0])
 
-        # contribution of layers to soil evaporation in case of drought upward flow is allowed
+        # 在允许干旱向上流动的情况下，各土层对土壤蒸发的贡献
         EVSL = np.zeros_like(s.SM)
         for il, layer in enumerate(self.soil_profile):
             if il == 0:
@@ -721,56 +653,54 @@ class WaterBalanceLayered(SimulationObject):
                 else:
                     EVSL[il] = Available
                     EVrest   = EVrest - Available
-        # reduce evaporation if entire profile becomes airdry
-        # there is no evaporative flow through lower boundary of layer NSL
+        # 如果整个剖面变成风干，则减少蒸发
+        # 在NSL土层的下边界没有蒸发通量
         r.EVS = r.EVS - EVrest
 
-        # Convert contribution of soil layers to EVS as an upward flux
-        # evaporative flow (taken positive !!!!) at layer boundaries
+        # 将土层对EVS的贡献转化为向上的通量
+        # 各土层边界的蒸发流（取正值!!!!）
         NSL = len(s.SM)
         EVflow = np.zeros_like(FlowMX)
         EVflow[0] = r.EVS
         for il in range(1, NSL):
             EVflow[il] = EVflow[il-1] - EVSL[il-1]
-        EVflow[NSL] = 0.0  # see comment above
+        EVflow[NSL] = 0.0  # 见上方注释
 
-        # limit downward flows as to not get below field capacity / equilibrium content
+        # 限制向下流动以避免低于田间持水量/平衡含水量
         Flow = np.zeros_like(FlowMX)
         r.DWC = np.zeros_like(s.SM)
         Flow[0] = r.RIN - EVflow[0]
         for il, layer in enumerate(self.soil_profile):
             if self.soil_profile.GroundWater:
-                # soil does not drain below equilibrium with groundwater
+                # 土壤不会排水至低于地下水平衡含水量
                 #WaterLeft = max(self.WCFC[il], EquilWater[il])
                 raise NotImplementedError("Groundwater influence not implemented yet.")
             else:
-                # free drainage
+                # 自由排水
                 WaterLeft = layer.WCFC
-            MXLOSS = (s.WC[il] - WaterLeft)/delt               # maximum loss
-            Excess = max(0.0, MXLOSS + Flow[il] - WTRALY[il])  # excess of water (positive)
-            Flow[il+1] = min(FlowMX[il+1], Excess - EVflow[il+1])  # note that a negative (upward) flow is not affected
-            # rate of change
+            MXLOSS = (s.WC[il] - WaterLeft)/delt               # 最大损失
+            Excess = max(0.0, MXLOSS + Flow[il] - WTRALY[il])  # 剩余水量（为正则有剩余）
+            Flow[il+1] = min(FlowMX[il+1], Excess - EVflow[il+1])  # 注意负值（向上流动）不受影响
+            # 变化率
             r.DWC[il] = Flow[il] - Flow[il+1] - WTRALY[il]
 
-        # Flow at the bottom of the profile
+        # 剖面底部的流量
         r.BOTTOMFLOW = Flow[-1]
 
         if self.soil_profile.GroundWater:
-            # groundwater influence
+            # 地下水影响
             # DWBOT = LOSS - Flow[self.NSL+1]
             # DWSUB = Flow[self.NSL+1]
             raise NotImplementedError("Groundwater influence not implemented yet.")
 
-        # Computation of rate of change in surface storage and surface runoff
-        # SStmp is the layer of water that cannot infiltrate and that can potentially
-        # be stored on the surface. Here we assume that RAIN_NOTINF automatically
-        # ends up in the surface storage (and finally runoff).
+        # 计算地表水储量和地表径流的变化率
+        # SStmp为无法入渗且可能储存在地表的水层。这里假设RAIN_NOTINF自动进入地表储水（最终成为径流）
         SStmp = drv.RAIN + r.RIRR - r.EVW - r.RIN
-        # rate of change in surface storage is limited by SSMAX - SS
+        # 地表水储量的变化率受SSMAX - SS限制
         r.DSS = min(SStmp, (p.SSMAX - s.SS))
-        # Remaining part of SStmp is send to surface runoff
+        # SStmp的剩余部分流向地表径流
         r.DTSR = SStmp - r.DSS
-        # incoming rainfall rate
+        # 降雨速率
         r.DRAINT = drv.RAIN
 
         self._RINold = r.RIN
@@ -783,58 +713,57 @@ class WaterBalanceLayered(SimulationObject):
         k = self.kiosk
         r = self.rates
 
-        # amount of water in soil layers ; soil moisture content
+        # 各土层的水量；土壤含水量
         SM = np.zeros_like(s.SM)
         WC = np.zeros_like(s.WC)
         for il, layer in enumerate(self.soil_profile):
             WC[il] = s.WC[il] + r.DWC[il] * delt
             SM[il] = WC[il] / layer.Thickness
-        # NOTE: We cannot replace WC[il] with s.WC[il] above because the kiosk will not
-        # be updated since traitlets cannot monitor changes within lists/arrays.
-        # So we have to assign:
+        # 注意：不能直接将WC[il]替换为s.WC[il]，否则kiosk不会被更新，因为traitlets不能监控list/array的内部变化。
+        # 因此必须赋值如下：
         s.SM = SM
         s.WC = WC
 
-        # total transpiration
+        # 累计总蒸腾量
         s.WTRAT += r.WTRA * delt
 
-        # total evaporation from surface water layer and/or soil
+        # 累计表层水层和/或土壤的总蒸发量
         s.EVWT += r.EVW * delt
         s.EVST += r.EVS * delt
 
-        # totals for rainfall, irrigation and infiltration
+        # 降雨、灌溉和入渗的合计
         s.RAINT += self._RAIN
         s.TOTINF += r.RIN * delt
         s.TOTIRR += r.RIRR * delt
 
-        # surface storage and runoff
+        # 地表储水和径流
         s.SS += r.DSS * delt
         s.TSR += r.DTSR * delt
 
-        # loss of water by outflow through bottom of profile
+        # 剖面底部流失水量
         s.BOTTOMFLOWT += r.BOTTOMFLOW * delt
 
-        # percolation from rootzone ; interpretation depends on mode
+        # 根区的渗漏量；根据模式不同有不同解释
         if self.soil_profile.GroundWater:
-            # with groundwater this flow is either percolation or capillary rise
+            # 有地下水时，该流量既可为渗漏也可为毛管上升
             if r.PERC > 0.0:
                 s.PERCT = s.PERCT + r.PERC * delt
             else:
                 s.CRT = s.CRT - r.PERC * delt
         else:
-            # without groundwater this flow is always called percolation
+            # 无地下水时，该流量总称为渗漏
             s.CRT = 0.0
 
-        # change of rootzone
+        # 根区变化
         RD = self._determine_rooting_depth()
         if abs(RD - self._RDold) > 0.001:
             self.soil_profile.determine_rooting_status(RD, self._RDM)
 
-        # compute summary values for rooted, potentially rooted and unrooted soil compartments
+        # 计算有根区、潜在有根区及无根区的土壤水汇总
         W = 0.0 ; WAVUPP = 0.0
         WLOW = 0.0 ; WAVLOW = 0.0
         WBOT = 0.0 ; WAVBOT = 0.0
-        # get W and WLOW and available water amounts
+        # 获取W、WLOW和可用水量
         for il, layer in enumerate(self.soil_profile):
             W += s.WC[il] * layer.Wtop
             WLOW += s.WC[il] * layer.Wpot
@@ -843,7 +772,7 @@ class WaterBalanceLayered(SimulationObject):
             WAVLOW += (s.WC[il] - layer.WCW) * layer.Wpot
             WAVBOT += (s.WC[il] - layer.WCW) * layer.Wund
 
-        # Update states
+        # 更新状态
         s.W = W
         s.WLOW = WLOW
         s.WWLOW = s.W + s.WLOW
@@ -852,7 +781,7 @@ class WaterBalanceLayered(SimulationObject):
         s.WAVLOW = WAVLOW
         s.WAVBOT = WAVBOT
 
-        # save rooting depth for which layer contents have been determined
+        # 保存已经确定层含水量所用的根系深度
         self._RDold = RD
 
         s.SM_MEAN = s.W/RD
@@ -862,31 +791,30 @@ class WaterBalanceLayered(SimulationObject):
         s = self.states
         p = self.params
         if self.soil_profile.GroundWater:
-            # checksums waterbalance for system Groundwater version
+            # 地下水版本水分平衡校验
             # WBALRT_GW = TOTINF + CRT + WI - W + WDRT - EVST - TRAT - PERCT
             # WBALTT_GW = SSI + RAINT + TOTIRR + WI - W + WZI - WZ - TRAT - EVWT - EVST - TSR - DRAINT - SS
             pass
         else:
-            # checksums waterbalance for system Free Drainage version
-            checksum = (p.SSI - s.SS  # change in surface storage
-                        + self._WCI - s.WC.sum()  # Change in soil water content
-                        + s.RAINT + s.TOTIRR  # inflows to the system
-                        - s.WTRAT - s.EVWT - s.EVST - s.TSR - s.BOTTOMFLOWT  # outflows from the system
+            # 自由排水版本水分平衡校验
+            checksum = (p.SSI - s.SS  # 地表蓄水变化量
+                        + self._WCI - s.WC.sum()  # 土壤水分变化量
+                        + s.RAINT + s.TOTIRR  # 系统的入水量
+                        - s.WTRAT - s.EVWT - s.EVST - s.TSR - s.BOTTOMFLOWT  # 系统的出水量
                         )
             if abs(checksum) > 0.0001:
                 msg = "Waterbalance not closing on %s with checksum: %f" % (day, checksum)
                 raise exc.WaterBalanceError(msg)
 
     def _determine_rooting_depth(self):
-        """Determines appropriate use of the rooting depth (RD)
+        """确定根系深度（RD）的合适取值
 
-        This function includes the logic to determine the depth of the upper (rooted)
-        layer of the water balance. See the comment in the code for a detailed description.
+        该函数包含了用于确定水分平衡剖面有根（上层）区域深度的逻辑。详细描述见代码注释。
         """
         if "RD" in self.kiosk:
             return self.kiosk["RD"]
         else:
-            # Hold RD at default value
+            # 保持RD为默认值
             return self._default_RD
 
     def _on_CROP_START(self):
@@ -901,9 +829,8 @@ class WaterBalanceLayered(SimulationObject):
         self._RIRR = amount * efficiency
 
     def _setup_new_crop(self):
-        """Retrieves the crop maximum rootable depth, validates it and updates the rooting status
-        in order to have a correct calculation of the summary waterbalance states.
-
+        """获取作物最大可生长根系深度并进行校验、更新根系状态，
+        以便能够正确计算土壤水分平衡汇总状态。
         """
         self._RDM = self.parameter_provider["RDMCR"]
         self.soil_profile.validate_max_rooting_depth(self._RDM)

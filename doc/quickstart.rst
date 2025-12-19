@@ -1,50 +1,37 @@
-Getting started
+快速入门
 ===============
 
-This guide will help you install PCSE as well as provide
-some examples to get you started with modelling. The examples are currently focused on applying
-the WOFOST and LINTUL3 crop simulation models, although other crop simulation models may become available within
-PCSE in the future.
+本指南将帮助你安装 PCSE，并提供一些示例，帮助你开始建模。这些示例目前主要集中在应用 WOFOST 和 LINTUL3 作物模拟模型，尽管在未来 PCSE 里可能还会提供其他作物模拟模型。
 
-Note that the examples below are also available as Jupyter notebooks on my github page: https://github.com/ajwdewit/pcse_notebooks
+需要注意的是，下面这些示例也可以作为 Jupyter notebooks 在我的 github 页面中找到: https://github.com/ajwdewit/pcse_notebooks
 
 
-An interactive PCSE/WOFOST session
+交互式 PCSE/WOFOST 会话
 ----------------------------------
 
-The easiest way to demonstrate PCSE is to import WOFOST from PCSE and run it from
-an interactive Python session. We will be using the `start_wofost()` script that
-connects to a the demo database which contains meteorologic data, soil data,
-crop data and management data for a grid location in South-Spain.
+展示 PCSE 最简单的方法是从 PCSE 中导入 WOFOST 并在交互式 Python 会话中运行。我们会使用 `start_wofost()` 脚本，它会连接一个演示数据库，该数据库包含南西班牙某网格位置的气象数据、土壤数据、作物数据和管理数据。
 
-Initializing PCSE/WOFOST and advancing model state
+初始化 PCSE/WOFOST 并推进模型状态
 ..................................................
 
-Let's start a WOFOST object for modelling winter-wheat on a
-location in South-Spain for the year 2000 under water-limited
-conditions.::
+我们先在南西班牙某地以2000年为例，在有限水分条件下，启动一个用于冬小麦模拟的 WOFOST 对象::
 
     >>> wofost_object = pcse.start_wofost()
     >>> type(wofost_object)
     <class 'pcse.models.Wofost72_WLP_CWB'>
 
-You have just successfully initialized a PCSE/WOFOST object in the Python
-interpreter, which is in its initial state and waiting to do some simulation. We
-can now advance the model state for example with 1 day::
+你已经在 Python 解释器中成功初始化了一个 PCSE/WOFOST 对象，目前它处于初始状态，等待进行模拟。现在我们可以推进模型状态，比如前进 1 天::
 
     >>> wofost_object.run()
 
-Advancing the crop simulation with only 1 day, is often not so useful so the
-number of days to simulate can be specified as well::
+通常只推进 1 天作物模拟并不是很有用，所以你也可以指定要模拟的天数::
 
     >>> wofost_object.run(days=10)
 
-Getting information about state and rate variables
+获取状态变量和率变量的信息
 ..................................................
-Retrieving information about the calculated model states or rates 
-can be done with the `get_variable()` method on a PCSE object.
-For example, to retrieve the leaf area index value in the current
-model state you can do::
+可以通过在 PCSE 对象上使用 `get_variable()` 方法，来获取模型计算出的状态变量或率变量的信息。
+例如，要获取当前模型状态下叶面积指数的数值，可以这样做::
 
     >>> wofost_object.get_variable('LAI')
     0.28708095263317146 
@@ -52,30 +39,21 @@ model state you can do::
     >>> wofost_object.get_variable('LAI')
     1.5281215808337203
 
-Showing that after 11 days the LAI value is 0.287. When we increase time
-with another 25 days, the LAI increases to 1.528. The `get_variable` method
-can retrieve any state or rate variable that is defined somewhere in the
-model. Finally, we can finish the crop season by letting it run until the
-model terminates because the crop reaches maturity or the harvest date::
+这表明在模拟推进 11 天后，LAI 的值为 0.287。当我们将时间再推进 25 天后，LAI 增加到了 1.528。`get_variable` 方法可以获取模型中定义的任意状态或率变量。最后，我们可以让模型持续运行，直到作物成熟或到达收获日期，最终结束本轮作物生长周期::
 
     >>> wofost_object.run_till_terminate()
 
-Next we retrieve the simulation results at each time-step ('output') of the
-simulation::
+接下来我们可以在每个时间步（'output'）获取模拟结果::
 
     >>> output = wofost_object.get_output()
 
-We can now use the pandas package to turn the simulation output into a
-dataframe which is much easier to handle and can be exported to different
-file types. For example an excel file which should look like this
-:download:`downloads/wofost_results.xls`::
+现在可以使用 pandas 包将模拟输出转换为 dataframe，这样更容易处理，也便于导出为不同类型的文件。例如，可以导出为一个 excel 文件，如下（格式参见此文件 :download:`downloads/wofost_results.xls`）：
 
     >>> import pandas as pd
     >>> df = pd.DataFrame(output)
     >>> df.to_excel("wofost_results.xls")
 
-Finally, we can retrieve the results at the end of the crop cycle (summary results)
-and have a look at these as well::
+最后，我们可以获取作物生长周期结束时的结果（summary results），并查看这些信息：
 
     >>> summary_output = wofost_object.get_summary_output()
     >>> msg = "Reached maturity at {DOM} with total biomass {TAGP} kg/ha "\
@@ -100,113 +78,70 @@ and have a look at these as well::
       'TWSO': 7179.8046078262705,
       'TWST': 5052.578254982587}]
 
-Running PCSE/WOFOST with custom input data
+使用自定义输入数据运行 PCSE/WOFOST
 ------------------------------------------
 
-For running PCSE/WOFOST (and PCSE models in general) with your own data sources you need three different types of
-inputs:
+要使用你自己的数据源运行 PCSE/WOFOST（以及一般的 PCSE 模型），你需要三种不同类型的输入：
 
-1. Model parameters that parameterize the different model components. These parameters usually
-   consist of a set of crop parameters (or multiple sets in case of crop rotations), a set of soil parameters
-   and a set of site parameters. The latter provide ancillary parameters that are specific for a location.
-2. Driving variables represented by weather data which can be derived from various sources.
-3. Agromanagement actions which specify the farm activities that will take place on the field that is simulated
-   by PCSE.
+1. 用于对不同模型组件参数化的模型参数。通常包括一套作物参数（如果是轮作，则有多套），一套土壤参数，以及一套站点参数。最后一类提供与特定地点相关的辅助参数。
+2. 由气象数据表示的驱动变量，这些数据可以来源于多种渠道。
+3. 农业管理措施（ agromanagement actions ），用于指定将由 PCSE 模拟的田块上发生的农场活动。
 
-For the second example we will run a simulation for sugar beet in
-Wageningen (Netherlands) and we will read the input data step by step from
-several different sources instead of using the pre-configured `start_wofost()`
-script. For the example we will assume that data files are in the directory
-`D:\\userdata\\pcse_examples` and all the parameter files needed can be
-found by unpacking this zip file :download:`downloads/quickstart_part2.zip`.
+在第二个示例中，我们将在 Wageningen（荷兰）对甜菜进行模拟，并且我们将一步一步地从多个不同的数据源读取输入数据，而不是使用预先配置好的 `start_wofost()` 脚本。对于这个例子，我们假定数据文件都在 `D:\\userdata\\pcse_examples` 目录下，所有参数文件可以通过解压此压缩包获取 :download:`downloads/quickstart_part2.zip`。
 
-First we will import the necessary modules and define the data directory::
+首先，我们将导入必要的模块并定义数据目录::
 
     >>> import os
     >>> import pcse
     >>> import matplotlib.pyplot as plt
     >>> data_dir = r'D:\userdata\pcse_examples'
 
-Crop parameters
+作物参数
 ...............
 
-The crop parameters consist of parameter names and the
-corresponding parameter values that are needed to parameterize the
-components of the crop simulation model. These are
-crop-specific values regarding phenology, assimilation, respiration,
-biomass partitioning, etc. The parameter file for sugar beet
-is taken from the crop files in the `WOFOST Control Centre`_.
+作物参数包括参数名称和对应的参数值，这些参数用于作物模拟模型各组件的参数化。这些值是关于物候、生长同化、呼吸、生物量分配等作物特有的信息。甜菜的参数文件取自 `WOFOST Control Centre`_ 的作物文件。
 
 .. _WOFOST Control Centre: http://www.wageningenur.nl/wofost
 
-The crop parameters for many models in
-Wageningen are often provided in the CABO format that could be read
-with the `TTUTIL <http://edepot.wur.nl/17847>`_ FORTRAN library. PCSE
-tries to be backward compatible as much as possible and provides the
-:ref:`CABOFileReader <CABOFileReader>` for reading parameter files in CABO format.
-the CABOFileReader returns a dictionary with the parameter name/value pairs::
+在 Wageningen 的许多模型中，作物参数通常以 CABO 格式提供，可以用 `TTUTIL <http://edepot.wur.nl/17847>`_ FORTRAN 库读取。PCSE 尽量保证向后兼容，并提供 :ref:`CABOFileReader <CABOFileReader>` 用于读取 CABO 格式的参数文件。
+`CABOFileReader` 返回一个包含参数名和参数值对的字典::
 
     >>> from pcse.input import CABOFileReader
     >>> cropfile = os.path.join(data_dir, 'sug0601.crop')
     >>> cropdata = CABOFileReader(cropfile)
     >>> print(cropdata)
 
-Printing the cropdata dictionary gives you a listing of the header and
-all parameters and their values.
+打印 `cropdata` 字典时，可以看到文件头及所有参数和它们的值。
 
-Soil parameters
+土壤参数
 ...............
 
-The soildata dictionary provides the parameter name/value pairs related
-to the soil type and soil physical properties. The number of parameters is
-variable depending on the soil water balance type that is used for the
-simulation. For this example, we will use the water balance for freely
-draining soils and use the soil file for medium fine sand: `ec3.soil`.
-This file is also taken from the soil files in the `WOFOST Control Centre`_ ::
+soildata 字典提供与土壤类型和土壤物理属性相关的参数名称/值对。参数的数量会根据用于模拟的土壤水分平衡类型而变化。在本例中，我们将使用自由排水土壤的水分平衡，并使用中等细沙的土壤文件： `ec3.soil`。此文件同样取自 `WOFOST Control Centre`_ 的土壤文件::
 
     >>> soilfile = os.path.join(data_dir, 'ec3.soil')
     >>> soildata = CABOFileReader(soilfile)
 
-Site parameters
+站点参数
 ...............
 
-The site parameters provide ancillary parameters that are not related to
-the crop or the soil. Examples are the initial conditions of
-the water balance such as the initial soil moisture content (WAV) and
-the initial and maximum surface storage (SSI, SSMAX). Also the
-atmospheric CO2 concentration is a typical site parameter.
-For the moment, we can define these parameters directly on the Python commandline
-as a simple python dictionary. However, it is more convenient to use the
-:ref:`WOFOST72SiteDataProvider <WOFOST72SiteDataProvider>` that documents the
-site parameters and provides sensible defaults::
+站点参数提供一些与作物和土壤无关的辅助参数。例如，水分平衡的初始条件，像初始土壤含水量 (WAV) 以及初始和最大地表水储量 (SSI, SSMAX)。此外，大气 CO2 浓度也是典型的站点参数。目前，我们可以直接在 Python 命令行上用简单的 python 字典来定义这些参数。但更方便的做法是使用 :ref:`WOFOST72SiteDataProvider <WOFOST72SiteDataProvider>`，它记录了站点参数并为其提供合理的默认值::
 
     >>> from pcse.input import WOFOST72SiteDataProvider
     >>> sitedata = WOFOST72SiteDataProvider(WAV=100)
     >>> print(sitedata)
     {'SMLIM': 0.4, 'NOTINF': 0, 'SSI': 0.0, 'SSMAX': 0.0, 'IFUNRN': 0, 'WAV': 100.0}
 
-Finally, we need to pack the different sets of parameters into one variable
-using the `ParameterProvider`. This is needed because PCSE expects one
-variable that contains all parameter values. Using this approach has the
-additional advantage that parameters value can be easily overridden in case
-of running multiple simulations with slightly different parameter values::
+最后，我们需要使用 `ParameterProvider` 将不同的参数集合打包到一个变量中。这是因为 PCSE 期望用一个变量来包含所有参数值。采用这种方式还有个额外好处：如果需要运行多次模拟且参数值略有不同，可以很方便地对参数值进行覆盖：
 
      >>> from pcse.base import ParameterProvider
      >>> parameters = ParameterProvider(cropdata=cropdata, soildata=soildata, sitedata=sitedata)
 
-AgroManagement
+农业管理（AgroManagement）
 ..............
 
-The agromanagement inputs provide the start date of the agricultural campaign,
-the start_date/start_type of the crop simulation, the end_date/end_type of the crop
-simulation and the maximum duration of the crop simulation. The latter is
-included to avoid unrealistically long simulations for example as a results of
-a too high temperature sum requirement.
+农业管理（agromanagement）输入提供了农事活动的开始日期、作物模拟的 start_date/start_type、作物模拟的 end_date/end_type，以及作物模拟的最大持续天数。设置最大持续天数主要是为了避免由于温度积要求过高等原因导致非现实的超长模拟。
 
-The agromanagement inputs are defined with a special syntax called `YAML`_ which allows
-to easily create more complex structures which is needed for defining the agromanagement.
-The agromanagement file for sugar beet in Wageningen `sugarbeet_calendar.agro` can be read with
-the :ref:`YAMLAgroManagementReader <YAMLAgroManagementReader>`::
+农业管理输入采用一种特殊的语法 `YAML`_ 进行定义，这种语法易于表示更复杂的结构，适用于描述农业管理。Wageningen 地区甜菜的农业管理文件为 `sugarbeet_calendar.agro`，可以通过 :ref:`YAMLAgroManagementReader <YAMLAgroManagementReader>` 读取：
 
     >>> from pcse.input import YAMLAgroManagementReader
     >>> agromanagement_file = os.path.join(data_dir, 'sugarbeet_calendar.agro')
@@ -226,18 +161,16 @@ the :ref:`YAMLAgroManagementReader <YAMLAgroManagementReader>`::
          StateEvents: null
          TimedEvents: null
 
-Daily weather observations
+每日气象观测数据
 ..........................
 
-Daily weather variables are needed for running the simulation. There are several
-data providers in PCSE for reading weather data, see the section on
-:ref:`weather data providers <Weather data providers>` to get an overview.
+运行模拟需要每日的气象变量。在 PCSE 中有多种气象数据提供方式，详见
+:ref:`weather data providers <Weather data providers>` 章节。
 
-For this example we will use the weather data from the NASA Power database
-which provides global weather data with a spatial resolution of 0.5 degree (~50 km).
-We will retrieve the data from the Power database for the location of Wageningen.
-Note that it can take around 30 seconds
-to retrieve the weather data from the NASA Power server the first time::
+本例中我们将使用 NASA Power 数据库的气象数据，
+该数据库提供分辨率为 0.5 度（约 50 公里）的全球气象数据。
+我们将从 Power 数据库获取 Wageningen 地区的数据。
+注意：首次从 NASA Power 服务器获取气象数据大约需要 30 秒：
 
     >>> from pcse.input import NASAPowerWeatherDataProvider
     >>> wdp = NASAPowerWeatherDataProvider(latitude=52, longitude=5)
@@ -252,46 +185,32 @@ to retrieve the weather data from the NASA Power server the first time::
     Data available for 1984-01-01 - 2024-03-20
     Number of missing days: 0
 
-Importing, initializing and running a PCSE model
+导入、初始化和运行 PCSE 模型
 ................................................
 
-Internally, PCSE uses a simulation `engine` to run a crop simulation. This
-engine takes a configuration file that specifies the components for the crop,
-the soil and the agromanagement that need to be used for the simulation.
-So any PCSE model can be started by importing the `engine` and initializing
-it with a given configuration file and the corresponding parameters, weather
-data and agromanagement.
+在 PCSE 的内部，使用仿真 `engine` 来运行作物模拟。该 engine 需要一个配置文件，用于指定模拟所需的作物、土壤和农业管理的各个组成部分。因此，任何 PCSE 模型都可以通过导入 `engine` 并结合相应的参数、气象数据以及农业管理初始化后，来启动模拟。
 
-However, as many users of PCSE only need a particular configuration (for
-example the WOFOST model for potential production), preconfigured Engines
-are provided in `pcse.models`. For the sugarbeet example we will import
-the WOFOST model for water-limited simulation using the classic waterbalance.
-The latter simulates the soil water dynamics assuming a freely draining soil::
+然而，由于很多 PCSE 用户只需要特定的模型配置（例如用于潜在产量模拟的 WOFOST 模型），因此在 `pcse.models` 中提供了预先配置好的 Engines。以甜菜为例，我们将导入用于水分受限情景的 WOFOST 模型，采用经典的土壤水分平衡法。该方法假设土壤为自由排水，并模拟土壤水分动态：
 
     >>> from pcse.models import Wofost72_WLP_CWB
     >>> wofsim = Wofost72_WLP_CWB(parameters, wdp, agromanagement)
 
-We can then run the simulation and show some final results such as the anthesis and
-harvest dates (DOA, DOH), total biomass (TAGP) and maximum LAI (LAIMAX).
-Next, we retrieve the time series of daily simulation output using the `get_output()`
-method on the WOFOST object::
+然后我们可以运行模拟，并展示一些最终结果，比如抽穗和收获日期（DOA，DOH）、总生物量（TAGP）和最大叶面积指数（LAIMAX）。
+接下来，可以通过在 WOFOST 对象上使用 `get_output()` 方法，获取每日模拟输出的时间序列::
 
     >>> wofsim.run_till_terminate()
     >>> output = wofsim.get_output()
     >>> len(output)
     294
 
-As the output is returned as a list of dictionaries, we need to unpack these variables
-from the list of output::
+由于输出是以字典列表的形式返回的，因此需要从输出列表中提取这些变量::
 
     >>> varnames = ["day", "DVS", "TAGP", "LAI", "SM"]
     >>> tmp = {}
     >>> for var in varnames:
     >>>     tmp[var] = [t[var] for t in output]
 
-Finally, we can generate some figures of WOFOST variables such as the
-development (DVS), total biomass (TAGP), leaf area
-index (LAI) and root-zone soil moisture (SM) using the `MatPlotLib`_ plotting package::
+最后，可以使用 `MatPlotLib`_ 绘图库生成一些 WOFOST 变量的图形，比如作物发育进程（DVS）、总生物量（TAGP）、叶面积指数（LAI）和根区土壤含水量（SM）::
 
     >>> day = tmp.pop("day")
     >>> fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(10,8))
@@ -303,30 +222,21 @@ index (LAI) and root-zone soil moisture (SM) using the `MatPlotLib`_ plotting pa
 
 .. _MatPlotLib: http://matplotlib.org/
 
-This should generate a figure of the simulation results as shown below. The complete Python
-script for this examples can be downloaded here :download:`downloads/quickstart_demo2.py`
+上述代码会生成类似下图所示的模拟结果图像。这个示例的完整 Python 脚本可以在这里下载 :download:`downloads/quickstart_demo2.py`
 
 .. image:: figures/sugarbeet.png
 
 
 .. _RunningLINTUL3:
 
-Running a simulation with PCSE/LINTUL3
+使用 PCSE/LINTUL3 进行模拟
 --------------------------------------
 
-The LINTUL model (Light INTerception and UtiLisation) is a simple generic crop model, which simulates dry
-matter production as the result of light interception and utilization with a constant light use efficiency.
-In PCSE the LINTUL family of models has been implemented including the LINTUL3 model which is used for
-simulation of crop production under water-limited and nitrogen-limited conditions.
+LINTUL 模型（Light INTerception and UtiLisation，光拦截与利用）是一个简单的通用作物模型，通过假设光能利用效率为常数，模拟作物通过光拦截和利用过程的干物质生产。在 PCSE 中，LINTUL 系列模型已经被实现，包括 LINTUL3 模型，可用于在水分受限和氮素受限条件下模拟作物产量。
 
-For the third example, we will use LINTUL3 for simulating spring-wheat in the Netherlands under water-limited
-and nitrogen-limited conditions. We will again assume that data files are in the directory
-`D:\\userdata\\pcse_examples` and all the parameter files needed can be
-found by unpacking this zip file :download:`downloads/quickstart_part3.zip`. Note that this guide is also available
-as an IPython notebook: :download:`downloads/running_LINTUL3.ipynb`.
+在第三个示例中，我们将使用 LINTUL3 模型，对荷兰的春小麦在水分受限和氮素受限状况下的生产进行模拟。我们同样假设数据文件存放在 `D:\\userdata\\pcse_examples` 目录下，所有必要的参数文件可以通过解压此压缩包获得 :download:`downloads/quickstart_part3.zip`。此外，本指南也提供 IPython notebook 版本：:download:`downloads/running_LINTUL3.ipynb`。
 
-First we will import the necessary modules and define the data directory. We also assume that you have the
-`matplotlib`_, `pandas`_ and `PyYAML`_ packages installed on your system.::
+首先，我们需要导入所需的模块，并定义数据目录。还要假设你的系统上已经安装了 `matplotlib`_、 `pandas`_ 和 `PyYAML`_ 这几个包。::
 
     >>> import os
     >>> import pcse
@@ -338,30 +248,25 @@ First we will import the necessary modules and define the data directory. We als
 .. _pandas: http://pandas.pydata.org
 .. _PyYAML: http://pyyaml.org/wiki/PyYAML
 
-Similar to the previous example, for running the PCSE/LINTUL3 model we need to define the tree types of inputs
-(parameters, weather data and agromanagement).
+与前面的示例类似，要运行 PCSE/LINTUL3 模型，我们需要定义三类输入（参数、气象数据和农业管理）。
 
-Reading model parameters
+读取模型参数
 ........................
-Model parameters can be easily read from the input files using the `PCSEFileReader` as we have seen
-in the previous example::
+可以像前面的实例一样，通过 `PCSEFileReader` 从输入文件中直接读取模型参数::
 
     >>> from pcse.input import PCSEFileReader
     >>> crop = PCSEFileReader(os.path.join(data_dir, "lintul3_springwheat.crop"))
     >>> soil = PCSEFileReader(os.path.join(data_dir, "lintul3_springwheat.soil"))
     >>> site = PCSEFileReader(os.path.join(data_dir, "lintul3_springwheat.site"))
 
-However, PCSE models expect a single set of parameters and therefore they need to be combined using the
-`ParameterProvider`::
+但是，PCSE 模型期望接收一组合并后的参数，因此需要用 `ParameterProvider` 将其合并：
 
     >>> from pcse.base import ParameterProvider
     >>> parameterprovider = ParameterProvider(soildata=soil, cropdata=crop, sitedata=site)
 
-Reading weather data
+读取气象数据
 ....................
-For reading weather data we will use the ExcelWeatherDataProvider. This WeatherDataProvider uses nearly the same
-file format as is used for the CABO weather files but stores its data in an MicroSoft Excel file which makes the
-weather files easier to create and update::
+用于读取气象数据，我们将使用 ExcelWeatherDataProvider。该 WeatherDataProvider 使用与 CABO 天气文件几乎相同的文件格式，但将数据存储在 MicroSoft Excel 文件中，这使得天气文件更容易创建和更新::
 
     >>> from pcse.input import ExcelWeatherDataProvider
     >>> weatherdataprovider = ExcelWeatherDataProvider(os.path.join(data_dir, "nl1.xlsx"))
@@ -381,11 +286,9 @@ weather files easier to create and update::
     Data available for 2004-01-02 - 2008-12-31
     Number of missing days: 32
 
-Defining agromanagement
+定义农业管理
 .......................
-Defining agromanagement needs a bit more explanation because agromanagement is a relatively
-complex piece of PCSE. The agromanagement definition for PCSE is written in a format called `YAML`_ and
-for the current example looks like this:
+农业管理（agromanagement）的定义需要更多解释，因为 agromanagement 是 PCSE 中一个相对复杂的部分。PCSE 的农业管理定义采用一种称为 `YAML`_ 的格式，当前示例的定义如下：
 
 .. code:: yaml
 
@@ -411,20 +314,11 @@ for the current example looks like this:
 
 .. _YAML: http://yaml.org/
 
-The agromanagement definition starts with `Version:` indicating the version number of the agromanagement file
-while the actual definition starts after the label `AgroManagement:`. Next a date must be provided which sets the
-start date of the campaign (and the start date of the simulation). Each campaign is defined by zero or one
-CropCalendars and zero or more TimedEvents and/or StateEvents. The CropCalendar defines the crop name,
-variety_name, date of sowing, date of harvesting, etc. while the Timed/StateEvents define actions that are
-either connected to a date or to a model state.
+agromanagement 的定义以 `Version:` 开头，表示 agromanagement 文件的版本号，而实际定义则是在 `AgroManagement:` 标签之后开始。接下来必须提供一个日期，用于设定本次生产活动（以及仿真的开始时间）。每个生产活动由零个或一个 CropCalendars 和零个或多个 TimedEvents 和/或 StateEvents 组成。CropCalendar 用于定义作物名称、variety_name、播种日期、收获日期等，而 Timed/StateEvents 用于定义与特定日期或模型状态相关联的操作。
 
-In the current example, the campaign starts on 2006-01-01, there is a crop calendar for spring-wheat starting on
-2006-03-31 with a harvest date of 2006-08-20 or earlier if the crop reaches maturity before this date.
-Next there are timed events defined for applying N fertilizer at 2006-04-10 and 2006-05-05. The current example
-has no state events. For a thorough description of all possibilities see the section on AgroManagement in the
-Reference Guide (Chapter 3).
+在当前示例中，生产活动开始于 2006-01-01，其中有一个 spring-wheat 的作物历，作物从 2006-03-31 出苗，收获日期为 2006-08-20，或在该日期前作物达到成熟时提前收获。接下来定义了两个定时施氮肥事件，分别在 2006-04-10 和 2006-05-05。当前示例没有状态事件。更多关于所有可能性的详细说明，请参考 Reference Guide（第3章）中 AgroManagement 部分。
 
-Loading the agromanagement definition must by done with the YAMLAgroManagementReader::
+agromanagement 的定义需要通过 YAMLAgroManagementReader 进行加载：
 
     >>> from pcse.input import YAMLAgroManagementReader
     >>> agromanagement = YAMLAgroManagementReader(os.path.join(data_dir, "lintul3_springwheat.amgt"))
@@ -454,15 +348,15 @@ Loading the agromanagement definition must by done with the YAMLAgroManagementRe
           name: Nitrogen application table
 
 
-Starting and running the LINTUL3 model
+启动和运行 LINTUL3 模型
 ......................................
-We have now all parameters, weather data and agromanagement information available to start the LINTUL3 model::
+现在我们已经拥有了所有的参数、气象数据和 agromanagement 信息，可以开始运行 LINTUL3 模型::
 
     >>> from pcse.models import LINTUL3
     >>> lintul3 = LINTUL3(parameterprovider, weatherdataprovider, agromanagement)
     >>> lintul3.run_till_terminate()
 
-Next, we can easily get the output from the model using the get_output() method and turn it into a pandas DataFrame::
+接下来，我们可以很容易地通过 get_output() 方法获取模型输出，并将其转换为 pandas DataFrame：:
 
     >>> output = lintul3.get_output()
     >>> df = pd.DataFrame(output).set_index("day")
@@ -491,8 +385,7 @@ Next, we can easily get the output from the model using the get_output() method 
     2006-07-31  90.635216  15.600845  15.195850  184.991591  268.985974
     2006-08-01  91.233828  15.002234  14.739974  184.991591  268.985974
 
-Finally, we can visualize the results from the pandas DataFrame with a few commands if your
-environment supports plotting::
+最后，如果你的环境支持绘图，我们可以用几条命令从 pandas DataFrame 可视化结果：
 
     >>> fig, axes = plt.subplots(nrows=9, ncols=2, figsize=(16,40))
     >>> for key, axis in zip(df.columns, axes.flatten()):

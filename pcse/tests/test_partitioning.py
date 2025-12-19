@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl)，2024年3月
 import unittest
 from datetime import date
 
@@ -9,8 +9,7 @@ from ..base import VariableKiosk
 
 #----------------------------------------------------------------------------
 class Test_DVS_Partitioning(unittest.TestCase):
-    """Unit test for DVS_Partitioning class.
-    """
+    """DVS_Partitioning 类的单元测试。"""
     DVS_ref = [0.1, 0.5, 1, 1.2, 1.5, 2, 2.5, -0.5]
     FR_ref = {-0.5: 0.5, 0.1: 0.5, 0.5: 0.12999999523162842,
               1: 0.019999999552965164, 1.2: 0.0, 1.5: 0.0, 2: 0.0, 2.5: 0.0}
@@ -32,7 +31,7 @@ class Test_DVS_Partitioning(unittest.TestCase):
                 0.95,1, 1,0, 2,0, 0,0, 0,0]
         cropdata = {"FRTB":FRTB, "FLTB":FLTB, "FSTB":FSTB, "FOTB":FOTB}
         self.kiosk = VariableKiosk()
-        # Register DVS with the kiosk
+        # 注册 DVS 到 kiosk
         self.kiosk.register_variable(1, "DVS", type="S", publish=True)
         self.kiosk.set_variable(1, "DVS", 0.)
         dummyday = date(2000,1,1)
@@ -49,7 +48,7 @@ class Test_DVS_Partitioning(unittest.TestCase):
             self.assertAlmostEqual(FO, self.FO_ref[dvs], 5)
 
 def suite():
-    """ This defines all the tests of a module"""
+    """ 定义该模块的所有单元测试 """
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(Test_DVS_Partitioning))
     return suite

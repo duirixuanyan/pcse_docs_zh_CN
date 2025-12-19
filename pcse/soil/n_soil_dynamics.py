@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 
 from pcse.traitlets import Float
 from pcse.decorators import prepare_rates, prepare_states
@@ -10,19 +10,19 @@ from pcse import signals
 
 
 class N_PotentialProduction(SimulationObject):
-    """Provides unlimited soil N/P/K for potential production simulations.
+    """为潜在生产模拟提供无限的土壤N/P/K。
 
-    NAVAIL just remains 100 kg/ha whatever the crop takes.
+    无论作物吸收多少，NAVAIL 始终保持在 100 kg/ha。
     """
 
     class StateVariables(StatesTemplate):
-        NAVAIL = Float(-99.)  # total mineral N from soil and fertiliser  kg N ha-1
+        NAVAIL = Float(-99.)  # 土壤和肥料中可利用的总矿质N，单位 kg N ha-1
 
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE instance
-        :param cropdata: dictionary with WOFOST cropdata key/value pairs
+        :param day: 模拟开始日期
+        :param kiosk: 本PCSE实例的变量kiosk
+        :param cropdata: WOFOST作物数据的键/值对字典
         """
         self.states = self.StateVariables(kiosk, publish=["NAVAIL"], NAVAIL=100.)
 
@@ -35,110 +35,96 @@ class N_PotentialProduction(SimulationObject):
 
 
 class N_Soil_Dynamics(SimulationObject):
-    """A simple module for soil N dynamics.
+    """土壤氮动力学的简单模块。
 
-    This modules represents the soil as a bucket for available N consisting
-    of two components: 1) a native soil supply which consists of an initial
-    amount of N which will become available with a fixed fraction every day
-    and 2) an external supply which is computed as an amount of N supplied
-    and multiplied by a recovery fraction in order to have an effective amount of
-    N that is available for crop growth.
+    此模块将土壤表征为可用N的一个水桶，由两个部分组成：
+    1）原生土壤供给，包括一定初始量的N，并且每天有固定比例变为可用N；
+    2）外源供给，根据提供的N量并乘以回收系数，得到可被作物吸收的有效N量。
 
-    This module does not simulate any soil physiological processes and is only
-    a book-keeping approach for N availability. On the other hand, it
-    requires no detailed soil parameters. Only an initial soil amount, the
-    fertilizer inputs, a recovery fraction and a background supply.
+    此模块不模拟任何土壤生理过程，仅作为N可用性的记账方法。因此无需详细的土壤参数，只需初始土壤N量、施肥输入、回收系数和背景供给即可。
 
-    **Simulation parameters**
+    **模拟参数**
 
-    ============  ============================================= =======  ==============
-     Name          Description                                   Type     Unit
-    ============  ============================================= =======  ==============
-    NSOILBASE     Base soil supply of N available through        SSi      |kg ha-1|
-                  mineralisation
-    NSOILBASE_FR  Fraction of base soil N that comes available   SSi        -
-                  every day
-    NAVAILI       Initial N available in the N pool              SSi      |kg ha-1|
-    BG_N_SUPPLY   Background supply of N through atmospheric     SSi      |kg ha-1 d-1|
-                  deposition.
-    ============  ============================================= =======  ==============
+    ============  =========================================== =======  ==============
+     名称          说明                                         类型     单位
+    ============  =========================================== =======  ==============
+    NSOILBASE     通过矿化作用可用的基础土壤N供给量              SSi      |kg ha-1|
+    NSOILBASE_FR  每天有多少比例的基础土壤N可被释放               SSi        -
+    NAVAILI       初始N池中可用N的数量                            SSi      |kg ha-1|
+    BG_N_SUPPLY   大气沉降等背景N供给                             SSi      |kg ha-1 d-1|
+    ============  =========================================== =======  ==============
 
 
-    **State variables**
+    **状态变量**
 
-    =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
-    =======  ================================================= ==== ============
-     NSOIL    total mineral soil N available at start of         N    [kg ha-1]
-              growth period
-     NAVAIL   Total mineral N from soil and fertiliser           Y    |kg ha-1|
-    =======  ================================================= ==== ============
+    =======  =========================================== ==== ============
+     名称     说明                                       发布      单位
+    =======  =========================================== ==== ============
+     NSOIL    生长期开始时土壤可用的总矿质N                 N    [kg ha-1]
+     NAVAIL   土壤和肥料中可用的N总量                      Y    |kg ha-1|
+    =======  =========================================== ==== ============
 
-    **Rate variables**
+    **速率变量**
 
-    ==============  ================================================= ==== =============
-     Name            Description                                       Pbl      Unit
-    ==============  ================================================= ==== =============
-    RNSOIL           Rate of change on total soil mineral N            N   |kg ha-1 d-1|
-    RNAVAIL          Total change in N availability                    N   |kg ha-1 d-1|
+    =============  ========================================= ==== =============
+     名称            说明                                    发布     单位
+    =============  ========================================= ==== =============
+    RNSOIL         土壤矿质N总量的变化速率                     N   |kg ha-1 d-1|
+    RNAVAIL        可用N总量的变化速率                         N   |kg ha-1 d-1|
+    FERT_N_SUPPLY  氮肥供应量。                                N   |kg ha-1 d-1|
+                   此值由AgroManager模块通过事件机制提供。
+                   详细内容见下方的信号部分。
+    =============  ========================================= ==== =============
 
-    # Rate of fertilizer supply for N/P/K [kg/ha/day]
-    FERT_N_SUPPLY    Supply of fertilizer N. This will be supplied     N   |kg ha-1 d-1|
-                     by the AgroManager module through the event
-                     mechanism. See the section on signals below.
-    ==============  ================================================= ==== =============
+    **接收和发送的信号**
 
-    **Signals send or handled**
+    `N_Soil_Dynamics` 接收下列信号：
+        * APPLY_N: 当有N肥料外源输入时将收到该信号。
+          详见 `_on_APPLY_N()`。
 
-    `N_Soil_Dynamics` receives the following signals:
-        * APPLY_N: Is received when an external input from N fertilizer
-          is provided. See `_on_APPLY_N()` for details.
+    **外部依赖**
 
-    **External dependencies:**
-
-    =========  =================================== ===================  ==============
-     Name       Description                         Provided by          Unit
-    =========  =================================== ===================  ==============
-    DVS        Crop development stage              DVS_Phenology           -
-    TRA        Actual crop transpiration           Evapotranspiration     |cm|
-               increase
-    TRAMX      Potential crop transpiration        Evapotranspiration     |cm|
-               increase
-    RNuptake   Rate of N uptake by the crop        NPK_Demand_Uptake     |kg ha-1 d-1|
-    =========  =================================== ===================  ==============
+    =========  =============================== ===================  ==============
+     名称       说明                           提供模块               单位
+    =========  =============================== ===================  ==============
+    DVS        作物发育阶段                    DVS_Phenology           -
+    TRA        作物实际蒸腾量增加              Evapotranspiration     |cm|
+    TRAMX      作物潜在蒸腾量增加              Evapotranspiration     |cm|
+    RNuptake   作物对N的吸收速率               NPK_Demand_Uptake     |kg ha-1 d-1|
+    =========  =============================== ===================  ==============
     """
 
-    NSOILI = Float(-99.) # initial soil N amount
-    
+    NSOILI = Float(-99.) # 初始土壤氮含量
+
     class Parameters(ParamTemplate):      
-        NSOILBASE = Float(-99.)  # total mineral soil N available at start of growth period [kg N/ha]
-        NSOILBASE_FR = Float(-99.)  # fraction of soil mineral N coming available per day [day-1]
+        NSOILBASE = Float(-99.)  # 生长期开始时土壤可用矿质氮总量 [kg N/ha]
+        NSOILBASE_FR = Float(-99.)  # 每天有多少比例的矿质氮可以释放出来 [day-1]
         NAVAILI = Float()
         BG_N_SUPPLY = Float()
 
     class StateVariables(StatesTemplate):
-        NSOIL = Float(-99.)  # mineral N available from soil for crop    kg N ha-1
-        NAVAIL = Float(-99.)  # total mineral N from soil and fertiliser  kg N ha-1
+        NSOIL = Float(-99.)  # 土壤中可供作物利用的矿质氮 [kg N/ha]
+        NAVAIL = Float(-99.)  # 土壤和肥料中的总矿质氮 [kg N/ha]
       
     class RateVariables(RatesTemplate):
         RNSOIL = Float(-99.)        
         RNAVAIL = Float(-99.)
 
-        # Rate of fertilizer supply for N [kg/ha/day]
+        # 氮肥的供应速率 [kg/ha/day]
         FERT_N_SUPPLY = Float()
 
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE instance
-        :param cropdata: dictionary with WOFOST cropdata key/value pairs
+        :param day: 模拟开始日期
+        :param kiosk: 当前PCSE实例的变量仓库
+        :param cropdata: WOFOST作物数据的键值对字典
         """
 
         self.params = self.Parameters(parvalues)
         self.rates = self.RateVariables(kiosk)
         self.kiosk = kiosk
         
-        # INITIAL STATES
+        # 初始状态
         p = self.params
         self.NSOILI = p.NSOILBASE
         
@@ -155,7 +141,7 @@ class N_Soil_Dynamics(SimulationObject):
 
         r.RNSOIL = -max(0., min(p.NSOILBASE_FR * self.NSOILI, s.NSOIL))
 
-        # Check uptake rates from crop, if a crop is actually growing
+        # 检查作物对氮的吸收速率，如果作物正在生长
         RNuptake = k.RNuptake if "RNuptake" in self.kiosk else 0.
 
         r.RNAVAIL = r.FERT_N_SUPPLY + p.BG_N_SUPPLY - RNuptake - r.RNSOIL
@@ -165,13 +151,13 @@ class N_Soil_Dynamics(SimulationObject):
         rates = self.rates
         states = self.states
 
-        # mineral N amount in the soil
+        # 土壤中的矿质氮含量
         states.NSOIL += rates.RNSOIL * delt
         
-        # total (soil + fertilizer) N amount in soil
+        # 土壤中（包括肥料）的总氮含量
         states.NAVAIL += rates.RNAVAIL * delt
 
-    def _on_APPLY_N(self, N_amount=None,N_recovery=None):
+    def _on_APPLY_N(self, N_amount=None, N_recovery=None):
         r = self.rates
         r.unlock()
         r.FERT_N_SUPPLY = N_amount * N_recovery

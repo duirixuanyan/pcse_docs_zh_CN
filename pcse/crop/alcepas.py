@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
-"""Basic routines for ALCEPAS onion model for growth of onions under potential production conditions.
+# 版权所有 (c) 2004-2024 瓦赫宁根环境研究院，瓦赫宁根大学
+# Allard de Wit (allard.dewit@wur.nl)，2024年3月
+"""用于在潜在生产条件下洋葱生长（ALCEPAS）模型的基本例程。
 
-The model is described in:
+该模型详见以下文献：
 - De Visser, C. L. M. . “ALCEPAS, an Onion Growth Model Based on SUCROS87.I. Development of the Model.”
   Journal of Horticultural Science 69, no. 3 (January 1994): 501–18. https://doi.org/10.1080/14620316.1994.11516482.
 - De Visser, C. L. M. “ALCEPAS, an Onion Growth Model Based on SUCROS87. II. Validation of the Model.”
@@ -122,42 +122,42 @@ class Phenology(SimulationObject):
         RVRTB = AfgenTrait()
         BOL50 = Float()
         FALL50 = Float()
-        TSOPK = Float() # TSUM until emergence (tsum opkomst)
-        TBASE = Float()
-        CROP_START_TYPE = Unicode()
-        CROP_END_TYPE = Unicode()
+        TSOPK = Float() # 出苗所需的累积温度（tsum opkomst）
+        TBASE = Float() # 发芽的基础温度
+        CROP_START_TYPE = Unicode() # 作物开始的方式
+        CROP_END_TYPE = Unicode()   # 作物结束的方式
 
     class StateVariables(StatesTemplate):
-        DVS = Float()
-        BULBSUM = Float()
-        BULB = Float()
-        EMERGE = Float()
-        DOS = Instance(dt.date)
-        DOE = Instance(dt.date)
-        DOB50 = Instance(dt.date)
-        DOF50 = Instance(dt.date)
-        STAGE = Enum(["emerging", "vegetative", "reproductive", "mature"])
+        DVS = Float()         # 发育阶段
+        BULBSUM = Float()     # 鳞茎温和（累积）
+        BULB = Float()        # 鳞茎生物量
+        EMERGE = Float()      # 出苗进展
+        DOS = Instance(dt.date)   # 播种日期
+        DOE = Instance(dt.date)   # 出苗日期
+        DOB50 = Instance(dt.date) # 50%抽薹日期
+        DOF50 = Instance(dt.date) # 50%成熟日期
+        STAGE = Enum(["emerging", "vegetative", "reproductive", "mature"]) # 生育阶段
 
     class RateVariables(RatesTemplate):
-        DTDEV = Float()
-        DAYFAC = Float()
-        RFR = Float()
-        RFRFAC = Float()
-        DVR = Float()
-        DTSUM = Float()
-        DEMERGE = Float()
+        DTDEV = Float()    # 日发育增量
+        DAYFAC = Float()   # 日长度因子
+        RFR = Float()      # 叶面积对发育的限制因子
+        RFRFAC = Float()   # 发育修正因子
+        DVR = Float()      # 发育进度
+        DTSUM = Float()    # 日积温增量
+        DEMERGE = Float()  # 出苗速率
 
     def initialize(self, day, kiosk, parvalues):
         self.params = self.Parameters(parvalues)
         self.rates = self.RateVariables(kiosk)
-        if parvalues["CROP_START_TYPE"] == "sowing":
-            stage = "emerging"
-            dos = day
+        if parvalues["CROP_START_TYPE"] == "sowing": # 如果为播种
+            stage = "emerging"      # 阶段为出苗
+            dos = day               # 记录播种日期
             doe = None
-        else:
-            stage = "vegetative"
+        else:                       # 如果为移栽或其他
+            stage = "vegetative"    # 阶段为营养生长
             dos = None
-            doe = day
+            doe = day               # 记录出苗日期
         self.states = self.StateVariables(kiosk, DVS=0., BULBSUM=0., STAGE=stage,
                                           BULB=0., EMERGE=0., DOS=dos, DOE=doe,
                                           DOB50=None, DOF50=None, publish="DVS", )
@@ -169,20 +169,20 @@ class Phenology(SimulationObject):
         k = self.kiosk
         p = self.params
 
-        if s.STAGE == "emerging":
-            r.DEMERGE = max(0, drv.TEMP - p.TBASE)
+        if s.STAGE == "emerging":  # 出苗期
+            r.DEMERGE = max(0, drv.TEMP - p.TBASE) # 当前温度高于基础温度才积累
             r.DTSUM = 0.
             r.DVR = 0.
-        elif s.STAGE == "vegetative":
-            r.DTDEV = max(0., drv.TEMP - p.TBAS)
-            DL = daylength(day, drv.LAT)
-            r.DAYFAC = p.DAGTB(DL)
-            r.RFR = exp(-0.222 * k.LAI)
-            r.RFRFAC = p.RVRTB(r.RFR)
+        elif s.STAGE == "vegetative": # 营养生长期
+            r.DTDEV = max(0., drv.TEMP - p.TBAS) # 日发育增量
+            DL = daylength(day, drv.LAT)         # 日长度
+            r.DAYFAC = p.DAGTB(DL)               # 日长度修正因子
+            r.RFR = exp(-0.222 * k.LAI)          # 叶面积限制因子
+            r.RFRFAC = p.RVRTB(r.RFR)            # 发育修正因子
             r.DEMERGE = 0.
-            r.DTSUM = r.DTDEV * r.DAYFAC * r.RFRFAC
-            r.DVR = r.DTSUM/p.BOL50
-        else:
+            r.DTSUM = r.DTDEV * r.DAYFAC * r.RFRFAC # 日积温
+            r.DVR = r.DTSUM/p.BOL50                 # 发育进度
+        else: # 生殖期及成熟期
             r.DEMERGE = 0.
             r.DTDEV = max(0., drv.TEMP - p.TBAS)
             r.DTSUM = r.DTDEV
@@ -194,81 +194,80 @@ class Phenology(SimulationObject):
         r = self.rates
         p = self.params
 
-        BULB = 0.
-        s.EMERGE += r.DEMERGE * delt
-        s.BULBSUM += r.DTSUM * delt
-        s.DVS += r.DVR * delt
-        if s.STAGE == "emerging":
+        BULB = 0. # 鳞茎初始为0
+        s.EMERGE += r.DEMERGE * delt           # 累加出苗进展
+        s.BULBSUM += r.DTSUM * delt            # 累加鳞茎日温和
+        s.DVS += r.DVR * delt                  # 累加发育阶段进度
+        if s.STAGE == "emerging":              # 出苗期
             if s.EMERGE >= p.TSOPK:
-                s.STAGE = "vegetative"
-                s.DOE = day
-        elif s.STAGE == "vegetative":
-            BULB = 0.3 + 100.45 * (exp(-exp(-0.0293*(s.BULBSUM - 91.9))))
+                s.STAGE = "vegetative"         # 达到出苗温和，进入营养生长期
+                s.DOE = day                    # 记录出苗日期
+        elif s.STAGE == "vegetative":          # 营养生长期
+            BULB = 0.3 + 100.45 * (exp(-exp(-0.0293*(s.BULBSUM - 91.9)))) # 鳞茎生物量计算
             if s.DVS >= 1.0:
-                s.STAGE = "reproductive"
-                s.DOB50 = day
-        elif s.STAGE == "reproductive":
-            BULB = 0.3 + 100.45 * (exp(-exp(-0.0293*(s.BULBSUM - 91.9))))
+                s.STAGE = "reproductive"       # 达到发育阶段1进入生殖期
+                s.DOB50 = day                  # 50%抽薹日期
+        elif s.STAGE == "reproductive":        # 生殖期
+            BULB = 0.3 + 100.45 * (exp(-exp(-0.0293*(s.BULBSUM - 91.9)))) # 鳞茎生物量
             if s.DVS >= 2.0:
-                print("Reached maturity at day %s" % day)
-                s.STAGE = "mature"
-                s.DOF50 = day
-                if p.CROP_END_TYPE == "maturity":
+                print("Reached maturity at day %s" % day) # msg不翻译
+                s.STAGE = "mature"             # 达到发育阶段2进入成熟期
+                s.DOF50 = day                  # 50%成熟日期
+                if p.CROP_END_TYPE == "maturity": # 终止方式为成熟
+                    # 发送作物生命周期完成信号
                     self._send_signal(signal=signals.crop_finish, day=day,
                                       finish_type="MATURITY", crop_delete=True)
-        else:  # Maturity not more changes in phenological stage
-            BULB = 0.3 + 100.45 * (exp(-exp(-0.0293*(s.BULBSUM - 91.9))))
+        else:  # 成熟期，生育阶段不再变化
+            BULB = 0.3 + 100.45 * (exp(-exp(-0.0293*(s.BULBSUM - 91.9)))) # 鳞茎生物量不再变化
 
-        s.BULB = limit(0., 100., BULB)
+        s.BULB = limit(0., 100., BULB)         # 限定鳞茎生物量在[0,100]
+
 
 
 class LeafDynamics(SimulationObject):
-    """Leaf dynamics for the ALCEPAS crop model.
+    """ALCEPAS作物模型的叶片动态模块。
 
+    *模拟参数* （在cropdata字典中提供）
 
-    *Simulation parameters* (provide in cropdata dictionary)
+    =======  ================================== =======  ===============
+     名称         描述                            类型      单位
+    =======  ================================== =======  ===============
+    RGRLAI   LAI最大相对增长速率                  SCr     ha ha-1 d-1
+    SPAN     叶片在35摄氏度下的寿命                SCr     |d|
+    TBASE    叶片衰老的下限温度阈值                SCr     |C|
+    PERDL    由水分胁迫引起的                     SCr
+              最大叶片死亡速率
+    TDWI     初始作物干物重                        SCr     |kg ha-1|
+    KDIFTB   可见散射光的消光系数，                TCr
+              DVS的函数
+    SLATB    比叶面积，DVS的函数                    TCr     |ha kg-1|
+    =======  ================================== =======  ===============
 
-    =======  ============================================= =======  ============
-     Name     Description                                   Type     Unit
-    =======  ============================================= =======  ============
-    RGRLAI   Maximum relative increase in LAI.              SCr     ha ha-1 d-1
-    SPAN     Life span of leaves growing at 35 Celsius      SCr     |d|
-    TBASE    Lower threshold temp. for ageing of leaves     SCr     |C|
-    PERDL    Max. relative death rate of leaves due to      SCr
-             water stress
-    TDWI     Initial total crop dry weight                  SCr     |kg ha-1|
-    KDIFTB   Extinction coefficient for diffuse visible     TCr
-             light as function of DVS
-    SLATB    Specific leaf area as a function of DVS        TCr     |ha kg-1|
-    =======  ============================================= =======  ============
+    *状态变量*
 
-    *State variables*
+    =======  ============================== ==== ============
+     名称         描述                       Pbl      单位
+    =======  ============================== ==== ============
+    XXX      xxxxxxxxxxxxxxxxxx              Y|N   |kg ha-1|
+    =======  ============================== ==== ============
 
-    =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
-    =======  ================================================= ==== ============
-    XXX      xxxxxxxxxxxxxxxxxx                                Y|N   |kg ha-1|
-    =======  ================================================= ==== ============
+    *速率变量*
 
+    =======  ============================== ==== ============
+     名称         描述                       Pbl      单位
+    =======  ============================== ==== ============
+    xxxx     xxxxxxxxxxx                     N   |kg ha-1 d-1|
+    =======  ============================== ==== ============
 
-    *Rate variables*
+    *外部依赖：*
 
-    =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
-    =======  ================================================= ==== ============
-    xxxx     xxxxxxxxxxx                                        N   |kg ha-1 d-1|
-    =======  ================================================= ==== ============
-
-
-    *External dependencies:*
-
-    ======== ============================== =============================== ===========
-     Name     Description                         Provided by               Unit
-    ======== ============================== =============================== ===========
-    ======== ============================== =============================== ===========
+    ========  ======================= ======================== ===========
+     名称           描述                  由谁提供                 单位
+    ========  ======================= ======================== ===========
+    ========  ======================= ======================== ===========
     """
 
-    # parameter for initial LAI as function of plant density
+    # 初始LAI随植株密度变化的参数
     LAII = Float(-99)
     SLAN = Float(-99)
     SLAR = Float(-99)
@@ -282,10 +281,10 @@ class LeafDynamics(SimulationObject):
         AGEB = Float(-99)
         AGEC = Float(-99)
         AGED = Float(-99)
-        LAGR = Float(-99.)  # Grens tot waar LAI berekend wordt met exp. functie
-        GEGR = Float(-99.)  # Totaal droge stof bij LAGR
-        LA0 = Float(-99)    # LAI bij opkomst afhankelijk van plantdichtheid (NPL)
-        NPL = Float(-99)    # Plant dichtheid
+        LAGR = Float(-99.)  # LAI按指数函数计算的上限
+        GEGR = Float(-99.)  # 达到LAGR时的总干物质
+        LA0 = Float(-99)    # 出苗时的LAI，取决于植株密度（NPL）
+        NPL = Float(-99)    # 植株密度
         RGRL = Float(-99)
         GTSLA = Float(-99)
         TTOP = Float(-99)
@@ -317,34 +316,33 @@ class LeafDynamics(SimulationObject):
 
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE  instance
-        :param parvalues: `ParameterProvider` object providing parameters as
-                key/value pairs
+        :param day: 模拟的开始日期
+        :param kiosk: 本PCSE实例的变量kiosk
+        :param parvalues: `ParameterProvider`对象，以key/value对提供参数
         """
 
         self.kiosk = kiosk
         self.params = self.Parameters(parvalues)
         self.rates = self.RateVariables(kiosk, publish=["GLV"])
 
-        # CALCULATE INITIAL STATE VARIABLES
+        # 计算初始状态变量
         p = self.params
         self.LAII = p.NPL * p.LA0 * 1.E-4
         self.SLAN = p.SLANTB(p.NPL)
         self.SLAR = p.SLARTB(p.NPL)
 
-        # Initial leaf biomass
+        # 初始叶片生物量
         WLVG = 0.
         WLVD = 0.
         WLV = WLVG + WLVD
 
-        # First leaf class (SLA, age and weight)
+        # 第一叶片类（SLA、年龄和质量）
         LV = deque([WLV])
         LVAGE = deque([0.])
         SLABC = deque([0.])
         SPAN = deque([0.])
 
-        # Initialize StateVariables object
+        # 初始化状态变量对象
         self.states = self.StateVariables(kiosk, publish=["LAI", "WLV", "WLVG", "WLVD"],
                                           LV=LV, LVAGE=LVAGE, SPAN=SPAN, SLABC=SLABC,
                                           LAIMAX=0., TSUMEM=0., LAI=self.LAII, WLV=WLV,
@@ -363,17 +361,15 @@ class LeafDynamics(SimulationObject):
         p = self.params
         k = self.kiosk
 
-        # Growth rate leaves
-        # weight of of shoots
+        # 叶片增长速率
+        # 地上部分的质量
         GSH = k.FSH * k.GTW
-        # weight of new leaves as fraction of shoots
+        # 新叶片作为地上部分比例的质量
         r.GLV = k.FLV * GSH
 
-        # Determine how much leaf biomass classes have to die in states.LV,
-        # given the a life span > SPAN, these classes will be accumulated
-        # in DLV. The dying leaf area is accumulated in GLAD
-        # Note that the actual leaf death is imposed on the array LV during the
-        # state integration step.
+        # 确定在states.LV中有多少叶片生物量类别需要死亡，
+        # 假设寿命大于SPAN，这些类别将被累计在DLV中。即将死亡的叶面积累计在GLAD中
+        # 注意，实际叶片死亡在状态积分步骤中会加到LV数组上。
         DLV = 0.0
         GLAD = 0.0
         for lv, lvage, span, sla in zip(s.LV, s.LVAGE, s.SPAN, s.SLABC):
@@ -383,12 +379,12 @@ class LeafDynamics(SimulationObject):
         r.DLV = DLV
         r.GLAD = GLAD
 
-        # physiologic ageing of leaves per time step
+        # 每时间步叶片的生理老化
         DTDEV = max(0, drv.TEMP - p.TBAS)
         r.FYSAGE = DTDEV
         r.SPANT = self.calc_SPAN()
 
-        # Increase and leaf area and SLA
+        # 叶面积和SLA的增长
         r.GLA, r.SLAT = self.leaf_area_growth(drv)
 
     @prepare_states
@@ -397,53 +393,52 @@ class LeafDynamics(SimulationObject):
         rates = self.rates
         states = self.states
 
-        # --------- leave death ---------
+        # --------- 叶片死亡处理 ---------
         tLV = array('d', states.LV)
         tSLABC = array('d', states.SLABC)
         tLVAGE = array('d', states.LVAGE)
         tSPAN = array('d', states.SPAN)
         tDLV = rates.DLV
 
-        # leaf death is imposed on leaves by removing leave classes from the
-        # right side of the deque.
+        # 通过从右侧移除叶片类别，将叶片死亡加到叶片类上
         for LVweigth in reversed(states.LV):
             if tDLV > 0.:
-                if tDLV >= LVweigth:  # remove complete leaf class from deque
+                if tDLV >= LVweigth:  # 从deque中移除整个叶片类别
                     tDLV -= LVweigth
                     tLV.pop()
                     tLVAGE.pop()
                     tSLABC.pop()
                     tSPAN.pop()
-                else:  # Decrease value of oldest (rightmost) leave class
+                else:  # 减少最老（最右侧）叶片类别的值
                     tLV[-1] -= tDLV
                     tDLV = 0.
             else:
                 break
 
-        # Integration of physiological age
+        # 生理年龄的积分
         tLVAGE = deque([age + rates.FYSAGE for age in tLVAGE])
         tLV = deque(tLV)
         tSLABC = deque(tSLABC)
         tSPAN = deque(tSPAN)
 
-        # --------- leave growth ---------
-        # new leaves in class 1
+        # --------- 叶片生长处理 ---------
+        # 新叶片加入第一类
         tLV.appendleft(rates.GLV)
         tSLABC.appendleft(rates.SLAT)
         tLVAGE.appendleft(0.)
         tSPAN.appendleft(rates.SPANT)
 
-        # calculation of new leaf area
+        # 计算新的叶面积
 #        states.LAI = sum([lv * sla for lv, sla in zip(tLV, tSLABC)])
         states.LAI += rates.GLA
         states.LAIMAX = max(states.LAI, states.LAIMAX)
 
-        # Update leaf biomass states
+        # 更新叶片生物量状态
         states.WLVG = sum(tLV)
         states.WLVD += rates.DLV
         states.WLV = states.WLVG + states.WLVD
 
-        # Store final leaf biomass deques
+        # 保存最终的叶片生物量双端队列
         self.states.LV = tLV
         self.states.SLABC = tSLABC
         self.states.LVAGE = tLVAGE
@@ -452,7 +447,7 @@ class LeafDynamics(SimulationObject):
         self.states.TSUMEM += self.rates.DTSUMM
 
     def leaf_area_growth(self, drv):
-        # Computes daily increase of leaf area index (ha leaf/ ha ground/ d)
+        # 计算每日叶面积指数的增加量（公顷叶/公顷地面/天）
         p = self.params
         k = self.kiosk
         s = self.states
@@ -466,18 +461,18 @@ class LeafDynamics(SimulationObject):
             r.DTSUMM = 0.
 
         if s.LAI < p.LAGR and k.TADRW < p.GEGR:
-            # leaf growth during juvenile growth:
+            # 幼苗生长期的叶片生长：
             SLA = (self.SLAN + self.SLAR * p.GTSLA ** k.DVS) * 1/100000.
             GLA = self.LAII * p.RGRL * r.DTSUMM * exp(p.RGRL * s.TSUMEM)
-            # Adjust SLA for youngest leaves under exponential growth conditions
+            # 在指数生长期调节最年轻叶片的SLA
             if r.GLV > 0.:
                 SLA = GLA/r.GLV
         else:
-            # leaf growth during mature plant growth:
+            # 成熟植株生长期的叶片生长：
             SLA = (self.SLAN + self.SLAR * p.GTSLA ** k.DVS) * 1/100000.
             GLA = (SLA * r.GLV)
 
-        # correct for leaf death
+        # 考虑叶片死亡的修正
         GLA = GLA - r.GLAD
 
         return GLA, SLA
@@ -524,9 +519,9 @@ class BulbDynamics(SimulationObject):
     def calc_rates(self, day, drv):
         k = self.kiosk
         r = self.rates
-        # increase in weight of shoots
+        # 茎重的增加
         GSH = k.FSH * k.GTW
-        # Increase in weight of bulb
+        # 鳞茎重的增加
         r.GSO = k.FSO * GSH
 
     @prepare_states
@@ -575,23 +570,23 @@ class ALCEPAS(SimulationObject):
         k = self.kiosk
         r = self.rates
 
-        # phenological development
+        # 物候发育
         self.phenology.calc_rates(day, drv)
         if self.get_variable("STAGE") == "emerging":
-            self.touch()  # No need to continue before emergence
+            self.touch()  # 出苗前无需继续
             return
 
-        # Assimilation and respiration
+        # 光合及呼吸
         GPHOT = self.assimilation(day, drv)
         MAINT = self.respiration(day, drv)
 
-        # Partitioning and assimilate requirements for dry matter conversion (kgCH20 / kgDM)
+        # 分配以及干物质转化所需同化物（kgCH20 / kgDM）
         self.partitioning(day, drv)
         ASRQ = k.FSH * (p.ASRQLV * k.FLV + p.ASRQSO * k.FSO) + p.ASRQRT * k.FRT
-        # Total dry matter growth
+        # 干物质总生长量
         r.GTW = (GPHOT - MAINT) / ASRQ
 
-        # Partitioning and dynamics of different plant organs
+        # 各器官的分配及动态
         self.leafdynamics.calc_rates(day, drv)
         self.rootdynamics.calc_rates(day, drv)
         self.bulbdynamics.calc_rates(day, drv)

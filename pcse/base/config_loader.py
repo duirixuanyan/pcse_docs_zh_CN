@@ -5,9 +5,9 @@ import textwrap
 
 
 class ConfigurationLoader(object):
-    """Class for loading the model configuration from a PCSE configuration files
+    """用于从PCSE配置文件加载模型配置的类
 
-        :param config: string given file name containing model configuration
+        :param config: 包含模型配置的文件名字符串
         """
     _required_attr = ("CROP", "SOIL", "AGROMANAGEMENT", "OUTPUT_VARS", "OUTPUT_INTERVAL",
                       "OUTPUT_INTERVAL_DAYS", "SUMMARY_OUTPUT_VARS")
@@ -22,9 +22,8 @@ class ConfigurationLoader(object):
                    "storing the configuration of the model PCSE should run.")
             raise exc.PCSEError(msg)
 
-        # check if model configuration file is an absolute or relative path. If
-        # not assume that it is located in the 'conf/' folder in the PCSE
-        # distribution
+        # 检查模型配置文件是绝对路径还是相对路径
+        # 如果不是，假设它位于PCSE分发版的 'conf/' 文件夹中
         config = Path(config)
         if config.is_absolute():
             mconf = config
@@ -34,14 +33,14 @@ class ConfigurationLoader(object):
             mconf = pcse_dir / "conf" / config
         model_config_file = mconf.resolve()
 
-        # check that configuration file exists
+        # 检查配置文件是否存在
         if not model_config_file.exists():
             msg = "PCSE model configuration file does not exist: %s" % model_config_file
             raise exc.PCSEError(msg)
-        # store for later use
+        # 保存以备后续使用
         self.model_config_file = model_config_file
 
-        # Load file using execfile
+        # 使用execfile加载文件
         try:
             loc = {}
             bytecode = compile(open(model_config_file).read(), model_config_file, 'exec')
@@ -51,7 +50,7 @@ class ConfigurationLoader(object):
             msg = msg % (model_config_file, e)
             raise exc.PCSEError(msg)
 
-        # Add the descriptive header for later use
+        # 添加描述性头部以备后续使用
         if "__doc__" in loc:
             desc = loc.pop("__doc__")
             if len(desc) > 0:
@@ -59,13 +58,13 @@ class ConfigurationLoader(object):
                 if self.description[-1] != "\n":
                     self.description += "\n"
 
-        # Loop through the attributes in the configuration file
+        # 遍历配置文件中的属性
         for key, value in list(loc.items()):
             if key.isupper():
                 self.defined_attr.append(key)
                 setattr(self, key, value)
 
-        # Check for any missing compulsary attributes
+        # 检查是否有缺失的强制属性
         req = set(self._required_attr)
         diff = req.difference(set(self.defined_attr))
         if diff:
@@ -73,6 +72,7 @@ class ConfigurationLoader(object):
             raise exc.PCSEError(msg)
 
     def __str__(self):
+        # 将模型配置文件的信息输出为字符串
         msg = "PCSE ConfigurationLoader from file:\n"
         msg += "  %s\n\n" % self.model_config_file
         if self.description is not None:
@@ -87,30 +87,28 @@ class ConfigurationLoader(object):
         return msg
 
     def update_output_variable_lists(self, output_vars=None, summary_vars=None, terminal_vars=None):
-        """Updates the lists of output variables that are defined in the configuration file.
+        """
+        # 更新配置文件中定义的输出变量列表
 
-        This is useful because sometimes you want the flexibility to get access to an additional model
-        variable which is not in the standard list of variables defined in the model configuration file.
-        The more elegant way is to define your own configuration file, but this adds some flexibility
-        particularly for use in jupyter notebooks and exploratory analysis.
+        # 这样做的好处是，有时你可能希望灵活地访问模型配置文件标准变量列表之外的其他模型变量。
+        # 更优雅的方式是定义你自己的配置文件，但这种方式在jupyter notebook和探索性分析中特别灵活。
 
-        Note that there is a different behaviour given the type of the variable provided. List and string
-        inputs will extend the list of variables, while set/tuple inputs will replace the current list.
+        # 注意：根据变量类型，表现会有所不同。list和string输入会扩展变量列表，而set/tuple输入会替换当前列表。
 
-        :param output_vars: the variable names to add/replace for the OUTPUT_VARS configuration variable
-        :param summary_vars: the variable names to add/replace for the SUMMARY_OUTPUT_VARS configuration variable
-        :param terminal_vars: the variable names to add/replace for the TERMINAL_OUTPUT_VARS configuration variable
+        :param output_vars: 要添加/替换到OUTPUT_VARS配置变量的变量名
+        :param summary_vars: 要添加/替换到SUMMARY_OUTPUT_VARS配置变量的变量名
+        :param terminal_vars: 要添加/替换到TERMINAL_OUTPUT_VARS配置变量的变量名
         """
         config_varnames = ["OUTPUT_VARS", "SUMMARY_OUTPUT_VARS", "TERMINAL_OUTPUT_VARS"]
         for varitems, config_varname in zip([output_vars, summary_vars, terminal_vars], config_varnames):
             if varitems is None:
                 continue
             else:
-                if isinstance(varitems, str):  # A string: we extend the current list
+                if isinstance(varitems, str):  # 字符串：扩展当前列表
                     getattr(self, config_varname).extend(varitems.split())
-                elif isinstance(varitems, list):  # a list: we extend the current list
+                elif isinstance(varitems, list):  # 列表：扩展当前列表
                     getattr(self, config_varname).extend(varitems)
-                elif isinstance(varitems, (tuple, set)):  # tuple/set we replace the current list
+                elif isinstance(varitems, (tuple, set)):  # 元组/集合：替换当前列表
                     setattr(self, config_varname, list(varitems))
                 else:
                     msg = "Unrecognized input for `output_vars` to engine(): %s" % output_vars

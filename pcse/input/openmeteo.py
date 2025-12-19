@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-# Artificial Intelligence Group, WUR
-# Hilmy Baja (hilmy.baja@wur.nl), February 2025
-# A lot of code borrowed from nasapower.py by Allard de Wit
+# 人工智能组，瓦赫宁根大学
+# Hilmy Baja (hilmy.baja@wur.nl)，2025年2月
+# 大量代码借鉴自 Allard de Wit 的 nasapower.py
 
 import os
 import datetime
@@ -21,70 +21,67 @@ from pcse.settings import settings
 
 
 class OpenMeteoWeatherDataProvider(WeatherDataProvider):
-    """A weather provider that uses the Open Meteo weather API.
+    """一个使用 Open Meteo 天气 API 的天气数据提供者。
 
-    :param latitude: latitude to request weather data for
-    :param longitude: longitude to request weather data for
-    :param timezone: timezone for day aggregation (str, default 'UTC')
-    :param openmeteo_model: model to use, default 'best_match'
-    :param start_date: Starting date from which to retrieve data (str, default 'UTC')
-    :keyword ETmodel: "PM"|"P" for selecting penman-monteith or Penman
-        method for reference evapotranspiration. Defaults to "PM".
-    :keyword forecast: Include a weather forecast, default False
-    :keyword force_update: Set to True to force to request fresh data from OpenMeteo website.
+    :param latitude: 需要请求天气数据的纬度
+    :param longitude: 需要请求天气数据的经度
+    :param timezone: 用于日聚合的时区（字符串，默认为 'UTC'）
+    :param openmeteo_model: 使用的气象模型，默认为 'best_match'
+    :param start_date: 开始获取数据的起始日期（字符串，默认为 'UTC'）
+    :keyword ETmodel: "PM"|"P"，选择 Penman-Monteith 或 Penman 方法计算参考蒸散发。默认为 "PM"。
+    :keyword forecast: 是否包含天气预报，默认为 False
+    :keyword force_update: 设为 True 时强制从 OpenMeteo 网站请求最新数据。
 
-    This object only needs a location (latitude and longitude)
-    at initialization.
+    此对象在初始化时仅需提供位置（经度和纬度）。
 
-    There are two important parameters when constructing the object:
-    `openmeteo_model` and `forecast`.
-    The class variables list possible models to use, either for forecasts
-    or historical data.
+    构造对象时有两个重要参数：
+    `openmeteo_model` 和 `forecast`。
+    类变量列举了可用的模型类型，无论是用于预测还是历史数据。
 
-    To utilize a specific model, call it with the appropriate key argument.
-    Be aware that there might be some nuances with using certain models.
-    This hasn't been tested thoroughly, so there might be some issues with the starting
-    date. Please provide an argument for the `start_date` parameter if you find any issues.
-    More info for each model is documented here: https://open-meteo.com/en/docs
+    如需指定模型，可使用对应的关键字参数调用。
+    注意，使用某些模型时可能有一些细微区别。
+    该功能未经严格测试，因此起始日期可能有问题。
+    如遇此类问题，请为 `start_date` 参数提供一个值。
+    各模型的更多信息可参见：https://open-meteo.com/en/docs
 
-    If you don't specify a model, the Open Meteo API will automatically
-    choose the best model for your chosen location.
+    如果未指定模型，Open Meteo API 将自动为您的位置选择最佳模型。
     """
 
-    # Some class Variables
+    # 一些类变量
     HTTP_OK = 200
     angstA = 0.29
     angstB = 0.49
 
-    #  List of forecast and historical weather models for OpenMeteo
-    #  Comments show coverage and spatial resolution
+    # OpenMeteo 的预报和历史天气模型列表
+    # 注释显示了覆盖范围和空间分辨率
     dict_forecast_models = {
-        "best_match": datetime.date(2023, 1, 1),  # global, 0.25deg
-        "arpae_cosmo_5m": datetime.date(2024, 2, 2),  # europe, 5m
-        "bom_access_global": datetime.date(2024, 1, 19),  # global, 0.15deg
-        "gem_seamless": datetime.date(2022, 11, 24),  # global, 0.15deg
-        "jma_gsm": datetime.date(2016, 1, 1),  # global, 0.5deg
-        "icon_seamless": datetime.date(2022, 11, 25),  # global, 11km
-        "ecmwf_ifs025": datetime.date(2024, 2, 4),  # global, 0.25deg
-        "knmi_seamless": datetime.date(2024, 7, 2),  # europe, 2.5km
-        "meteofrance_seamless": datetime.date(2024, 1, 3),  # global 0.25deg
-        "gfs_seamless": datetime.date(2021, 3, 24),  # global 0.11deg
-        "ukmo_seamless": datetime.date(2022, 3, 2),  # global, 0.09deg/10km
+        "best_match": datetime.date(2023, 1, 1),  # 全球, 0.25度
+        "arpae_cosmo_5m": datetime.date(2024, 2, 2),  # 欧洲, 5分钟
+        "bom_access_global": datetime.date(2024, 1, 19),  # 全球, 0.15度
+        "gem_seamless": datetime.date(2022, 11, 24),  # 全球, 0.15度
+        "jma_gsm": datetime.date(2016, 1, 1),  # 全球, 0.5度
+        "icon_seamless": datetime.date(2022, 11, 25),  # 全球, 11公里
+        "ecmwf_ifs025": datetime.date(2024, 2, 4),  # 全球, 0.25度
+        "knmi_seamless": datetime.date(2024, 7, 2),  # 欧洲, 2.5公里
+        "meteofrance_seamless": datetime.date(2024, 1, 3),  # 全球, 0.25度
+        "gfs_seamless": datetime.date(2021, 3, 24),  # 全球, 0.11度
+        "ukmo_seamless": datetime.date(2022, 3, 2),  # 全球, 0.09度/10公里
     }
 
     dict_historical_models = {
-        "best_match": datetime.date(1951, 1, 1), # global, 0.25deg
-        "era5": datetime.date(1941, 1, 1),  # global, 0.25deg
-        "era5_land": datetime.date(1951, 1, 1),  # global, 0.1deg
-        "ecmwf_ifs": datetime.date(2017, 1, 1),  # global, 9km
-        "cerra": datetime.date(1986, 1, 1),  # global, 5km
+        "best_match": datetime.date(1951, 1, 1), # 全球, 0.25度
+        "era5": datetime.date(1941, 1, 1),  # 全球, 0.25度
+        "era5_land": datetime.date(1951, 1, 1),  # 全球, 0.1度
+        "ecmwf_ifs": datetime.date(2017, 1, 1),  # 全球, 9公里
+        "cerra": datetime.date(1986, 1, 1),  # 全球, 5公里
     }
 
+    # 历史模型延迟（日）
     delay_historical_models = {
         "best_match": 10,
-        "era5": 6,  # global, 0.25deg
-        "era5_land": 6,  # global, 0.1deg
-        "ecmwf_ifs": 3,  # global, 9km
+        "era5": 6,  # 全球, 0.25度
+        "era5_land": 6,  # 全球, 0.1度
+        "ecmwf_ifs": 3,  # 全球, 9公里
         "cerra": 1,
     }
 
@@ -99,6 +96,7 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
         forecast: bool = False,
         force_update: bool = False,
     ):
+        # 构造函数，初始化对象属性
         WeatherDataProvider.__init__(self)
 
         self.model = openmeteo_model
@@ -106,7 +104,7 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
         self.start_date = start_date
         self.is_forecast = forecast
 
-        # update start date if using a specific model
+        # 如果使用特定模型，则更新起始日期
         self._check_start_date()
 
         if latitude < -90 or latitude > 90:
@@ -122,20 +120,20 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
 
         self.description = self._get_description
 
+        # 检查缓存
         self._check_cache(force_update)
 
     def _check_cache(self, force_update: bool = False):
-        # Check for existence of a cache file
+        # 检查是否存在缓存文件
         cache_file = self._find_cache_file(self.latitude, self.longitude)
         if cache_file is None or force_update is True:
             msg = "No cache file or forced update, getting data from OpenMeteo Power."
             self.logger.debug(msg)
-            # No cache file, we really have to get the data from the open-meteo server
+            # 没有缓存文件时，从 open-meteo 服务器获取数据
             self._fetch_data(self.start_date)
             return
 
-        # get age of cache file, if age < 90 days then try to load it. If loading fails retrieve data
-        # from the OpenMeteo server .
+        # 获取缓存文件的时间，如果小于90天则尝试加载；如果加载失败，则从 OpenMeteo 服务器获取数据
         r = os.stat(cache_file)
         cache_file_date = datetime.date.fromtimestamp(r.st_mtime)
         age = (datetime.date.today() - cache_file_date).days
@@ -147,10 +145,10 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
             if status is not True:
                 msg = "Loading cache file failed, reloading data from OpenMeteo."
                 self.logger.debug(msg)
-                # Loading cache file failed!
+                # 加载缓存文件失败时，从 open-meteo 服务器获取数据
                 self._fetch_data(self.start_date)
         else:
-            # Cache file is too old. Try loading new data from OpenMeteo
+            # 缓存文件过旧，尝试从 OpenMeteo 获取新数据
             try:
                 msg = "Cache file older then 90 days, reloading data from OpenMeteo."
                 self.logger.debug(msg)
@@ -166,8 +164,8 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
 
     def _fetch_data(self, start_date):
         """
-        Internal method to fetch and prepare weather data for a given date range.
-        Returns a cache file.
+        内部方法，用于根据指定日期范围获取并处理天气数据。
+        返回一个缓存文件。
         """
 
         url = self._get_url(previous_runs=True)
@@ -195,10 +193,10 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
         cache_filename = self._get_cache_filename(self.latitude, self.longitude)
         self._dump(cache_filename)
 
-    # request routine with error checks
+    # 带错误检查的请求例程
     def _get_response(self, url, params):
         try:
-            response = requests.get(url, params=params, timeout=10)
+            response = requests.get(url, params=params, timeout=30)
             self._check_response_status(response)
 
             response_json = response.json()
@@ -214,10 +212,10 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
             raise PCSEError(msg)
 
     def _find_cache_file(self, latitude, longitude):
-        """Try to find a cache file for given latitude/longitude.
+        """
+        尝试查找给定纬度/经度的缓存文件。
 
-        Returns None if the cache file does not exist, else it returns the full path
-        to the cache file.
+        如果缓存文件不存在则返回None，否则返回缓存文件的完整路径。
         """
         cache_filename = self._get_cache_filename(latitude, longitude)
         if os.path.exists(cache_filename):
@@ -226,11 +224,12 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
             return None
 
     def _get_cache_filename(self, latitude, longitude):
-        """Constructs the filename used for cache files given latitude and longitude
+        """
+        构建用于缓存文件的文件名，基于给定的纬度和经度。
 
-        The latitude and longitude is coded into the filename by truncating on
-        0.1 degree. So the cache filename for a point with lat/lon 52.56/-124.78 and using the
-        "knmi_seamless" model will be: OpenMeteoWeatherDataProvider_LAT00525_LON-1247_knmi_.cache
+        纬度和经度通过保留到0.1度位进行编码。例如，纬度/经度为52.56/-124.78且使用
+        “knmi_seamless”模型的点的缓存文件名为:
+        OpenMeteoWeatherDataProvider_LAT00525_LON-1247_knmi_.cache
         """
 
         fname = "%s_LAT%05i_LON%05i_%s.cache" % (self.__class__.__name__,
@@ -240,7 +239,8 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
         return cache_filename
 
     def _load_cache_file(self):
-        """Loads the data from the cache file. Return True if successful.
+        """
+        从缓存文件中加载数据。成功时返回True。
         """
         cache_filename = self._get_cache_filename(self.latitude, self.longitude)
         try:
@@ -254,51 +254,50 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
             return False
 
     def _make_WeatherDataContainers(self, recs):
-        """Create a WeatherDataContainers from recs, compute ET and store the WDC's.
-        """
+        """从recs创建WeatherDataContainers，计算ET并存储WDC。"""
 
         for rec in recs:
-            # Build weather data container from dict 't'
+            # 从字典't'构建 weather data container
             wdc = WeatherDataContainer(**rec)
 
-            # add wdc to dictionary for this date
+            # 将wdc添加到此日期的字典中
             self._store_WeatherDataContainer(wdc, wdc.DAY)
 
     def _prepare_weather_dataframe(self, weather_data):
         """
-        Converts raw Open-Meteo weather data into a single daily DataFrame
-        Currently, it is tailored to the inputs required by PCSE
+        将原始Open-Meteo气象数据转换为单一的日尺度DataFrame
+        当前针对PCSE所需输入进行了定制
 
-        Returns:
-            DataFrame: Daily weather data with dates as index.
+        返回:
+            DataFrame: 以日期为索引的每日气象数据。
         """
-        #  Process daily data
+        # 处理每日数据
         daily = weather_data.get('daily', {})
         df_daily = pd.DataFrame(daily)
-        # Convert the 'time' column to datetime objects and set as index
+        # 将'time'列转换为datetime对象并设置为索引
         df_daily['date'] = pd.to_datetime(df_daily['time'])
         df_daily.set_index('date', inplace=True)
 
-        # Rename daily columns for clarity
+        # 重命名每日数据列以提高可读性
         df_daily.rename(columns={
             'temperature_2m_min': 'TMIN',
             'temperature_2m_max': 'TMAX',
-            'precipitation_sum': 'RAIN',  # in mm/day
-            'shortwave_radiation_sum': 'IRRAD'  # in MJ/m²/day
+            'precipitation_sum': 'RAIN',    # 单位为mm/天
+            'shortwave_radiation_sum': 'IRRAD'  # 单位为MJ/m²/天
         }, inplace=True)
 
-        #  Process hourly data
+        # 处理逐小时数据
         hourly = weather_data.get('hourly', {})
         df_hourly = pd.DataFrame(hourly)
-        # Convert hourly time to datetime objects
+        # 将逐小时的time转换为datetime对象
         df_hourly['date'] = pd.to_datetime(df_hourly['time'])
-        # Set time as the DataFrame index
+        # 设置time为DataFrame的索引
         df_hourly.set_index('date', inplace=True)
 
-        # Compute daily averages from hourly data:
+        # 计算逐小时数据的日均值
         df_hourly.drop(columns=['time'], inplace=True)
         df_hourly_daily = df_hourly.groupby(df_hourly.index.date).mean()
-        # Convert the index back to datetime
+        # 将索引转换回datetime
         df_hourly_daily.index = pd.to_datetime(df_hourly_daily.index)
         df_hourly_daily.rename(columns={
             'temperature_2m': 'TEMP',
@@ -306,19 +305,19 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
             'dewpoint_2m': 'dewpoint'
         }, inplace=True)
 
-        # Merge on the date index (inner join to keep only days that exist in both)
+        # 以date索引进行合并（内连接，仅保留两者都存在的日期）
         df_openmeteo = pd.merge(df_daily, df_hourly_daily, left_index=True, right_index=True, how='inner')
 
-        # Convert irradiation from MJ/m²/day to W/m²/day.
+        # 将太阳辐射从MJ/m²/天转换为W/m²/天
         df_openmeteo['IRRAD'] = df_openmeteo['IRRAD'] * 1e6
 
-        # Convert precipitation from mm/day to cm/day.
+        # 将降水量从mm/天转换为cm/天
         df_openmeteo['RAIN'] = df_openmeteo['RAIN'] * 0.1
 
-        # Convert wind from 10m to 2m
+        # 将风速从10m高度换算为2m高度
         df_openmeteo['WIND'] = wind10to2(df_openmeteo['WIND'])
 
-        # Calculate vapor pressure (in hPa) from dewpoint (°C) using the formula:
+        # 根据露点温度(°C)计算水汽压(hPa), 采用公式：
         # e = 6.108 * exp((17.27 * T_d) / (T_d + 237.3))
         df_openmeteo['VAP'] = (6.108 * np.exp((17.27 * df_openmeteo['dewpoint']) / (df_openmeteo['dewpoint'] + 237.3)))
 
@@ -344,12 +343,12 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
                                         row.VAP, row.WIND,
                                         self.angstA, self.angstB, self.ETmodel)
 
-            #  convert to cm/day
+            # 转换为cm/天
             E0_list.append(E0 / 10.)
             ES0_list.append(ES0 / 10.)
             ET0_list.append(ET0 / 10.)
 
-        # Some warning about copying a slice
+        # 关于复制切片的警告
         df_openmeteo = df_openmeteo.copy()
 
         df_openmeteo.loc[:, "E0"] = E0_list
@@ -379,61 +378,59 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
 
     def calculate_toa_radiation(self, day_of_year):
         """
-        Calculate daily Top-of-Atmosphere shortwave radiation
-        This ToA estimation was taken from the FAO-56 paper.
+        计算每日大气顶短波辐射
+        此大气顶辐射估算方法取自FAO-56文献。
         """
-        G_sc = 1361  # Solar constant (W/m²)
+        G_sc = 1361  # 太阳常数 (W/m²)
 
-        # Earth-Sun distance correction factor
+        # 地日距离修正因子
         d_r = 1 + 0.033 * np.cos(2 * np.pi * day_of_year / 365)
 
-        # Solar declination (radians)
+        # 太阳赤纬角（弧度）
         delta = np.radians(23.45 * np.sin(2 * np.pi * (day_of_year - 81) / 365))
 
-        # Convert latitude to radians
+        # 纬度转换为弧度
         phi = np.radians(self.latitude)
 
-        # Sunset hour angle
+        # 日落时角
         h_s = np.arccos(-np.tan(phi) * np.tan(delta))
 
-        # Updated TOA daily radiation (H0)
+        # 修正后每日大气顶辐射（H0）
         H0 = (24 * 3600 / np.pi) * G_sc * d_r * (
                 np.cos(phi) * np.cos(delta) * np.sin(h_s) + (h_s * np.sin(phi) * np.sin(delta))
         )
 
-        # Convert from J/m²/day to MJ/m²/day
+        # 单位从J/m²/天转换为MJ/m²/天
         H0 = H0 / 1e6
 
         return H0
 
     def _estimate_AngstAB(self, df):
-        """Determine Angstrom A/B parameters from Top-of-Atmosphere estimation and
-        top-of-Canopy (ALLSKY_SFC_SW_DWN) radiation values.
+        """
+        从大气顶估算和冠层顶（ALLSKY_SFC_SW_DWN）辐射数据确定Angstrom A/B参数。
 
-        :param df: dataframe with Openmeteo data
-        :return: tuple of Angstrom A/B values
+        :param df: 包含Openmeteo数据的数据框
+        :return: Angstrom A/B值的元组
 
-        The Angstrom A/B parameters are determined by dividing swv_dwn by toa_dwn
-        and taking the 0.05 percentile for Angstrom A and the 0.98 percentile for
-        Angstrom A+B: toa_dwn*(A+B) approaches the upper envelope while
-        toa_dwn*A approaches the lower envelope of the records of swv_dwn
-        values.
+        Angstrom A/B参数通过swv_dwn与toa_dwn的比值，
+        取0.05分位数为Angstrom A，取0.98分位数为Angstrom A+B：
+        toa_dwn*(A+B)趋近于swv_dwn记录的上包络线，toa_dwn*A趋近于下包络线。
 
-        From PCSE's NASA POWER implementation
+        引自PCSE的NASA POWER实现。
         """
 
         msg = "Start estimation of Angstrom A/B values from Open Meteo data."
         self.logger.debug(msg)
 
-        # check if sufficient data is available to make a reasonable estimate:
-        # We want to have at least 200 days available
+        # 检查数据是否足够以获得合理的估算：
+        # 至少需要200天的数据
         if len(df) < 200:
             msg = ("Less then 200 days of data available. Reverting to " +
                    "default Angstrom A/B coefficients (%f, %f)")
             self.logger.warn(msg % (self.angstA, self.angstB))
             return self.angstA, self.angstB
 
-        # calculate relative radiation (swv_dwn/toa_dwn) and percentiles
+        # 计算相对辐射（swv_dwn/toa_dwn）及分位数
         doys = pd.to_datetime(df.DAY).dt.dayofyear
         relative_radiation = (df.IRRAD/1e6)/self.calculate_toa_radiation(doys)
         ix = relative_radiation.notnull()
@@ -457,6 +454,7 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
 
 
     def _get_url(self, previous_runs: bool = False) -> str:
+        # 获取接口URL，根据模型类型（预报/历史）和previous_runs参数选择
         if self.model in self.dict_forecast_models and self.is_forecast is True and previous_runs is True:
             return "https://previous-runs-api.open-meteo.com/v1/forecast"
         elif self.model in self.dict_forecast_models and self.is_forecast is True and previous_runs is False:
@@ -466,8 +464,8 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
         else:
             raise ValueError("Model not found. Check model availability.")
 
-
     def _get_end_date(self):
+        # 获取结束日期，预报模型返回今天+7天，历史模型返回数据发布延迟后的日期
         if self.model in self.dict_forecast_models and self.is_forecast is True:
             return datetime.date.today() + datetime.timedelta(days=7)
         elif self.model in self.dict_historical_models and self.is_forecast is False:
@@ -476,6 +474,7 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
             raise ValueError("Model not found. Check model availability.")
 
     def _check_start_date(self):
+        # 检查并设置起始日期，如未指定则根据当前模型类型设定默认值
         if self.start_date is None and self.model in self.dict_forecast_models and self.is_forecast is True:
             self.start_date = self.dict_forecast_models[self.model]
         elif self.start_date is None and self.model in self.dict_historical_models and self.is_forecast is False:
@@ -483,14 +482,15 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
 
     @property
     def _get_description(self) -> str:
+        # 返回所选模型的信息字符串
         return (f"Using a {'historical' if self.is_forecast is not True else 'forecast'} model."
                 f"Specifically, {self.model}. Please check the documentation for the model resolution.")
 
     @staticmethod
     def format_date(date: Union[str, datetime.date]):
         """
-        Converts a date or datetime object to a string in 'YYYY-MM-DD' format.
-        If d is already a string, it is returned unchanged.
+        将日期或datetime对象转换为'YYYY-MM-DD'格式的字符串。
+        如果参数已经是字符串，则直接返回原值。
         """
         if isinstance(date, (datetime.date, datetime)):
             return date.strftime("%Y-%m-%d")
@@ -498,6 +498,7 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
 
     @property
     def daily_variables(self):
+        # 返回每日变量列表
         return [
         "temperature_2m_max",
         "temperature_2m_min",
@@ -507,6 +508,7 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
 
     @property
     def hourly_variables(self):
+        # 返回每小时变量列表
         return [
             "wind_speed_10m",
             "temperature_2m",
@@ -515,10 +517,10 @@ class OpenMeteoWeatherDataProvider(WeatherDataProvider):
 
 
 if __name__ == '__main__':
-    # Example of grabbing weather from Wageningen
+    # Wageningen地点天气获取示例
     omwp = OpenMeteoWeatherDataProvider(51.98, 5.65)
 
-    # Get weather for a single day.
+    # 获取某一天的天气。
     single_date = datetime.date(2024, 5, 15)
     weather_single = omwp(single_date)
     print(f"Weather on {single_date}:", weather_single)

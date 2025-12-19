@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 from functools import wraps
 
 
@@ -11,14 +11,14 @@ class descript(object):
     
     def __get__(self, instance, klass):
         if instance is None:
-            # Class method was requested
+            # 请求了类方法
             return self.make_unbound(klass)
         return self.make_bound(instance)
     
     def make_unbound(self, klass):
         @wraps(self.f)
         def wrapper(*args, **kwargs):
-            '''This documentation will vanish :)'''
+            '''这个文档会消失 :)'''
             raise TypeError(
                 'unbound method %s() must be called with %s instance '
                 'as first argument (got nothing instead)'
@@ -30,8 +30,8 @@ class descript(object):
     def make_bound(self, instance):
         @wraps(self.f)
         def wrapper(*args, **kwargs):
-            '''This documentation will disapear :)'''
-            #print "Called the decorated method %r of %r with arguments %s "\
+            '''这个文档会消失 :)'''
+            #print "调用被装饰的方法 %r ，属于 %r，带参数 %s "\
             #      %(self.f.__name__, instance, args)
             attr = getattr(instance, self.lockattr)
             if attr is not None:
@@ -41,17 +41,16 @@ class descript(object):
             if attr is not None:
                 attr.lock()
             return ret
-        # This instance does not need the descriptor anymore,
-        # let it find the wrapper directly next time:
+        # 这个实例以后不需要再查找描述符了，
+        # 让它可以直接找到 wrapper ：
         setattr(instance, self.f.__name__, wrapper)
         return wrapper
 
 def prepare_states(f):
     '''
-    Class method decorator unlocking and locking the states object.
+    类方法装饰器，用于解锁和锁定 states 对象。
 
-    It uses a descriptor to delay the definition of the 
-    method wrapper. For more details:
+    它使用描述符来延迟方法包装器的定义。详情可见：
     http://wiki.python.org/moin/PythonDecoratorLibrary#Class_method_decorator_using_instance
     '''
 
@@ -59,10 +58,9 @@ def prepare_states(f):
 
 def prepare_rates(f):
     '''
-    Class method decorator unlocking and locking the rates object.
+    类方法装饰器，用于解锁和锁定 rates 对象。
 
-    It uses a descriptor to delay the definition of the 
-    method wrapper. For more details:
+    它使用描述符来延迟方法包装器的定义。详情可见：
     http://wiki.python.org/moin/PythonDecoratorLibrary#Class_method_decorator_using_instance
     '''
 

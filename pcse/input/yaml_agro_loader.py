@@ -4,10 +4,9 @@ import yaml
 from .. import exceptions as exc
 
 class YAMLAgroManagementReader(list):
-    """Reads PCSE agromanagement files in the YAML format.
+    """读取PCSE agromanagement文件（YAML格式）。
 
-    :param fname: filename of the agromanagement file. If fname is not provided as a absolute or
-        relative path the file is assumed to be in the current working directory.
+    :param fname: agromanagement文件的文件名。如果fname不是绝对路径或相对路径，则假定文件位于当前工作目录。
     """
 
     def __init__(self, fname):
@@ -16,7 +15,9 @@ class YAMLAgroManagementReader(list):
             msg = "Cannot find agromanagement file: %s" % fname_fp
             raise exc.PCSEError(msg)
 
-        with open(fname) as fp:
+        # UTF-8打开
+        # with open(fname) as fp:
+        with open(fname, 'r', encoding='utf-8') as fp:
             try:
                 r = yaml.safe_load(fp)
             except yaml.YAMLError as e:

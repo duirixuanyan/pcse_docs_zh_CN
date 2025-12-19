@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Wim de Winter(Wim.deWinter@wur.nl), April 2015
+# 版权所有 (c) 2004-2024 瓦赫宁根环境研究中心，瓦赫宁根大学和研究中心
+# Wim de Winter(Wim.deWinter@wur.nl)，2015年4月
 """
 LINTUL3
 """
@@ -15,288 +15,239 @@ from ..crop.phenology import DVS_Phenology as Phenology
 from ..exceptions import CarbonBalanceError, NutrientBalanceError
 from .. import signals
 
-# some lambdas to make unit conversion explicit.
+# 一些lambda函数用于明确单位换算。
 cm2mm = lambda x: x*10.
 joule2megajoule = lambda x: x/1e6
 m2mm = lambda x: x*1000
 
 class Lintul3(SimulationObject):
     """
-    LINTUL3 is a crop model that calculates biomass production based on intercepted photosynthetically
-    active radiation (PAR) and light use efficiency (LUE). It is an adapted version of LINTUL2 (that simulates
-    potential and water-limited crop growth), including nitrogen limitation. Nitrogen stress in the model is
-    defined through the nitrogen nutrition index (NNI): the ratio of actual nitrogen concentration and critical
-    nitrogen concentration in the plant. The effect of nitrogen stress on crop growth is tested in the model
-    either through a reduction in LUE or leaf area (LA) or a combination of these two and further evaluated
-    with independent datasets. However, water limitation is not considered in the present study as the
-    crop is paddy rice. This paper describes the model for the case of rice, test the hypotheses of N stress
-    on crop growth and details of model calibration and testing using independent data sets of nitrogen
-    treatments (with fertilizer rates of 0 - 400 kgNha-1) under varying environmental conditions in Asia.
-    Results of calibration and testing are compared graphically, through Root Mean Square Deviation (RMSD),
-    and by Average Absolute Deviation (AAD). Overall average absolute deviation values for calibration and
-    testing of total aboveground biomass show less than 26% mean deviation from the observations though
-    the values for individual experiments show a higher deviation up to 41%. In general, the model responded
-    well to nitrogen stress in all the treatments without fertilizer application as observed, but between
-    fertilized treatments the response was varying.
+    LINTUL3 是一个作物模型, 其通过作物拦截的光合有效辐射(PAR)与光能利用率(LUE)来计算生物量生产。该模型是在 LINTUL2 (用于模拟潜在和水分受限的作物生长)的基础上进行修改，加入了氮素限制。模型中氮胁迫通过氮营养指数(NNI)来定义：即作物实际氮浓度与临界氮浓度的比值。模型通过降低 LUE、减少叶面积(LA)，或上述两者组合的方式，来模拟氮胁迫对作物生长的影响，并以独立的数据集进行评估。不过，因为研究对象为水稻，本研究未考虑水分受限因素。本文针对水稻情境描述模型、检验氮胁迫影响生长的假设，并详细介绍模型校准以及在亚洲多变环境下不同氮肥水平(0-400 kgNha-1)独立数据集上的测试。校准和测试结果通过图形、均方根偏差(RMSD)和平均绝对偏差(AAD)进行对比。总体而言，总地上部生物量校准和测试的平均绝对偏差低于26%，但个别实验最高可达41%。总体来看，模型能够较好地反映未施肥处理下的氮胁迫现象，但在施肥处理之间响应有所不同。
 
-    **Nitrogen demand, uptake and stress**
+    **氮需求、吸收与胁迫**
 
-    At sub-optimal nitrogen availability in the soil, nitrogen demand of the crop
-    cannot be satisfied, which leads to sub-optimal crop nitrogen concentration. The
-    crop nitrogen concentration below which a crop experiences nitrogen stress is
-    called the critical nitrogen concentration. Nitrogen stress results in reduced
-    rates of biomass production and eventually in reduced yields. Actual N content
-    is the accumulated N above residual (which forms part of the cell structure).
-    The critical N content is the one corresponding to half of the maximum. Nitrogen
-    contents of these three reference points include those of leaves and stems,
-    whereas roots are not considered since N contents of above-ground (green) parts
-    are more important for photosynthesis, because of their chlorophyll content.
-    However, calculation of N demand and N uptake also includes the belowground
-    part.
+    当土壤中氮素供应低于最优水平时，作物氮需求无法满足，从而导致作物氮浓度低于最优水平。作物氮浓度低于临界值时即发生氮胁迫。氮胁迫会降低生物量生产速率，最终降低产量。实际的氮含量指的是超出残留氮(细胞结构组成部分)的氮素累积量。临界氮含量是最大值的一半。这三个基准点的氮素含量均包含叶片和茎秆的氮素，而不包括根系，这是因为地上绿色部分(含叶绿素)对于光合作用更为重要。但在计算氮需求和吸收量时，地下部分同样计入。
 
-    See:
+    参考文献：
     M.E. Shibu, P.A. Leffelaar, H. van Keulena, P.K. Aggarwal (2010). LINTUL3,
     a simulation model for nitrogen-limited situations: application to rice.
     Eur. J. Agron. (2010) http://dx.doi.org/10.1016/j.eja.2010.01.003
 
 
-    *Parameters*
+    *参数说明*
 
-    ======== =======================================================  ==========
-     Name     Description                                              Unit
-    ======== =======================================================  ==========
-    DVSI     Initial development stage                                  -
-    DVSDR    Development stage above which deathOfLeaves of
-             leaves and roots start                                     -
-    DVSNLT   Development stage after which no nutrients are absorbed    -
-    DVSNT    development stage above which N translocation to
-             storage organs does occur                                  -
-    FNTRT    Nitrogen translocation from roots to storage
-             organs as a fraction of total amount of
-             nitrogen translocated from leaves and stem to
-             storage organs                                             -
-    FRNX     Critical N, as a fraction of maximum N
-             concentration                                              -
-    K        Light attenuation coefficient                              m²/m²
-    LAICR    critical LAI above which mutual shading of
-             leaves occurs,                                             °C/d
-    LRNR     Maximum N concentration of root as fraction of
-             that of leaves                                             g/g
-    LSNR     Maximum N concentration of stem as fraction of
-             that of leaves                                             g/g
-    LUE      Light use efficiency                                       g/MJ
-    NLAI     Coefficient for the effect of N stress on LAI
-             reduction(during juvenile phase)                           -
-    NLUE     Coefficient of reduction of LUE under nitrogen
-             stress, epsilon                                            -
-    NMAXSO   Maximum concentration of nitrogen in storage
-             organs                                                     g/g
-    NPART    Coefficient for the effect of N stress on leaf
-             biomass reduction                                          -
-    NSLA     Coefficient for the effect of N stress on SLA
-             reduction                                                  -
-    RDRNS    Relative death rate of leaf weight due to N
-             stress                                                     1/d
-    RDRRT    Relative death rate of roots                               1/d
-    RDRSHM   and the maximum dead rate of leaves due to
-             shading                                                    1/d
-    RGRL     Relative growth rate of LAI at the exponential
-             growth phase                                               °C/d
-    RNFLV    Residual N concentration in leaves                         g/g
-    RNFRT    Residual N concentration in roots                          g/g
-    RNFST    Residual N concentration in stem                           g/g
-    ROOTDM   Maximum root depth                                         m
-    RRDMAX   Maximum rate of increase in rooting depth                  m/d
-    SLAC     Specific leaf area constant                                m²/g
-    TBASE    Base temperature for crop development                      °C
-    TCNT     Time coefficient for N translocation                       d
-    TRANCO   Transpiration constant indicating the level of
-             drought tolerance of the wheat crop                        mm/d
-    TSUMAG   Temperature sum for ageing of leaves                       °C.d
-    WCFC     Water content at field capacity (0.03 MPa)                 m³/m³
-    WCST     Water content at full saturation                           m³/m³
-    WCWET    Critical Water content for oxygen stress                   m³/m³
-    WCWP     Water content at wilting point (1.5 MPa)                   m³/m³
-    WMFAC    water management (False = irrigated up to the
-             field capacity, true= irrigated up to saturation)          (bool)
-    RNSOIL   Daily amount of N available in the soil through
-             mineralisation of organic matter
-    ======== =======================================================  ==========
+    ======== ================================================  =====
+     名称      说明                                             单位
+    ======== ================================================  =====
+    DVSI     初始生育进程(DVS)                                   -
+    DVSDR    叶和根开始死亡的生育进程阈值                         -
+    DVSNLT   超过该发育阶段后不再吸收养分                         -
+    DVSNT    氮素向贮藏器官转运开始的发育阶段                     -
+    FNTRT    从根向贮藏器官转运的氮占从叶和茎到
+             贮藏器官氮转移总量的比例                             -
+    FRNX     临界氮浓度为最大氮浓度的比例                         -
+    K        光衰减系数                                         m²/m²
+    LAICR    临界叶面积指数，超出后叶片发生相互遮荫，             °C/d
+    LRNR     根的最大氮浓度为叶的比例                            g/g
+    LSNR     茎的最大氮浓度为叶的比例                            g/g
+    LUE      光能利用率                                          g/MJ
+    NLAI     氮胁迫对叶面积指数下降的系数(苗期)                   -
+    NLUE     氮胁迫下LUE降低系数                                 -
+    NMAXSO   贮藏器官氮浓度最大值                                g/g
+    NPART    氮胁迫对叶生物量降低的系数                          -
+    NSLA     氮胁迫下SLA减少的系数                               -
+    RDRNS    氮胁迫导致叶干重死亡的相对死亡速率                  1/d
+    RDRRT    根的相对死亡速率                                    1/d
+    RDRSHM   遮阴导致叶片最大死亡速率                            1/d
+    RGRL     叶面积指数在指数生长期的相对生长速率                 °C/d
+    RNFLV    叶片残留氮浓度                                     g/g
+    RNFRT    根的残留氮浓度                                     g/g
+    RNFST    茎的残留氮浓度                                     g/g
+    ROOTDM   最大根系深度                                        m
+    RRDMAX   根系最大生长速率                                    m/d
+    SLAC     比叶面积常数                                        m²/g
+    TBASE    作物发育基温                                        °C
+    TCNT     氮转运时间系数                                      d
+    TRANCO   蒸腾常数，表示作物耐旱水平                          mm/d
+    TSUMAG   叶片衰老的温度积                                    °C.d
+    WCFC     田间持水量(0.03 MPa)                                m³/m³
+    WCST     全部饱和时的含水量                                  m³/m³
+    WCWET    缺氧胁迫临界含水量                                  m³/m³
+    WCWP     萎蔫点含水量(1.5 MPa)                               m³/m³
+    WMFAC    水分管理(False =灌溉至田间持水量, True=灌至饱和)     (bool)
+    RNSOIL   土壤有机质矿化每天能提供的氮量
+    ======== ================================================  =====
 
 
-    *Tabular parameters*
+    *表格参数*
 
-    ======== =======================================================  =======================
-     Name     Description                                              Unit
-    ======== =======================================================  =======================
-    FLVTB    Partitioning coefficients                                  -
-    FRTTB    Partitioning coefficients                                  -
-    FSOTB    Partitioning coefficients                                  -
-    FSTTB    Partitioning coefficients                                  -
-    NMXLV    Maximum N concentration in the leaves, from               kg N kg-1 dry biomass
-             which the values of the stem and roots are derived,
-             as a  function of development stage
-    RDRT     Relative death rate of leaves as a function of
-             Developmental stage                                        1/d
-    SLACF    Leaf area correction function as a function of             -
-             development stage, DVS. Reference: Drenth, H.,
-             ten Berge, H.F.M. and Riethoven, J.J.M. 1994,
-             p.10. (Complete reference under Observed data.)
-    ======== =======================================================  =======================
+    ======== ================================================= ======================
+     名称     说明                                             单位
+    ======== ================================================= ======================
+    FLVTB    生物量分配系数                                     -
+    FRTTB    生物量分配系数                                     -
+    FSOTB    生物量分配系数                                     -
+    FSTTB    生物量分配系数                                     -
+    NMXLV    叶片最大氮浓度(随发育进程变化),                   kg N kg-1干物质
+             据其推导茎和根,单位为干物质
+    RDRT     叶片相对死亡速率(随发育进程变化)                   1/d
+    SLACF    叶面积修正函数，随发育进程(DVS)变化。              -
+             参考: Drenth, H., ten Berge, H.F.M.               
+             and Riethoven, J.J.M. 1994, p.10.                 
+             (完整参考见Observed data.)
+    ======== ================================================= ======================
 
+    *初始状态*
 
-    * initial states *
-
-    ======== =======================================================  ==========
-     Name     Description                                              Unit
-    ======== =======================================================  ==========
-    ROOTDI   Initial rooting depth                                      m
-    NFRLVI   Initial fraction of N in leaves                            gN/gDM
-    NFRRTI   Initial fraction of N in roots                             gN/gDM
-    NFRSTI   Initial fraction of N in stem                              gN/gDM
-    WCI      Initial water content in soil                              m³/³
-    WLVGI    Initial Weight of green leaves                             g/m²
-    WSTI     Initial Weight of stem                                     g/m²
-    WRTLI    Initial Weight of roots                                    g/m²
-    WSOI     Initial Weight of storage organs                           g/m²
-    ======== =======================================================  ==========
+    ======== ================================================  =====
+     名称      说明                                             单位
+    ======== ================================================  =====
+    ROOTDI   初始根系深度                                        m
+    NFRLVI   叶片初始氮含量分数                                  gN/gDM
+    NFRRTI   根初始氮含量分数                                    gN/gDM
+    NFRSTI   茎初始氮含量分数                                    gN/gDM
+    WCI      初始土壤含水量                                      m³/³
+    WLVGI    绿色叶片初始质量                                    g/m²
+    WSTI     茎初始质量                                          g/m²
+    WRTLI    根初始质量                                          g/m²
+    WSOI     贮藏器官初始质量                                    g/m²
+    ======== ================================================  =====
 
 
-    **State variables:**
+    **状态变量:**
 
-    =========== ================================================= ==== ===============
-     Name        Description                                      Pbl      Unit
-    =========== ================================================= ==== ===============
-    ANLV        Actual N content in leaves
-    ANRT        Actual N content in root
-    ANSO        Actual N content in storage organs
-    ANST        Actual N content in stem
-    CUMPAR      PAR accumulator
-    LAI         leaf area index                                    *        m²/m²
-    NLOSSL      total N loss by leaves
-    NLOSSR      total N loss by roots
-    NUPTT       Total uptake of N over time                                 gN/m²
-    ROOTD       Rooting depth                                      *        m
-    TNSOIL      Amount of inorganic N available for crop uptake
-    WDRT        dead roots (?)                                              g/m²
-    WLVD        Weight of dead leaves                                       g/m²
-    WLVG        Weight of green leaves                                      g/m²
-    WRT         Weight of roots                                             g/m²
-    WSO         Weight of storage organs                                    g/m²
-    WST         Weight of stem                                              g/m²
-    TAGBM       Total aboveground biomass                                   g/m²
-    TGROWTH     Total biomass growth (above and below ground)               g/m²
-    =========== ================================================= ==== ===============
+    =========== ===================================== ==== ===========
+     名称         说明                                Pbl    单位
+    =========== ===================================== ==== ===========
+    ANLV        叶片实际氮含量
+    ANRT        根实际氮含量
+    ANSO        贮藏器官实际氮含量
+    ANST        茎实际氮含量
+    CUMPAR      PAR累计值
+    LAI         叶面积指数                            *      m²/m²
+    NLOSSL      叶片累计氮损失
+    NLOSSR      根累计氮损失
+    NUPTT       总氮素吸收量                                  gN/m²
+    ROOTD       根系深度                              *       m
+    TNSOIL      可被作物吸收的土壤无机氮量
+    WDRT        死根(?)                                         g/m²
+    WLVD        死叶量                                          g/m²
+    WLVG        绿色叶片质量                                    g/m²
+    WRT         根质量                                          g/m²
+    WSO         贮藏器官质量                                    g/m²
+    WST         茎质量                                          g/m²
+    TAGBM       地上部总生物量                                  g/m²
+    TGROWTH     总生物量增长(地上+地下)                         g/m²
+    =========== ===================================== ==== ===========
 
-    **Rate variables:**
+    **生长速率变量:**
 
-    =========== ================================================= ==== ===============
-     Name        Description                                      Pbl      Unit
-    =========== ================================================= ==== ===============
-     PEVAP       Potential soil evaporation rate                   Y     |mmday-1|
-     PTRAN       Potential crop transpiration rate                 Y     |mmday-1|
-     TRAN        Actual crop transpiration rate                    N     |mmday-1|
-     TRANRF      Transpiration reduction factor calculated         N     -
-     RROOTD      Rate of root growth                               Y     |mday-1|
-    =========== ================================================= ==== ===============
+    =========== ========================================= ==== ===============
+     名称         说明                                    Pbl    单位
+    =========== ========================================= ==== ===============
+     PEVAP       潜在土壤蒸发速率                          Y   |mmday-1|
+     PTRAN       潜在作物蒸腾速率                          Y   |mmday-1|
+     TRAN        实际作物蒸腾速率                          N   |mmday-1|
+     TRANRF      蒸腾抑制因子(计算值)                      N   -
+     RROOTD      根生长速率                                Y   |mday-1|
+    =========== ========================================= ==== ===============
     """
 
 
-    # sub-model components for crop simulation
+    # 作物模拟的子模块组件
     pheno = Instance(SimulationObject)
-    # placeholder for effective N application rate from the _on_APPLY_N event handler.
+    # 用于存放 _on_APPLY_N 事件处理函数中实际施氮速率的占位符
     FERTNS = 0.0
-    # placeholder for initial leaf area index
+    # 叶面积指数初值占位符
     LAII = 0.
-    # placeholders for initial nitrogen contents for leaves, stems, roots and storage organs
+    # 绿色叶片、茎、根和贮藏器官初始氮含量的占位符
     ANLVI = 0.
     ANSTI = 0.
     ANRTI = 0.
     ANSOI = 0.
 
-    # Parameters, rates and states which are relevant at the main crop simulation level
+    # 主要作物模拟层面相关的参数、速率和状态
     class Parameters(ParamTemplate):
-        DVSI   = Float(-99.)   # Development stage at start of the crop
-        DVSDR  = Float(-99)    # Development stage above which deathOfLeaves of leaves and roots start.
-        DVSNLT = Float(-99)    # development stage N-limit
-        DVSNT  = Float(-99)    # development stage N-threshold
-        FNTRT  = Float(-99)    # Nitrogen translocation from roots as a fraction of the total amount of nitrogen translocated from leaves and stem.
-        FRNX   = Float(-99)    # Optimal N concentration as the fraction of maximum N concentration.
-        K      = Float(-99)    # light extinction coefficient
-        LAICR  = Float(-99)    # (oC d)-1, critical LAI above which mutual shading of leaves occurs,
+        DVSI   = Float(-99.)   # 作物初始发育阶段
+        DVSDR  = Float(-99)    # 叶片和根开始死亡的发育阶段
+        DVSNLT = Float(-99)    # N极限发育阶段
+        DVSNT  = Float(-99)    # N阈值发育阶段
+        FNTRT  = Float(-99)    # 根系N转运量占叶片和茎总N转运量的比例
+        FRNX   = Float(-99)    # 最佳N浓度/最大N浓度
+        K      = Float(-99)    # 光衰减系数
+        LAICR  = Float(-99)    # 临界叶面积指数（遮荫发生的LAI），单位(℃·d)-1
         LRNR   = Float(-99)    # 
         LSNR   = Float(-99)    # 
-        LUE    = Float(-99)    # Light use efficiency.
-        NLAI   = Float(-99)    # Coefficient for the effect of N stress on LAI reduction(during juvenile phase)
-        NLUE   = Float(-99)    # Extinction coefficient for  Nitrogen distribution down the canopy
+        LUE    = Float(-99)    # 光能利用率
+        NLAI   = Float(-99)    # N胁迫期对LAI减少的系数（苗期）
+        NLUE   = Float(-99)    # N沿冠层分布的消光系数
         NMAXSO = Float(-99)    # 
-        NPART  = Float(-99)    # Coefficient for the effect of N stress on leaf biomass reduction
-        NSLA   = Float(-99)    # Coefficient for the effect of N stress on SLA reduction
-        RDRSHM = Float(-99)    # and the maximum relative deathOfLeaves rate of leaves due to shading.
-        RGRL   = Float(-99)    # Relative totalGrowthRate rate of LAI at the exponential totalGrowthRate phase
-        RNFLV  = Float(-99)    # Residual N concentration in leaves
-        RNFRT  = Float(-99)    # Residual N concentration in roots.
-        RNFST  = Float(-99)    # Residual N concentration in stem
-        ROOTDM = Float(-99)    # Maximum root depth for a rice crop.
-        RRDMAX = Float(-99)    # Maximum rate of increase in rooting depth (m d-1) for a rice crop.
-        SLAC   = Float(-99)    # Specific leaf area constant.
-        TBASE  = Float(-99)    # Base temperature for spring wheat crop.
-        TCNT   = Float(-99)    # Time coefficient(days) for N translocation.
-        TRANCO = Float(-99)    # Transpiration constant (mm/day) indicating the level of drought tolerance of the wheat crop.
-        TSUMAG = Float(-99)    # Temperature sum for ageing of leaves
-        WCFC   = Float(-99)    # Water content at field capacity (0.03 MPa) m3/ m3
-        WCI    = Float(-99)    # Initial water content in cm3 of water/(cm3 of soil).
-        WCST   = Float(-99)    # Water content at full saturation m3/ m3
-        WCWET  = Float(-99)    # Critical Water conten for oxygen stress [m3/m3]
-        WCWP   = Float(-99)    # Water content at wilting point (1.5 MPa) m3/ m3
-        WMFAC  = Bool(False)    # water management (0 = irrigated up to the field capacity, 1= irrigated up to saturation)
-        RDRNS  = Float(-99)    # Relative deathOfLeaves rate of leaves due to N stress.
-        RDRRT  = Float(-99)    # Relative deathOfLeaves rate of roots.
-        RDRRT  = Float(-99)    # Relative deathOfLeaves rate of roots.        
+        NPART  = Float(-99)    # N胁迫对叶片生物量减少的系数
+        NSLA   = Float(-99)    # N胁迫对比叶面积（SLA）减少的系数
+        RDRSHM = Float(-99)    # 遮荫导致叶片最大相对死亡率
+        RGRL   = Float(-99)    # 指数生长期叶面积总相对增长率
+        RNFLV  = Float(-99)    # 叶片剩余N浓度
+        RNFRT  = Float(-99)    # 根剩余N浓度
+        RNFST  = Float(-99)    # 茎剩余N浓度
+        ROOTDM = Float(-99)    # 水稻最大根深
+        RRDMAX = Float(-99)    # 水稻根系生长深度最大日增长速率（m d-1）
+        SLAC   = Float(-99)    # 比叶面积常数
+        TBASE  = Float(-99)    # 春小麦基温
+        TCNT   = Float(-99)    # N转运时间系数（天）
+        TRANCO = Float(-99)    # 蒸腾常数（mm/day），表示小麦耐旱性水平
+        TSUMAG = Float(-99)    # 叶片衰老的温度积
+        WCFC   = Float(-99)    # 田间持水量下的土壤含水量（0.03 MPa）m3/m3
+        WCI    = Float(-99)    # 初始土壤含水量（cm3水/cm3土壤）
+        WCST   = Float(-99)    # 土壤完全饱和时的含水量 m3/m3
+        WCWET  = Float(-99)    # 氧气胁迫临界含水量 [m3/m3]
+        WCWP   = Float(-99)    # 凋萎点含水量（1.5MPa）m3/m3
+        WMFAC  = Bool(False)    # 水分管理（0=灌溉到田间持水量，1=灌溉至饱和）
+        RDRNS  = Float(-99)    # N胁迫导致叶片死亡的相对速率
+        RDRRT  = Float(-99)    # 根相对死亡率
+        RDRRT  = Float(-99)    # 根相对死亡率        
 
-        FLVTB  = AfgenTrait()  # Partitioning coefficients
-        FRTTB  = AfgenTrait()  # Partitioning coefficients
-        FSOTB  = AfgenTrait()  # Partitioning coefficients
-        FSTTB  = AfgenTrait()  # Partitioning coefficients
-        NMXLV  = AfgenTrait()  # Maximum N concentration in the leaves as a function of development stage.
-        RDRT   = AfgenTrait()  #
-        SLACF  = AfgenTrait()  # Leaf area correction function as a function of development stage, DVS.        
+        FLVTB  = AfgenTrait()  # 分配系数
+        FRTTB  = AfgenTrait()  # 分配系数
+        FSOTB  = AfgenTrait()  # 分配系数
+        FSTTB  = AfgenTrait()  # 分配系数
+        NMXLV  = AfgenTrait()  # 叶片最大N浓度（随发育阶段变化）
+        RDRT   = AfgenTrait()  # 
+        SLACF  = AfgenTrait()  # 随发育阶段DVS变化的叶面积修正函数
 
-        ROOTDI = Float(-99)   # initial rooting depth [m] 
-        NFRLVI = Float(-99)   # Initial fraction of N (g N g-1 DM) in leaves.
-        NFRRTI = Float(-99)   # Initial fraction of N (g N g-1 DM) in roots.
-        NFRSTI = Float(-99)   # Initial fraction of N (g N g-1 DM) in stem.
-        WLVGI  = Float(-99)   # Initial weight of green leaves
-        WSTI   = Float(-99)   # Initial weight of stems
-        WRTLI  = Float(-99)   # Initial weight of roots
-        WSOI   = Float(-99)   # Initial weight of storage organs
+        ROOTDI = Float(-99)   # 根系初始深度[m]
+        NFRLVI = Float(-99)   # 叶片初始N分数(g N/g干重)
+        NFRRTI = Float(-99)   # 根初始N分数(g N/g干重)
+        NFRSTI = Float(-99)   # 茎初始N分数(g N/g干重)
+        WLVGI  = Float(-99)   # 绿色叶片初始质量
+        WSTI   = Float(-99)   # 茎初始质量
+        WRTLI  = Float(-99)   # 根初始质量
+        WSOI   = Float(-99)   # 贮藏器官初始质量
 
-        RNMIN = Float(-99)    # Rate of soil mineratilation (g N/m2/day
+        RNMIN = Float(-99)    # 土壤矿化速率 (g N/m2/天)
         
     class Lintul3States(StateVariables):
-        LAI = Float(-99.) # leaf area index
-        ANLV = Float(-99.) # Actual N content in leaves
-        ANST = Float(-99.) # Actual N content in stem
-        ANRT = Float(-99.) # Actual N content in root
-        ANSO = Float(-99.) # Actual N content in storage organs
-        NUPTT = Float(-99.) # Total uptake of N over time (g N m-2)
-        NLOSSL = Float(-99.) # total N loss by leaves
-        NLOSSR = Float(-99.) # total N loss by roots
-        WLVG  = Float(-99.) # Weight of green leaves
-        WLVD  = Float(-99.) # Weight of dead leaves
-        WST = Float(-99.) # Weight of stem
-        WSO = Float(-99.) # Weight of storage organs
-        WRT = Float(-99.) # Weight of roots
-        ROOTD = Float(-99.) # Actual root depth [m]
-        TGROWTH = Float(-99.) # Total growth
-        WDRT = Float(-99.) # weight of dead roots
-        CUMPAR = Float(-99.)
-        TNSOIL = Float(-99.) # Amount of inorganic N available for crop uptake.
-        TAGBM = Float(-99.) # Total aboveground biomass [g /m-2)
-        NNI = Float(-99) # Nitrogen nutrition index
+        LAI = Float(-99.) # 叶面积指数
+        ANLV = Float(-99.) # 叶片实际氮含量
+        ANST = Float(-99.) # 茎实际氮含量
+        ANRT = Float(-99.) # 根实际氮含量
+        ANSO = Float(-99.) # 贮藏器官实际氮含量
+        NUPTT = Float(-99.) # 一段时间内累计氮摄取量 (g N m-2)
+        NLOSSL = Float(-99.) # 叶片氮损失总量
+        NLOSSR = Float(-99.) # 根氮损失总量
+        WLVG  = Float(-99.) # 绿色叶片质量
+        WLVD  = Float(-99.) # 死叶质量
+        WST = Float(-99.) # 茎质量
+        WSO = Float(-99.) # 贮藏器官质量
+        WRT = Float(-99.) # 根质量
+        ROOTD = Float(-99.) # 实际根深 [m]
+        TGROWTH = Float(-99.) # 总生长量
+        WDRT = Float(-99.) # 死根质量
+        CUMPAR = Float(-99.) # 积累的光合有效辐射量
+        TNSOIL = Float(-99.) # 作物可吸收的无机氮含量
+        TAGBM = Float(-99.) # 地上部分总生物量 [g/m-2]
+        NNI = Float(-99) # 氮营养指数
 
-    # These are some rates which are not directly connected to a state (PEVAP, TRAN) of which must be published
-    # (RROOTD) for the water balance module. Therefore, we explicitly define them here.
+    # 这些速率（PEVAP，TRAN）并未直接与状态变量相连，但需发布（RROOTD）以供水分平衡模块使用。因此，我们在此显式定义它们。
     class Lintul3Rates(RatesTemplate):
         PEVAP = Float()
         PTRAN = Float()
@@ -307,10 +258,9 @@ class Lintul3(SimulationObject):
 
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE  instance
-        :param parvalues: `ParameterProvider` object providing parameters as
-                key/value pairs
+        :param day: 模拟起始日期
+        :param kiosk: 此PCSE实例的变量kiosk
+        :param parvalues: 提供键值参数对的`ParameterProvider`对象
         """
         self.kiosk = kiosk
         self.params = self.Parameters(parvalues)
@@ -319,25 +269,25 @@ class Lintul3(SimulationObject):
 
         self._connect_signal(self._on_APPLY_N, signals.apply_n)
 
-        # Initialize phenology component of the crop
+        # 初始化作物物候模块
         self.pheno = Phenology(day, kiosk, parvalues)
 
-        # Calculate initial LAI
+        # 计算初始叶面积指数（LAI）
         p = self.params
         SLACFI = p.SLACF(p.DVSI)
         ISLA = p.SLAC * SLACFI
         self.LAII = p.WLVGI * ISLA
 
-        # Initial amount of N (g/m2) in leaves, stem, roots, and storage organs.
+        # 叶片、茎、根和贮藏器官的初始氮含量 (g/m2)
         self.ANLVI = p.NFRLVI * p.WLVGI
         self.ANSTI = p.NFRSTI * p.WSTI
         self.ANRTI = p.NFRRTI * p.WRTLI
         self.ANSOI = 0.0
 
-        # Generate a dict with 'default' initial states (e.g. zero)
+        # 生成包含“默认”初始状态（例如为零）的字典
         init = self.Lintul3States.initialValues()
 
-        # Initialize state variables
+        # 初始化状态变量
         init["LAI"] = self.LAII
         init["ANLV"] = self.ANLVI
         init["ANST"] = self.ANSTI
@@ -348,15 +298,13 @@ class Lintul3(SimulationObject):
         init["WRT"] = p.WRTLI
         init["ROOTD"] = p.ROOTDI
 
-        # Initialize the states objects
+        # 初始化状态对象
         self.states = self.Lintul3States(kiosk, publish=["LAI", "ROOTD"], **init)
-        # Initialize the associated rates of the states
+        # 初始化与状态变量相关的速率
         self.states.initialize_rates()
 
     def _on_APPLY_N(self, amount, recovery):
-        """Receive signal for N application with amount the nitrogen amount in g N m-2 and
-        recovery the recovery fraction.
-        """
+        """接收氮肥施用信号，amount为施加的氮素（g N m-2），recovery为回收系数。"""
         self.FERTNS = amount * recovery
 
     @prepare_rates
@@ -376,110 +324,81 @@ class Lintul3(SimulationObject):
         DAVTMP  = 0.5 * (drv.TMIN + drv.TMAX)
         DTEFF   = max(0., DAVTMP - p.TBASE)
         
-        # potential rates of evaporation and transpiration:
+        # 潜在蒸发和蒸腾速率:
         r.PEVAP, r.PTRAN = self._calc_potential_evapotranspiration(drv)
 
-        # Water content in the rootzone
+        # 根区的含水量
         WC = self.kiosk["WC"]
 
-        # actual rate of transpiration:
+        # 实际蒸腾速率:
         r.TRAN = self._calc_actual_transpiration(r.PTRAN, WC)
 
         """
-        Crop phenology
-        
-        Crop development, i.e. the order and rate of appearance of vegetative and 
-        reproductive organs, is defined in terms of phenological developmental stage 
-        (DVS) as a function of heat sum, which is the cumulative daily effective 
-        temperature. Daily effective temperature is the average temperature above a 
-        crop-specific base temperature (for rice 8C). Some crop or crop varieties are
-        photoperiodsensitive, i.e. flowering depends on the length of the light period 
-        during the day in addition to the temperature during the vegetative stage. 
+        作物物候
+
+        作物生长发育（即营养器官和生殖器官出现的顺序和速率）是以物候发育阶段（DVS）作为热积之函数进行定义的，其中热积是累计日有效温度。日有效温度为作物平均温度高于作物特定基温（如水稻为8°C）的部分。有些作物或品种具有光周期敏感性，即在营养生长期内，开花不仅与温度有关，还取决于当天白昼长度。
         """
         self.pheno.calc_rates(day, drv)
         crop_stage = self.pheno.get_variable("STAGE")
 
-        # if before emergence there is no need to continue
-        # because only the phenology is running.
+        # 如果尚未出苗，则无需继续，因为此时仅运行物候发育。
         if crop_stage == "emerging":
-            return  # no aboveground crop to calculate yet
+            return  # 地上部作物尚未计算
 
-        # code below is executed only POST-emergence
+        # 下面的代码仅在出苗后执行
 
-        # translocatable N in leaves, stem, roots and
-        # storage organs.
+        # 叶片、茎、根和贮藏器官中的可转移氮素。
         ATNLV, ATNST, ATNRT, ATN = self.translocatable_N()
 
-        # Relative deathOfLeaves rate of leaves due to senescence/ageing.
+        # 叶片因衰老/老化的相对死亡速率。
         RDRTMP = p.RDRT(DAVTMP)
 
-        # Total living vegetative biomass.
+        # 植物体内活的营养部位总生物量。
         TBGMR = s.WLVG + s.WST
 
-        # Average residual N concentration.
+        # 平均残留氮浓度。
         NRMR = (s.WLVG * p.RNFLV + s.WST * p.RNFST) / TBGMR
 
-        # Maximum N concentration in the leaves, from which the values of the
-        # stem and roots are derived, as a function of development stage.
+        # 叶片的最大氮浓度（作为发育阶段的函数），茎和根的最大浓度由此推得。
         NMAXLV  = p.NMXLV(DVS)
         NMAXST  = p.LSNR * NMAXLV
         NMAXRT  = p.LRNR * NMAXLV
 
-        # maximum nitrogen concentration of leaves and stem.
+        # 叶片和茎的最大氮浓度。
         NOPTLV  = p.FRNX * NMAXLV
         NOPTST  = p.FRNX * NMAXST
 
-        # Maximum N content in the plant.
+        # 植株的最大氮含量。
         NOPTS   = NOPTST * s.WST
         NOPTL   = NOPTLV * s.WLVG
         NOPTMR  = (NOPTL + NOPTS)/TBGMR
 
-        # Total N in green matter of the plant.
+        # 植物体绿色部位的总氮含量。
         NUPGMR  = s.ANLV + s.ANST
 
-        # Nitrogen Nutrition Index.
+        # 氮素营养指数。
         """
-        Nitrogen stress
+        氮素胁迫
 
-        A crop is assumed to experience N stress at N concentrations below a critical
-        value for unrestricted growth. To quantify crop response to nitrogen shortage, a
-        Nitrogen Nutrition Index (NNI) is defined, ranging from 0 (maximum N shortage)
-        to 1 (no N shortage):
+        当作物体内氮浓度低于无胁迫生长所需的临界值时，作物被认为经历了氮素胁迫。为了量化作物对氮素不足的响应，定义了氮素营养指数（NNI），其值范围从0（最大氮素匮乏）到1（无氮素匮乏）：
 
-        NNI = (actual crop [N] - residual [N]) / (critical [N] - residual [N])
+        NNI = (实际作物[N] - 残留[N]) / (临界[N] - 残留[N])
 
-        Critical crop nitrogen concentration, the lower limit of canopy nitrogen
-        concentration in leaves and stems required for unrestricted growth, has been
-        taken as half the maximum nitrogen concentration. An experimental basis for such
-        an assumption can be derived from the study of Zhen and Leigh (1990), who
-        reported that nitrate accumulation in plant occurs in significant quantity when
-        the N needs to reach the maximum growth were fulfilled and the mean value of
-        nitrate accumulated beyond the criticalNconcentration was about 50% for
-        different stages.
+        临界作物氮浓度是保证叶片和茎部生长不受限制所需的最低冠层氮浓度，通常取为最大氮浓度的一半。Zhen 和 Leigh (1990) 的研究为这种假设提供了实验依据：当植物的氮素需求被满足以保证最大生长时，植物中会有大量硝酸盐积累，且在不同生育阶段，超过临界氮浓度的硝酸盐平均值约为50%。
         """
         NFGMR = NUPGMR / TBGMR
         NNI = limit(0.001, 1.0, ((NFGMR-NRMR)/(NOPTMR-NRMR)))
 
-        # -------- Growth rates and dry matter production of plant organs-------*
-        #  Biomass partitioning functions under (water and nitrogen)non-stressed
-        #  situations
+        # -------- 植物器官生长速率与干物质生产 -------*
+        #  在（水分和氮素）无胁迫条件下的生物量分配函数
         """
-        Biomass partitioning
+        生物量分配
 
-        Biomass formed at any time during crop growth is partitioned amongst organs
-        (Fig. 1), i.e. roots, stems, leaves and storage organs, with partitioning
-        factors defined as a function of development stage (Fig. 2) (Drenth et al.,
-        1994), which thus provides the rates of growth of these organs:
+        作物生长期间任何时刻形成的生物量在器官间分配（见图1），即根、茎、叶和贮藏器官，分配因子作为发育阶段的函数给出（见图2）（Drenth等，1994），从而给出各器官的生长速率：
 
         dW/dt[i] = Pc[i] * dW / dt
 
-        where (dW/dt) is the rate of biomass growth (gm-2 d-1); (dW/dt)[i] and Pc[i] are
-        the rate of growth (gm-2 d-1) of and the biomass partitioning factor to organ i
-        (g organ-i g-1 biomass), respectively. Leaf, stem and root weights of the
-        seedlings at the time of transplanting are input parameters for the model. The
-        time course of weights of these organs follows from integration of their net
-        growth rates, i.e. growth rates minus death rates, the latter being defined as a
-        function of physiological age, shading and stress.
+        其中(dW/dt)为生物量增长速率（g/m²·d）；(dW/dt)[i]和Pc[i]分别为器官i的生长速率（g/m²·d）和分配因子（g器官/g生物量）。移栽时植株幼苗叶、茎、根重为模型输入参数。这些器官的重量随时间变化，通过积分其净生长速率（即生长速率减去死亡速率，后者为生理年龄、遮荫和胁迫的函数）得到。
         """
         FRTWET = p.FRTTB(DVS)
         FLVT = p.FLVTB(DVS)
@@ -488,167 +407,126 @@ class Lintul3(SimulationObject):
 
 
         """
-        Leaf area development
+        叶面积发展
 
-        The time course of LAI is divided into two stages: an exponential stage during
-        the juvenile phase, where leaf area development is a function of temperature,
-        and a linear stage where it depends on the increase in leaf biomass (Spitters,
-        1990; Spitters and Schapendonk, 1990). The death of leaves due to senescence
-        that may be enhanced by shading and/or stress leads to a corresponding loss in
-        leaf area. The specific leaf area is used for the conversion of dead leaf
-        biomass to corresponding loss in leaf area. The death of leaves due to
-        senescence occurs only after flowering and the rate depends on crop age
-        (function adopted from ORYZA2000, Bouman et al., 2001). The excessive growth of
-        leaves also result in death of leaves due to mutual shading. The death of leaves
-        due to shading is determined by a maximum death rate and the relative proportion
-        of leaf area above the critical LAI (4.0) (Spitters, 1990; Spitters and
-        Schapendonk, 1990). The net rate of change in leaf area (dLAI/dt) is the
-        difference between its growth rate and its death rate:
+        LAI（叶面积指数）的变化历程分为两个阶段：苗期的指数生长阶段（叶面积发展受温度控制）和随叶生物量增加的线性阶段（Spitters, 1990；Spitters和Schapendonk, 1990）。衰老引起的叶片死亡可因遮荫和/或胁迫而加剧，导致叶面积的相应损失。特异叶面积（SLA）用于将枯死叶生物量转换为叶面积损失。衰老导致的叶片死亡仅在开花后发生，速率受作物生理年龄影响（采用自ORYZA2000，Bouman等，2001）。叶片因过度生长产生的相互遮阴也会导致叶片死亡。遮荫导致的叶片死亡，由最大死亡速率和叶面积超过临界LAI（4.0）的相对比例确定（Spitters, 1990；Spitters和Schapendonk, 1990）。叶面积净增长速率（dLAI/dt）为生长速率和死亡速率的差值：
 
         dLAI/dt = dGLAI / dt - dDLAI / dt
 
-        where (dGLAI/dt) is the leaf area growth rate and (dDLAI/dt) is the
-        leaf area death rate.
+        其中(dGLAI/dt)为叶面积生长速率，(dDLAI/dt)为叶面积死亡速率。
         """
-        # Specific Leaf area(m2/g).
+        # 比叶面积（m2/g）。
         SLA = p.SLAC * p.SLACF(DVS) * exp(-p.NSLA * (1.-NNI))
 
-        # Growth reduction function for water stress(actual trans/potential)
+        # 水分胁迫下的生长抑制函数（实际蒸腾/潜在蒸腾）
         r.TRANRF = r.TRAN / r.PTRAN if (r.PTRAN != 0) else 1
 
-        # relative modification for root and shoot allocation.
+        # 根和地上部分分配的相对修正因子。
         FRT, FLV, FST, FSO = self.dryMatterPartitioningFractions(p.NPART, r.TRANRF, NNI, FRTWET, FLVT, FSTT, FSOT)
 
-        # total totalGrowthRate rate.
+        # 植物总生长速率。
         RGROWTH = self.totalGrowthRate(DTR, r.TRANRF, NNI)
 
-        # Leaf totalGrowthRate and LAI.
+        # 叶的总生长速率和LAI。
         GLV    = FLV * RGROWTH
 
-        # daily increase of leaf area index.
+        # 叶面积指数的日增长量。
         GLAI = self._growth_leaf_area(DTEFF, self.LAII, DELT, SLA, GLV, WC, DVS, r.TRANRF, NNI)
 
-        # relative deathOfLeaves rate of leaves.
+        # 叶片相对死亡速率。
         DLV, DLAI = self.deathRateOfLeaves(TSUM, RDRTMP, NNI, SLA)
 
-        # Net rate of change of Leaf area.
+        # 叶面积的净变化速率。
         RLAI   = GLAI - DLAI
 
-        # Root totalGrowthRate
+        # 根的总生长速率
         """
-        Root growth
+        根的生长
 
-        The root system is characterized by its vertical extension in the soil profile.
-        At emergence or at transplanting for transplanted rice. Effect of N stress (NNI)
-        on crop growth through its effect on LA and LUE. rooting depth is initialized.
-        Roots elongate at a constant daily rate, until flowering, provided soil water
-        content is above permanent wilting point (PWP), whereas growth ceases when soil
-        is drier than PWP or when a certain preset maximum rooting depth is reached
-        (Spitters and Schapendonk, 1990; Farr� et al., 2000).
+        根系的特征是垂直向土壤剖面延伸。出苗或水稻移栽时初始化根系深度。氮素胁迫（NNI）对作物生长的影响通过对叶面积和光能利用效率的作用表现出来。根以恒定速率每日伸长，直至开花，只要土壤水分高于永久萎蔫点（PWP）；当土壤干旱至低于PWP或达到预设最大根系深度时，生长停止（Spitters和Schapendonk, 1990；Farré等，2000）。
         """
         r.RROOTD = min(p.RRDMAX,  p.ROOTDM - s.ROOTD) if (WC > p.WCWP) else 0.0
 
-        # N loss due to deathOfLeaves of leaves and roots.
+        # 叶和根死亡导致的氮损失
         DRRT = 0. if (DVS < p.DVSDR) else s.WRT * p.RDRRT
         RNLDLV = p.RNFLV * DLV
         RNLDRT = p.RNFRT * DRRT
 
-        # relative totalGrowthRate rate of roots, leaves, stem
-        # and storage organs.
+        # 根、叶、茎和贮藏器官的相对总生长速率
         RWLVG, RWRT, RWST, RWSO = self.relativeGrowthRates(RGROWTH, FLV, FRT, FST, FSO, DLV, DRRT)
 
 
         """
-        Nitrogen demand
+        氮素需求
 
-        Total crop nitrogen demand equals the sum of the nitrogen demands of its
-        individual organs (excluding storage organs, for which nitrogen demand is met by
-        translocation from the other organs, i.e. roots, stems and leaves) (Fig. 3).
-        Nitrogen demand of the individual organs is calculated as the difference
-        betweenmaximum and actual organ nitrogen contents. The maximum nitrogen content
-        is defined as a function of canopy development stage (Drenth et al., 1994).
-        Total N demand (TNdem: gm-2 d-1) of the crop is:
+        作物总氮素需求等于各器官的氮需求之和（不包括贮藏器官，其氮需求通过从其它器官（即根、茎、叶）转运获得）（图3）。
+        各器官的氮素需求计算为其最大氮含量与实际氮含量之差。最大氮含量定义为冠层发育阶段的函数（Drenth等, 1994）。
+        作物的总氮需求（TNdem: g m-2 d-1）为：
 
         TNdem = sum(Nmax,i - ANi / dt)
 
-        where Nmax,i is the maximum nitrogen concentration of organ i (gN/g biomass,
-        with i referring to leaves, stems and roots), Wi is the weight of organ i
-        (g biomass/m2), and ANi is the actual nitrogen content of organ i (gN/m2).
+        其中，Nmax,i 是第i个器官的最大氮浓度（gN/g生物量，i为叶、茎和根），Wi为第i个器官的重量（g生物量/m2），ANi为第i个器官的实际氮含量（gN/m2）。
         """
 
-        # N demand of leaves, roots and stem storage organs.
+        # 叶、根和茎贮藏器官的氮需求
         NDEMLV   =  max(NMAXLV   * s.WLVG - s.ANLV, 0.)
         NDEMST   =  max(NMAXST   * s.WST  - s.ANST, 0.)
         NDEMRT   =  max(NMAXRT   * s.WRT  - s.ANRT, 0.)
         NDEMSO  =  max(p.NMAXSO * s.WSO  - s.ANSO, 0.) / p.TCNT
 
-        # N supply to the storage organs.
+        # 向贮藏器官的氮供应
         NSUPSO  = ATN / p.TCNT if (DVS > p.DVSNT) else 0.0
 
-        # Rate of N uptake in grains.
+        # 谷粒的氮吸收速率
         RNSO    =  min(NDEMSO, NSUPSO)
 
-        # Total Nitrogen demand.
+        # 总氮需求
         NDEMTO  = max(0.0, (NDEMLV + NDEMST + NDEMRT))
 
         """
-        About 75-90% of the total N uptake at harvest takes place before
-        anthesis and, in conditions of high soil fertility, post-anthesis N uptake
-        may contribute up to 25% but would exclusively end up in the grain
-        as protein. Therefore, this nitrogen would not play any role in the
-        calculation of nitrogen stress that influences the biomass formation.
-        Therefore, nitrogen uptake is assumed to cease at anthesis,
-        as nitrogen content in the vegetative parts hardly increases after
-        anthesis
+        收获时75-90%的氮吸收发生在开花前，在高肥力条件下，开花后氮吸收可贡献高达25%，但全部最终进入谷粒（以蛋白质形式）。
+        因此，这部分氮素不会影响生物量形成过程中的氮胁迫计算。
+        因此假定氮的吸收在开花时终止，因为开花后营养器官中的氮含量几乎不再增加。
         """
 
-        #  Nitrogen uptake limiting factor at low moisture conditions in the
-        #  rooted soil layer before anthesis. After anthesis there is no
-        #  uptake from the soil anymore.
+        # 抽穗前扎根土层水分不足时氮吸收受限，抽穗后不再从土壤吸收
         NLIMIT  = 1.0 if (DVS < p.DVSNLT) and (WC >= p.WCWP) else 0.0
 
         NUPTR   = (max(0., min(NDEMTO, s.TNSOIL))* NLIMIT ) / DELT
 
-        # N translocated from leaves, stem, and roots.
+        # 叶、茎、根氮的转运
         RNTLV   = RNSO* ATNLV/ ATN
         RNTST   = RNSO* ATNST/ ATN
         RNTRT   = RNSO* ATNRT/ ATN
 
-        # compute the partitioning of the total N uptake rate (NUPTR) over the leaves, stem and roots.
+        # 将氮素总吸收速率（NUPTR）分配到叶、茎和根
         RNULV, RNUST, RNURT = self.N_uptakeRates(NDEMLV, NDEMST, NDEMRT, NUPTR, NDEMTO)
 
         RNST    = RNUST-RNTST
         RNRT    = RNURT-RNTRT-RNLDRT
 
-        # Rate of change of N in organs
+        # 各器官氮变化速率
         RNLV    = RNULV-RNTLV-RNLDLV
 
-        # ****************SOIL NITROGEN SUPPLY***********************************
+        # ****************土壤-作物氮供应*****************************
         """
-        Soil–crop nitrogen balance
+        土壤-作物氮平衡
 
-        The mineral nitrogen balance of the soil is the difference between nitrogen
-        added through mineralization and/or fertilizer, and nitrogen removed by crop
-        uptake and losses. The net rate of change of N in soil (dN/dt in gm-2 d-1) is:
+        土壤中无机氮的平衡为矿化和/或施肥增加的氮量与作物吸收和损失移除的氮量之差。土壤中氮的净变化速率（dN/dt，g m-2 d-1）为：
 
         dN/dt[soil]= Nmin + (FERTN * NRF) - dNU/dt
 
-        where Nmin is the nitrogen supply through mineralization and biological N
-        fixation, FERTN is the fertilizer nitrogen application rate, NRF is the
-        fertilizer nitrogen recovery fraction and dNU/dt is the rate of nitrogen uptake
-        by the crop, which is calculated as the minimum of the N supply from the soil
-        and the N demand from the crop.
+        其中 Nmin 为通过矿化和生物固氮提供的氮，FERTN 为施肥氮施用速率，NRF 为施肥氮利用率，dNU/dt 为作物吸收氮速率，其计算为土壤供应氮量和作物氮需求的最小值。
         """
 
-        #  Change in inorganic N in soil as function of fertilizer
-        #  input, soil N mineralization and crop uptake.
+        # 土壤无机氮因施肥、矿化和作物吸收而变化
         RNSOIL = self.FERTNS/DELT - NUPTR + p.RNMIN
         self.FERTNS = 0.0
 
-        # # Total leaf weight.
+        # 总叶重
         WLV     = s.WLVG + s.WLVD
 
-        # Carbon, Nitrogen balance
+        # 碳、氮平衡
         CBALAN = (s.TGROWTH + (p.WRTLI + p.WLVGI + p.WSTI + p.WSOI)
                          - (WLV + s.WST + s.WSO + s.WRT + s.WDRT))
 
@@ -682,26 +560,23 @@ class Lintul3(SimulationObject):
 
     @prepare_states
     def integrate(self, day, delt=1.0):
-        # if before emergence there is no need to continue
-        # because only the phenology is running.
-        # Just run a touch() to to ensure that all state variables are available
-        # in the kiosk
+        # 在出苗之前不需要继续，因为此时只运行物候。
+        # 只需运行 touch() 以确保 kiosk 中所有状态变量都可用
 
         self.pheno.integrate(day, delt)
         if self.pheno.get_variable("STAGE") == "emerging":
             self.touch()
             return
 
-        # run automatic integration on states object.
+        # 对 states 对象自动执行积分
         s = self.states
         s.integrate(delta=1.)
 
-        # Compute some derived states
+        # 计算一些派生状态
         s.TAGBM = s.WLVG + s.WLVD + s.WST + s.WSO
 
     def _calc_potential_evapotranspiration(self, drv):
-        """Compute the potential evaporation and transpiration.
-        """
+        """计算作物的潜在蒸发和蒸腾。"""
         ES0 = cm2mm(drv.ES0)
         ET0 = cm2mm(drv.ET0)
         pevap = exp(-0.5 * self.states.LAI) * ES0
@@ -711,17 +586,15 @@ class Lintul3(SimulationObject):
         return pevap, ptran
 
     def _calc_actual_transpiration(self, PTRAN, WC):
-        """Compute the actual rates of evaporation and transpiration.
-        """
+        """计算实际的蒸发和蒸腾速率。"""
         p = self.params
                 
-        # critical water content    
+        # 临界含水量
         WCCR = p.WCWP + max( 0.01, PTRAN/(PTRAN + p.TRANCO) * (p.WCFC - p.WCWP))
           
-        #  If the soil is flooded for rice, : the soil is assumed to be
-        #  permanently saturated and there is no effect of the high water
-        #  content on crop totalGrowthRate, because rice has aerenchyma.
-        #  Thus FR is formulated as below:
+        # 如果稻田土壤被淹：假定土壤永久饱和，
+        # 高含水量对作物总生长速率没有影响，因为水稻有通气组织。
+        # 因此 FR 如下表达：
           
         if p.WMFAC:
             if (WC > WCCR):
@@ -729,11 +602,10 @@ class Lintul3(SimulationObject):
             else:
                 FR = limit( 0., 1., (WC - p.WCWP) / (WCCR - p.WCWP))
         
-        #  If soil is irrigated but not flooded, : soil water content is
-        #  assumed to be at field capacity and the critical water content
-        #  that affects crop totalGrowthRate (FR) is formulated as below:      
+        # 如果土壤灌溉但未被淹：假定土壤含水量处于田间持水量，
+        # 影响作物总生长速率的临界含水量如下注释所示：
         else:
-            if (WCCR <= WC <= p.WCWET):  # Between critical
+            if (WCCR <= WC <= p.WCWET):  # 处于临界值之间
                 FR = 1.0
             elif (WC < WCCR):                
                 FR = limit( 0., 1., (WC - p.WCWP)/(WCCR - p.WCWP))
@@ -743,34 +615,31 @@ class Lintul3(SimulationObject):
         return PTRAN * FR
 
     def _growth_leaf_area(self, DTEFF, LAII,  DELT, SLA, GLV, WC, DVS, TRANRF, NNI):
-        """This subroutine computes daily increase of leaf area index.
-        """
+        """该子程序计算叶面积指数的日增量。"""
 
         p = self.params
         LAI = self.states.LAI
         
-        #---- Growth during maturation stage:
+        #---- 生育后期的生长:
         GLAI = SLA * GLV
 
-        #---- Growth during juvenile stage:
+        #---- 幼苗期的生长:
         if ((DVS  <  0.2) and (LAI  <  0.75)):
             GLAI = (LAI * (exp(p.RGRL * DTEFF * DELT) - 1.)/ DELT )* TRANRF* exp(-p.NLAI* (1.0 - NNI))
 
-        #---- Growth at day of seedling emergence:
+        #---- 幼苗出土当天的生长:
         if ((LAI == 0.) and (WC > p.WCWP)):
             GLAI = LAII / DELT  
         
         return GLAI
 
     def dryMatterPartitioningFractions(self, NPART, TRANRF, NNI, FRTWET, FLVT, FSTT, FSOT):
-        """ Computes the Dry matter partitioning fractions: leaves, stem and storage organs.
-        """
+        """ 计算干物质分配系数：叶片、茎和贮藏器官。"""
 
         p = self.params
         NRF = exp(-p.NLUE * (1.0 - NNI))
         if(TRANRF  <  NRF):
-            #  Water stress is more severe as compared to nitrogen stress and
-            #  partitioning will follow the original assumptions of LINTUL2*
+            # 水分胁迫比氮胁迫更严重，分配遵循LINTUL2*的原始假设
             FRTMOD = max(1., 1./(TRANRF+0.5))
             FRT    = FRTWET * FRTMOD
             FSHMOD = (1.-FRT) / (1.-FRT/FRTMOD)
@@ -778,8 +647,7 @@ class Lintul3(SimulationObject):
             FST    = FSTT * FSHMOD
             FSO    = FSOT * FSHMOD
         else:
-            # Nitrogen stress is more severe as compared to water stress and the
-            # less partitioning to leaves will go to the roots*
+            # 氮胁迫比水分胁迫更严重，减少分配到叶片的生物量会分配到根
             FLVMOD = exp(-NPART* (1.0-NNI))
             FLV    = FLVT * FLVMOD
             MODIF  = (1.-FLV)/(1.-(FLV/FLVMOD))
@@ -790,25 +658,17 @@ class Lintul3(SimulationObject):
         return FRT, FLV, FST, FSO # FLVMOD removed from signature - WdW
     
     def totalGrowthRate(self, DTR, TRANRF, NNI):
-        """Compute the total total Growth Rate.
+        """计算总生长速率。
 
-        Monteith, (1977), Gallagher and Biscoe, (1978) and Monteith (1990) have
-        shown that biomass formed per unit intercepted light, LUE (Light
-        Use Efficiency, g dry matter MJ-1), is relatively stable. Hence,
-        maximum daily growth rate can be defined as the product of
-        intercepted PAR (photosynthetically active radiation, |MJm-2d-1|)
-        and LUE.
+        Monteith (1977)、Gallagher 和 Biscoe (1978) 及 Monteith (1990) 表明，每单位截获光合有效辐射（LUE，光能利用效率，g 干物质 MJ-1）形成的生物量相对稳定。
+        因此，最大日生长速率可定义为截获的光合有效辐射（PAR，|MJm-2d-1|）与LUE的乘积。
 
-        Intercepted PAR depends on incident solar radiation,
-        the fraction that is photosynthetically active (0.5) (Monteith and
-        Unsworth, 1990; Spitters, 1990), and LAI (|m2| leaf |m-2| soil) according
-        to Lambert Beer's law:
+        截获的PAR取决于入射太阳辐射、光合有效的比例（0.5）（Monteith 和 Unsworth, 1990；Spitters, 1990），
+        以及根据Lambert Beer定律取决于LAI（|m2|叶面积 |m-2| 土壤）：
 
         :math:`Q = 0.5 Q0 (1 - e^{-k LAI})`
 
-        where *Q* is intercepted PAR |MJm-2d-1|, *Q0* is daily global radiation
-        |MJm-2d-1|, and *k* is the attenuation coefficient for PAR in the
-        canopy.
+        其中 *Q* 为截获的PAR（|MJm-2d-1|），*Q0* 为每日总辐射（|MJm-2d-1|），*k*为冠层中PAR的衰减系数。
         """
         
         p = self.params
@@ -817,77 +677,69 @@ class Lintul3(SimulationObject):
         NRF = exp(-p.NLUE * (1.0 - NNI))
         GRF = 1.0
         if(TRANRF  <=  NRF):
-            #  Water stress is more severe as compared to nitrogen stress and
-            #  partitioning will follow the original assumptions of LINTUL2*
+            # 水分胁迫比氮胁迫更严重，分配遵循LINTUL2*的原始假设
             GRF = TRANRF
         else:
-            #  Nitrogen stress is more severe as compared to water stress and the
-            #  less partitioning to leaves will go to the roots*
+            # 氮胁迫比水分胁迫更严重，减少分配到叶片的生物量会分配到根
             GRF = NRF
         RGROWTH *= GRF
         return RGROWTH
 
     def relativeGrowthRates(self, RGROWTH, FLV, FRT, FST, FSO, DLV, DRRT):
-        """Compute the relative total Growth Rate rate of roots, leaves, stem
-        and storage organs.
-        """
+        """计算根、叶、茎和贮藏器官的相对总生长速率。"""
       
-        RWLVG = RGROWTH * FLV - DLV
-        RWRT  = RGROWTH * FRT - DRRT
-        RWST  = RGROWTH * FST
-        RWSO  = RGROWTH * FSO
+        RWLVG = RGROWTH * FLV - DLV      # 叶子的生长速率
+        RWRT  = RGROWTH * FRT - DRRT     # 根的生长速率
+        RWST  = RGROWTH * FST            # 茎的生长速率
+        RWSO  = RGROWTH * FSO            # 贮藏器官的生长速率
 
         return RWLVG, RWRT, RWST, RWSO
 
     def N_uptakeRates(self, NDEML, NDEMS, NDEMR, NUPTR, NDEMTO):
-        """Compute the partitioning of the total N uptake rate (NUPTR)
-        over the leaves, stem, and roots.
-        """
+        """计算总氮吸收速率（NUPTR）在叶、茎和根中的分配。"""
       
         if (NDEMTO > 0):
-            RNULV = (NDEML / NDEMTO)* NUPTR
-            RNUST = (NDEMS / NDEMTO)* NUPTR
-            RNURT = (NDEMR / NDEMTO)* NUPTR
+            RNULV = (NDEML / NDEMTO)* NUPTR  # 分配到叶子的氮吸收速率
+            RNUST = (NDEMS / NDEMTO)* NUPTR  # 分配到茎的氮吸收速率
+            RNURT = (NDEMR / NDEMTO)* NUPTR  # 分配到根的氮吸收速率
 
             return RNULV, RNUST, RNURT
         else:
             return 0.0, 0.0, 0.0
 
     def translocatable_N(self):      
-        """Compute the translocatable N in the organs.
-        """
+        """计算各器官可转运的氮。"""
         s = self.states
         p = self.params
-        ATNLV = max (0., s.ANLV - s.WLVG * p.RNFLV)
-        ATNST = max (0., s.ANST - s.WST  * p.RNFST)
-        ATNRT = min((ATNLV + ATNST) * p.FNTRT, s.ANRT - s.WRT * p.RNFRT)
-        ATN   = ATNLV +  ATNST + ATNRT
+        ATNLV = max (0., s.ANLV - s.WLVG * p.RNFLV)                     # 叶片可转运氮
+        ATNST = max (0., s.ANST - s.WST  * p.RNFST)                     # 茎可转运氮
+        ATNRT = min((ATNLV + ATNST) * p.FNTRT, s.ANRT - s.WRT * p.RNFRT) # 根可转运氮
+        ATN   = ATNLV +  ATNST + ATNRT                                  # 总可转运氮
         
         return ATNLV, ATNST, ATNRT, ATN
 
     def deathRateOfLeaves(self, TSUM, RDRTMP, NNI, SLA):
-        """Compute the relative death rate of leaves due to age, shading amd due to nitrogen stress.
-        """
+        """计算由于年龄、遮荫和氮胁迫导致的叶片死亡速率。"""
       
         p = self.params
         s = self.states
         
-        RDRDV = 0. if (TSUM < p.TSUMAG) else RDRTMP
+        RDRDV = 0. if (TSUM < p.TSUMAG) else RDRTMP    # 由于发育（年龄）导致的叶片死亡速率
         
-        RDRSH = max(0., p.RDRSHM * (s.LAI - p.LAICR) / p.LAICR)
-        RDR   = max(RDRDV, RDRSH)
+        RDRSH = max(0., p.RDRSHM * (s.LAI - p.LAICR) / p.LAICR) # 遮荫导致的死亡速率
+        RDR   = max(RDRDV, RDRSH)                               # 取较大者作为实际速率
         
         if (NNI  <  1.):
-            DLVNS   = s.WLVG * p.RDRNS * (1. - NNI)
-            DLAINS  = DLVNS * SLA
+            DLVNS   = s.WLVG * p.RDRNS * (1. - NNI) # 氮胁迫导致的叶片死亡
+            DLAINS  = DLVNS * SLA                   # 氮胁迫导致的叶面积损失
         else:
             DLVNS   = 0.
             DLAINS  = 0.
         
-        DLVS  = s.WLVG * RDR
-        DLAIS = s.LAI * RDR
+        DLVS  = s.WLVG * RDR      # 非氮胁迫导致的叶片死亡
+        DLAIS = s.LAI * RDR       # 非氮胁迫导致的叶面积损失
         
-        DLV   = DLVS + DLVNS
-        DLAI  = DLAIS + DLAINS
+        DLV   = DLVS + DLVNS      # 总叶片死亡速率
+        DLAI  = DLAIS + DLAINS    # 总叶面积损失
     
         return DLV, DLAI

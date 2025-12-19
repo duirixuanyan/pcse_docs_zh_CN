@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl) and Herman Berghuijs (herman.berghuijs@wur.nl), January 2024
-"""This module wraps the soil components for water and nutrients so that they run jointly
-within the same model. Use of these wrappers is only required for WOFOST 8+ because the
-WOFOST 7x version do not simulated nutrient-limited production and therefore can import
-the waterbalance directly into the configuration.
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl) 和 Herman Berghuijs (herman.berghuijs@wur.nl), 2024年1月
+"""该模块封装了土壤的水分和养分组分，使其能够在同一个模型中联合运行。只有在WOFOST 8+中才需要使用这些封装类，因为WOFOST 7x 版本并未模拟养分限制的生产，因此可以直接在配置中导入水分平衡模块。
 """
 from pcse.base import SimulationObject
 from .classic_waterbalance import WaterbalanceFD, WaterbalancePP
@@ -15,7 +12,7 @@ from ..traitlets import Instance
 
 
 class BaseSoilWrapper(SimulationObject):
-    """Base class for wrapping soil water and nutrient/carbon balances.
+    """用于封装土壤水分和养分/碳平衡的基类。
     """
     waterbalance_class = None
     nutrientbalance_class = None
@@ -24,9 +21,9 @@ class BaseSoilWrapper(SimulationObject):
 
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE instance
-        :param parvalues: dictionary with parameter key/value pairs
+        :param day: 模拟的开始日期
+        :param kiosk: 该PCSE实例的变量kiosk
+        :param parvalues: 包含参数键值对的字典
         """
         if self.waterbalance_class is not None:
             self.waterbalance = self.waterbalance_class(day, kiosk, parvalues)
@@ -47,49 +44,41 @@ class BaseSoilWrapper(SimulationObject):
 
 
 class SoilModuleWrapper_PP(BaseSoilWrapper):
-    """This wraps the soil water balance and soil N balance for potential production.
+    """封装用于潜力生产的土壤水分平衡与土壤氮素平衡。
     """
     waterbalance_class = WaterbalancePP
     nutrientbalance_class = N_PotentialProduction
 
 
 class SoilModuleWrapper_WLP_CWB(BaseSoilWrapper):
-    """This wraps the classic soil water balance for free drainage conditions and unlimited N balance
-    for production conditions limited by soil water only.
+    """封装用于自由排水条件下的经典土壤水分平衡，以及仅受土壤水分限制生产条件下的无限制氮素平衡。
     """
     waterbalance_class = WaterbalanceFD
     nutrientbalance_class = N_PotentialProduction
 
 
 class SoilModuleWrapper_NWLP_CWB_CNB(BaseSoilWrapper):
-    """This wraps the classic soil water balance and classic N balance
-    for production conditions limited by both soil water and N but with
-    simple water and N dynamics.
+    """封装用于土壤水分与氮素均受限生产条件下，采用简单水分和氮素动力学的经典土壤水分平衡与经典氮素平衡。
     """
     waterbalance_class = WaterbalanceFD
     nutrientbalance_class = N_Soil_Dynamics
 
 
 class SoilModuleWrapper_WLP_MLWB(BaseSoilWrapper):
-    """This wraps the multi-layer soil water balance and classic N balance
-    for production conditions limited by both soil water and N.
+    """封装用于土壤水分与氮素均受限生产条件下，多层土壤水分平衡与经典氮素平衡。
     """
     waterbalance_class = WaterBalanceLayered
     nutrientbalance_class = N_PotentialProduction
 
 class SoilModuleWrapper_NWLP_MLWB_CNB(BaseSoilWrapper):
-    """This wraps the soil water balance for free drainage conditions and N balance
-    for production conditions limited by both soil water and N but with
-    advanced soil water dynamics and simple N dynamics.
+    """封装用于土壤水分与氮素均受限生产条件下，采用先进水分动力学和简单氮素动力学的自由排水土壤水分平衡与氮素平衡。
     """
     waterbalance_class = WaterBalanceLayered
     nutrientbalance_class = N_Soil_Dynamics
 
 
 class SoilModuleWrapper_NWLP_MLWB_SNOMIN(BaseSoilWrapper):
-    """This wraps the soil water balance for free drainage conditions and the
-    advanced SNOMIN C/N balance for production conditions limited by both soil water
-    and N using advanced soil water dynamics and C/N dynamics.
+    """封装用于自由排水条件下，采用先进SNOMIN碳/氮平衡的土壤水分平衡。适用于土壤水分与氮素均受限，且需要先进的水分和碳/氮动力学的生产条件。
     """
     waterbalance_class = WaterBalanceLayered
     nutrientbalance_class = SNOMIN

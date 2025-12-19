@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2014 Alterra, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), April 2014
+# 版权所有 (c) 2004-2014 Alterra, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2014年4月
 import copy
 import re
 
@@ -16,26 +16,20 @@ class DuplicateError(PCSEError):
     pass
 
 class CABOFileReader(dict):
-    """Reads CABO files with model parameter definitions.
+    """读取包含模型参数定义的CABO文件。
 
-    The parameter definitions of Wageningen crop models are generally
-    written in the CABO format. This class reads the contents, parses
-    the parameter names/values and returns them as a dictionary.
+    Wageningen作物模型的参数定义通常采用CABO格式编写。本类读取内容、解析参数名/值，并以字典形式返回。
 
-    :param fname: parameter file to read and parse
-    :returns: dictionary like object with parameter key/value pairs.
+    :param fname: 需要读取和解析的参数文件名
+    :returns: 类似字典的对象，包含参数的键/值对。
 
-    Note that this class does not yet fully support reading all features
-    of CABO files. For example, the parsing of booleans, date/times and
-    tabular parameters is not supported and will lead to errors.
+    注意：本类尚未完全支持CABO文件的所有特性。例如，对布尔值、日期/时间和表格参数的解析尚未实现，会导致错误。
 
-    The header of the CABO file (marked with ** at the first line) is
-    read and can be retrieved by the get_header() method or just by
-    a print on the returned dictionary.
+    CABO文件的头部（以首行为**标记）会被读取，可通过get_header()方法获取，也可直接打印返回的字典。
 
-    *Example*
+    *示例*
 
-    A parameter file 'parfile.cab' which looks like this::
+    一个名为'parfile.cab'的参数文件如下::
 
         ** CROP DATA FILE for use with WOFOST Version 5.4, June 1992
         **
@@ -52,7 +46,7 @@ class CABOFileReader(dict):
         ** in storage organs        in vegetative organs [kg kg-1]
         NMINSO   =   0.0110 ;       NMINVE   =   0.0030
 
-    Can be read with the following statements::
+    可通过如下语句读取::
 
         >>>fileparameters = CABOFileReader('parfile.cab')
         >>>print fileparameters['CROP_NO']
@@ -72,12 +66,13 @@ class CABOFileReader(dict):
         NMINSO: 0.011 <type 'float'>
     """
 
-    # RE patterns for parsing scalar, table and string parameters
+    # 用于解析标量、表格和字符串参数的正则表达式(RE)模式
     scpar = r"[a-zA-Z0-9_]+[\s]*=[\s]*[a-zA-Z0-9_.\-]+"
     tbpar = r"[a-zA-Z0-9_]+[\s]*=[\s]*[0-9,.\s\-+]+"
     strpar = r"[a-zA-Z0-9_]+[\s]*=[\s]*'.*?'"
 
     def _remove_empty_lines(self, filecontents):
+        # 移除文件内容中的空行
         t = []
         for line in filecontents:
             line = line.strip(" \n\r")
@@ -86,6 +81,7 @@ class CABOFileReader(dict):
         return t
 
     def _remove_inline_comments(self, filecontents):
+        # 移除行尾的注释内容
         t = []
         for line in filecontents:
             line = line.split("!")[0]
@@ -95,14 +91,17 @@ class CABOFileReader(dict):
         return t
 
     def _is_comment(self, line):
+        # 判断当前行是否为注释行（以*号开头）
         if line.startswith("*"):
             return True
         else:
             return False
 
     def _find_header(self, filecontents):
-        """Parses and strips header marked with '*' at the beginning of
-        the file. Further lines marked with '*' are deleted."""
+        """
+        解析并提取以'*'标记的文件头部信息。
+        文件开头连续以'*'标记的行为头部，其余以'*'标记的行将被删除。
+        """
 
         header = []
         other_contents = []
@@ -122,7 +121,9 @@ class CABOFileReader(dict):
         return (header, other_contents)
 
     def _parse_table_values(self, parstr):
-        """Parses table parameter into a list of floats."""
+        """
+        解析表格参数，将其转换为浮点数列表
+        """
 
         tmpstr = parstr.strip()
         valuestrs = tmpstr.split(",")
@@ -138,15 +139,15 @@ class CABOFileReader(dict):
         return tblvalues
 
     def _find_parameter_sections(self, filecontents):
-        "returns the sections defining float, string and table parameters."
+        # 返回定义float、string及table型参数的各自部分
         scalars = ""
         strings = ""
         tables = ""
 
         for line in filecontents:
-            if line.find("'") != -1: # string parameter
+            if line.find("'") != -1: # 字符串参数
                 strings += (line + " ")
-            elif line.find(",") != -1: # table parameter
+            elif line.find(",") != -1: # 表格参数
                 tables += (line + " ")
             else:
                 scalars += (line + " ")
@@ -154,7 +155,8 @@ class CABOFileReader(dict):
         return scalars, strings, tables
 
     def _find_individual_pardefs(self, regexp, parsections):
-        """Splits the string into individual parameters definitions.
+        """
+        将字符串分割为单独的参数定义
         """
         par_definitions = re.findall(regexp, parsections)
         rest = re.sub(regexp, "", parsections)
@@ -167,7 +169,9 @@ class CABOFileReader(dict):
         return par_definitions
 
     def __init__(self, fname):
-        with open(fname) as fp:
+        # 用UTF-8打开
+        # with open(fname) as fp:
+        with open(fname, 'r', encoding='utf-8') as fp:
             filecontents = fp.readlines()
         filecontents = self._remove_empty_lines(filecontents)
         filecontents = self._remove_inline_comments(filecontents)
@@ -176,18 +180,18 @@ class CABOFileReader(dict):
             msg = "Empty CABO file!"
             raise PCSEError(msg)
 
-        # Split between file header and parameters
+        # 分割文件头和参数部分
         self.header, filecontents = self._find_header(filecontents)
 
-        # Find parameter sections using string methods
+        # 使用字符串方法查找参数部分
         scalars, strings, tables = self._find_parameter_sections(filecontents)
 
-        # Parse into individual parameter definitions
+        # 解析为单独的参数定义
         scalar_defs = self._find_individual_pardefs(self.scpar, scalars)
         table_defs = self._find_individual_pardefs(self.tbpar, tables)
         string_defs = self._find_individual_pardefs(self.strpar, strings)
 
-        # Parse individual parameter definitions into name & value.
+        # 解析单个参数定义为名称和值
         for parstr in scalar_defs:
             try:
                 parname, valuestr = parstr.split("=")
@@ -231,6 +235,9 @@ class CABOFileReader(dict):
                 raise XYPairsError(msg)
 
     def __str__(self):
+        """
+        将对象以字符串形式输出（包括文件头与参数）
+        """
         msg = ""
         for line in self.header:
             msg += line+"\n"
@@ -241,7 +248,7 @@ class CABOFileReader(dict):
 
     def copy(self):
         """
-        Overrides the inherited dict.copy method, which returns a dict.
-        This instead preserves the class and attributes like .header.
+        覆写继承自 dict 的 copy 方法（原方法返回dict）
+        这样可以保留类本身及如 .header 这样的属性
         """
         return copy.copy(self)

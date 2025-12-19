@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 瓦赫宁根环境研究院，瓦赫宁根大学-UR
+# Allard de Wit (allard.dewit@wur.nl)，2024年3月
 from . import abioticdamage
 from . import assimilation
 from . import evapotranspiration

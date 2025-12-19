@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 from .. import exceptions as exc
 
 
 class _GenericSiteDataProvider(dict):
-    """Generic Site data provider
+    """通用场地数据提供者
 
-    It just checks the values provided as keywords given the _defaults and _required values
+    该类根据 _defaults 和 _required 检查作为关键字参数提供的值
 
     _defaults = {"VARNAME": (default, {maxvalue, minvalue}, type),
                 }
@@ -19,17 +19,17 @@ class _GenericSiteDataProvider(dict):
 
         for par_name, (default_value, par_range, par_conversion) in self._defaults.items():
             if par_name not in kwargs:
-                # parameter was not provided, use the default if possible
+                # 参数未被提供，如果可能使用默认值
                 if par_name in self._required:
                     msg = "Value for parameter '%s' must be provided!" % par_name
                     raise exc.PCSEError(msg)
                 else:
                     par_value = default_value
             else:
-                # parameter was provided, check value for type and range
+                # 参数已被提供，检查其类型和范围
                 par_value = par_conversion(kwargs.pop(par_name))
                 if isinstance(par_range, set):
-                    # allowed values consist of a
+                    # 允许的值由一个集合组成
                     if par_value not in par_range:
                         msg = "Value for parameter '%s' can only have values: %s" % (par_name, par_range)
                         raise exc.PCSEError(msg)
@@ -46,30 +46,29 @@ class _GenericSiteDataProvider(dict):
                             raise exc.PCSEError(msg)
             self[par_name] = par_value
 
-        # Check if kwargs is empty
+        # 检查 kwargs 是否为空
         if kwargs:
             msg = f"Unknown parameter values provided to {self.__class__}: %s" % kwargs
             raise exc.PCSEError(msg)
 
 
 class WOFOST72SiteDataProvider(_GenericSiteDataProvider):
-    """Site data provider for WOFOST 7.2.
+    """WOFOST 7.2 的场地数据提供者
 
-    Site specific parameters for WOFOST 7.2 can be provided through this data provider as well as through
-    a normal python dictionary. The sole purpose of implementing this data provider is that the site
-    parameters for WOFOST are documented, checked and that sensible default values are given.
+    WOFOST 7.2 的场地特定参数可以通过此数据提供者，也可以通过普通的 Python 字典提供。
+    实现该数据提供者的唯一目的是对 WOFOST 的场地参数进行文档说明、校验，并给出合理的默认值。
 
-    The following site specific parameter values can be set through this data provider::
+    可通过此数据提供者设置以下场地特定参数::
 
-        - IFUNRN    Indicates whether non-infiltrating fraction of rain is a function of storm size (1)
-                    or not (0). Default 0
-        - NOTINF    Maximum fraction of rain not-infiltrating into the soil [0-1], default 0.
-        - SSMAX     Maximum depth of water that can be stored on the soil surface [cm]
-        - SSI       Initial depth of water stored on the surface [cm]
-        - WAV       Initial amount of water in total soil profile [cm]
-        - SMLIM     Initial maximum moisture content in initial rooting depth zone [0-1], default 0.4
+        - IFUNRN    表示降雨非入渗部分是否为暴雨大小的函数 (1)，
+                    或不是 (0)。默认0
+        - NOTINF    未入渗到土壤中的最大降雨比例 [0-1]，默认 0。
+        - SSMAX     土壤表面能够储存的最大水深 [cm]
+        - SSI       初始土壤表面水储量 [cm]
+        - WAV       整个土壤剖面初始含水量 [cm]
+        - SMLIM     初始根区最大土壤含水率 [0-1]，默认 0.4
 
-    Currently only the value for WAV is mandatory to specify.
+    目前，只有 WAV 是必须指定的。
     """
 
     _defaults = {"IFUNRN": (0, {0, 1}, int),
@@ -82,24 +81,23 @@ class WOFOST72SiteDataProvider(_GenericSiteDataProvider):
 
 
 class WOFOST73SiteDataProvider(_GenericSiteDataProvider):
-    """Site data provider for WOFOST 7.3
+    """WOFOST 7.3 的场地数据提供者
 
-    Site specific parameters for WOFOST 7.3 can be provided through this data provider as well as through
-    a normal python dictionary. The sole purpose of implementing this data provider is that the site
-    parameters for WOFOST are documented, checked and that sensible default values are given.
+    WOFOST 7.3 的场地特定参数可以通过此数据提供者，也可以通过普通的 Python 字典提供。
+    实现该数据提供者的唯一目的是对 WOFOST 的场地参数进行文档说明、校验，并给出合理的默认值。
 
-    The following site specific parameter values can be set through this data provider::
+    可通过此数据提供者设置以下场地特定参数::
 
-        - IFUNRN    Indicates whether non-infiltrating fraction of rain is a function of storm size (1)
-                    or not (0). Default 0
-        - NOTINF    Maximum fraction of rain not-infiltrating into the soil [0-1], default 0.
-        - SSMAX     Maximum depth of water that can be stored on the soil surface [cm]
-        - SSI       Initial depth of water stored on the surface [cm]
-        - WAV       Initial amount of water in total soil profile [cm]
-        - SMLIM     Initial maximum moisture content in initial rooting depth zone [0-1], default 0.4
-        - CO2       Atmospheric CO2 concentration in ppm
+        - IFUNRN    表示降雨非入渗部分是否为暴雨大小的函数 (1)，
+                    或不是 (0)。默认0
+        - NOTINF    未入渗到土壤中的最大降雨比例 [0-1]，默认 0。
+        - SSMAX     土壤表面能够储存的最大水深 [cm]
+        - SSI       初始土壤表面水储量 [cm]
+        - WAV       整个土壤剖面初始含水量 [cm]
+        - SMLIM     初始根区最大土壤含水率 [0-1]，默认 0.4
+        - CO2       大气 CO2 浓度（ppm）
 
-    Values for WAV and CO2 is mandatory to specify.
+    WAV 和 CO2 为必填项。
     """
 
     _defaults = {"IFUNRN": (0, {0, 1}, int),
@@ -113,34 +111,27 @@ class WOFOST73SiteDataProvider(_GenericSiteDataProvider):
 
 
 class WOFOST81SiteDataProvider_Classic(_GenericSiteDataProvider):
-    """Site data provider for WOFOST 8.1 for Classic water and nitrogen balance.
+    """WOFOST 8.1 经典水和氮平衡下的场地数据提供者
 
-    Site specific parameters for WOFOST 8.1 can be provided through this data provider as well as through
-    a normal python dictionary. The sole purpose of implementing this data provider is that the site
-    parameters for WOFOST are documented, checked and that sensible default values are given.
+    WOFOST 8.1 的场地特定参数可以通过此数据提供者，也可以通过普通的 Python 字典提供。
+    实现该数据提供者的唯一目的是对 WOFOST 的场地参数进行文档说明、校验，并给出合理的默认值。
 
-    The following site specific parameter values can be set through this data provider::
+    可通过此数据提供者设置以下场地特定参数::
 
-        - IFUNRN        Indicates whether non-infiltrating fraction of rain is a function of
-                        storm size (1) or not (0). Default 0
-        - NOTINF        Maximum fraction of rain not-infiltrating into the soil [0-1],
-                        default 0.
-        - SSMAX         Maximum depth of water that can be stored on the soil surface [cm]
-        - SSI           Initial depth of water stored on the surface [cm]
-        - WAV           Initial amount of water in total soil profile [cm]
-        - SMLIM         Initial maximum moisture content in initial rooting depth zone [0-1],
-                        default 0.4
-        - CO2           Atmospheric CO2 level (ppm), default 360.
-        - BG_N_SUPPLY   Background N supply through atmospheric deposition in kg/ha/day. Can be
-                        in the order of 25 kg/ha/year in areas with high N pollution. Default 0.0
-        - NSOILBASE     Base N amount available in the soil. This is often estimated as the nutrient
-                        left over from the previous growth cycle (surplus nutrients, crop residues
-                        or green manure).
-        - NSOILBASE_FR  Daily fraction of soil N coming available through mineralization
-        - NAVAILI       Amount of N available in the pool at initialization of the system [kg/ha]
+        - IFUNRN        表示降雨非入渗部分是否为暴雨大小的函数 (1)，
+                        或不是 (0)。默认0
+        - NOTINF        未入渗到土壤中的最大降雨比例 [0-1]，默认 0。
+        - SSMAX         土壤表面能够储存的最大水深 [cm]
+        - SSI           初始土壤表面水储量 [cm]
+        - WAV           整个土壤剖面初始含水量 [cm]
+        - SMLIM         初始根区最大土壤含水率 [0-1]，默认 0.4
+        - CO2           大气 CO2 水平（ppm），默认 360。
+        - BG_N_SUPPLY   背景大气沉降N补给，单位 kg/ha/天。在高氮污染区可能高达每年25 kg/ha。默认0.0
+        - NSOILBASE     土壤可利用的基础氮量。通常为上次种植周期剩余的营养物（盈余营养物、作物残茬或绿肥）推算。
+        - NSOILBASE_FR  土壤每日有机质矿化释放的氮比例
+        - NAVAILI       系统初始化时氮池中的可利用氮量 [kg/ha]
 
-    Currently, the parameters for initial water availability (WAV) and initial availability of
-    nutrients (NAVAILI) are mandatory to specify.
+    目前，初始水分可用性（WAV）与初始可用营养物（NAVAILI）为必填项。
     """
 
     _defaults = {"IFUNRN": (0, {0, 1}, int),
@@ -159,45 +150,33 @@ class WOFOST81SiteDataProvider_Classic(_GenericSiteDataProvider):
 
 
 class WOFOST81SiteDataProvider_SNOMIN(_GenericSiteDataProvider):
-    """Site data provider for WOFOST 8.1 for use with the SNOMIN C/N balance.
+    """WOFOST 8.1 用于 SNOMIN C/N 平衡的场地数据提供者
 
-    The following site specific parameter values can be set through this data provider::
+    可通过此数据提供者设置以下场地特定参数::
 
-        - IFUNRN        Indicates whether non-infiltrating fraction of rain is a function of
-                        storm size (1) or not (0). Default 0
-        - NOTINF        Maximum fraction of rain not-infiltrating into the soil [0-1],
-                        default 0.
-        - SSMAX         Maximum depth of water that can be stored on the soil surface [cm]
-        - SSI           Initial depth of water stored on the surface [cm]
-        - WAV           Initial amount of water in total soil profile [cm]
-        - SMLIM         Initial maximum moisture content in initial rooting depth zone [0-1],
-                        default 0.4
-        - CO2           Atmospheric CO2 level, currently around 400. [ppm]
-        - A0SOM         Initial age of organic material (24.0)  [year]
-        - CNRatioBio    C:N ratio of microbial biomass  (9.0) [kg C kg-1 N]
-        - FASDIS        Assimilation to dissimilation rate ratio (0.5) [-]
-        - KDENIT_REF    Reference first order rate of denitrification (0.06) [d-1]
-        - KNIT_REF      Reference first order rate of nitrification (1.0) [d-1]
-        - KSORP         Sorption coefficient (0.0005) [m3 soil kg-1 soil]
-        - MRCDIS        Michaelis-Menten constant of relationship organic C-dissimilation rate
-                        and response factor denitrification rate (0.001) [kg C m-2 d-1]
-        - NH4ConcR      NH4-N concentration in rain water (0.9095) [mg NH4+-N L-1 water]
-        - NO3ConcR      NO3-N concentration in rain water (2.1) [mg NO3--N L-1 water]
-        - NH4I          Initial amount of NH4+ per soil layer  [kg NH4+ ha-1]. This
-                        should match the number of soil layers specified in the soil
-                        configuration. The initial value can be highly variable and as
-                        high as 300-500 kg/ha of NH4/NO3 if the model was started right
-                        after an N application event.
-        - NO3I          Initial amount of NO3-N per soil layer [kg NO3-N ha-1]. This
-                        should match the number of soil layers specified in the soil
-                        configuration. The initial value can be highly variable and as
-                        high as 300-500 kg/ha of NH4/NO3 if the model was started right
-                        after an N application event.
-        - WFPS_CRIT     Critical fraction water filled soil pores (0.8)  [m3 water m-3 pores]
+        - IFUNRN        表示降雨非入渗部分是否为暴雨大小的函数 (1)，
+                        或不是 (0)。默认0
+        - NOTINF        未入渗到土壤中的最大降雨比例 [0-1]，默认 0。
+        - SSMAX         土壤表面能够储存的最大水深 [cm]
+        - SSI           初始土壤表面水储量 [cm]
+        - WAV           整个土壤剖面初始含水量 [cm]
+        - SMLIM         初始根区最大土壤含水率 [0-1]，默认 0.4
+        - CO2           大气 CO2 水平，目前约 400 [ppm]
+        - A0SOM         有机物初始年龄 (24.0)  [年]
+        - CNRatioBio    微生物生物量碳氮比  (9.0) [kg C kg-1 N]
+        - FASDIS        同化与异化速率比 (0.5) [-]
+        - KDENIT_REF    参考反硝化一阶速率 (0.06) [d-1]
+        - KNIT_REF      参考硝化一阶速率 (1.0) [d-1]
+        - KSORP         吸附系数 (0.0005) [m3 soil kg-1 soil]
+        - MRCDIS        有机碳-异化速率与反硝化响应因子的米氏常数 (0.001) [kg C m-2 d-1]
+        - NH4ConcR      雨水中 NH4-N 浓度 (0.9095) [mg NH4+-N L-1 water]
+        - NO3ConcR      雨水中 NO3-N 浓度 (2.1) [mg NO3--N L-1 water]
+        - NH4I          每一土层的初始 NH4+ 含量  [kg NH4+ ha-1]。数量应与土壤层数配置一致。若模型刚施肥，初始值可高达300-500 kg/ha NH4/NO3。
+        - NO3I          每一土层的初始 NO3-N 含量 [kg NO3-N ha-1]。数量应与土壤层数配置一致。若模型刚施肥，初始值可高达300-500 kg/ha NH4/NO3。
+        - WFPS_CRIT     临界土壤孔隙充水率 (0.8)  [m3 water m-3 pores]
 
 
-        *important*: Some of the valid ranges of parameters for WOFOST 8.1/SNOMIN are uncertain
-        and therefore values outside of the specified ranges here may be valid in certain cases.
+        *重要*: 部分参数的有效范围仍不确定，因此本处范围之外的值在特定情况下也可能有效。
 
     """
     _required = ["WAV", "CO2", "NH4I", "NO3I", ]

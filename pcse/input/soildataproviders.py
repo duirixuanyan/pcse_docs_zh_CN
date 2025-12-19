@@ -1,11 +1,10 @@
 import copy
 
 class DummySoilDataProvider(dict):
-    """This class is to provide some dummy soil parameters for potential production simulation.
+    """该类用于为潜在产量模拟提供一些虚拟的土壤参数。
 
-    Simulation of potential production levels is independent of the soil. Nevertheless, the model
-    does not some parameter values. This data provider provides some hard coded parameter values for
-    this situation.
+    潜在产量水平的模拟与土壤无关。然而，模型仍然需要一些参数值。
+    此数据提供者为这种情况提供了一些硬编码的参数值。
     """
     _defaults = {"SMFCF":0.3,
                  "SM0":0.4,
@@ -22,7 +21,7 @@ class DummySoilDataProvider(dict):
 
     def copy(self):
         """
-        Overrides the inherited dict.copy method, which returns a dict.
-        This instead preserves the class and attributes like .header.
+        重写继承自 dict.copy 的方法，dict.copy 返回一个 dict。
+        此方法则保留了类和诸如 .header 这样的属性。
         """
         return copy.copy(self)

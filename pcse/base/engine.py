@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
 # Allard de Wit (allard.dewit@wur.nl), March 2024
-"""Base classes for creating PCSE simulation units.
+"""用于创建PCSE仿真单元的基类。
 
-In general these classes are not to be used directly, but are to be subclassed
-when creating PCSE simulation units.
+通常这些类不应直接使用，而是应在创建PCSE仿真单元时进行子类化。
 """
 import types
 import logging
@@ -15,8 +14,7 @@ from .simulationobject import SimulationObject
 
 
 class BaseEngine(HasTraits, DispatcherObject):
-    """Base Class for Engine to inherit from
-    """
+    """Engine的基类，供继承使用"""
 
     def __init__(self):
         HasTraits.__init__(self)
@@ -29,20 +27,16 @@ class BaseEngine(HasTraits, DispatcherObject):
         return logging.getLogger(loggername)
 
     def __setattr__(self, attr, value):
-        # __setattr__ has been modified  to enforce that class attributes
-        # must be defined before they can be assigned. There are a few
-        # exceptions:
-        # 1 if an attribute name starts with '_'  it will be assigned directly.
-        # 2 if the attribute value is a  function (e.g. types.FunctionType) it
-        #   will be assigned directly. This is needed because the
-        #   'prepare_states' and 'prepare_rates' decorators assign the wrapped
-        #   functions 'calc_rates', 'integrate' and optionally 'finalize' to
-        #   the Simulation Object. This will collide with __setattr__ because
-        #   these class methods are not defined attributes.
+        # __setattr__已经被修改，用于强制要求类属性在赋值前必须被定义。
+        # 有以下几个例外情况：
+        # 1. 如果属性名称以下划线‘_’开头，将直接赋值。
+        # 2. 如果属性值是函数类型(如types.FunctionType)，将直接赋值。
+        #    这是因为 'prepare_states' 和 'prepare_rates' 装饰器会将包装函数
+        #    'calc_rates', 'integrate' 及可选的 'finalize' 赋值给Simulation Object。
+        #    由于这些类方法不是定义的属性，这会和 __setattr__ 冲突。
         #
-        # Finally, if the value assigned to an attribute is a SimulationObject
-        #   or if the existing attribute value is a SimulationObject than
-        #   rebuild the list of sub-SimulationObjects.
+        # 最后，如果赋值的属性值是SimulationObject对象，或者已存在的属性值是SimulationObject，
+        #   则需要重建子SimulationObject列表。
 
         if attr.startswith("_") or type(value) is types.FunctionType:
             HasTraits.__setattr__(self, attr, value)
@@ -54,8 +48,7 @@ class BaseEngine(HasTraits, DispatcherObject):
 
     @property
     def subSimObjects(self):
-        """ Find SimulationObjects embedded within self.
-        """
+        """查找嵌入在自身中的SimulationObjects。"""
 
         subSimObjects = []
         defined_traits = self.__dict__["_trait_values"]
@@ -65,19 +58,16 @@ class BaseEngine(HasTraits, DispatcherObject):
         return subSimObjects
 
     def get_variable(self, varname):
-        """ Return the value of the specified state or rate variable.
+        """返回指定状态或速率变量的值。
 
-        :param varname: Name of the variable.
+        :param varname: 变量名称。
 
-        Note that the `get_variable()` will first search for `varname` exactly
-        as specified (case sensitive). If the variable cannot be found, it will
-        look for the uppercase name of that variable. This is purely for
-        convenience.
+        注意：`get_variable()` 会先精确查找 `varname`（区分大小写）。
+        如果无法找到变量，则会查找该变量的全大写名称。这仅仅是为了方便。
         """
 
-        # Check if variable is registered in the kiosk, also check for
-        # name in upper case as most variables are defined in upper case.
-        # If variable is not registered in the kiosk then return None directly.
+        # 检查变量是否已在kiosk中注册，同时检查大写名称，因为大多数变量都以大写字母定义。
+        # 如果变量未注册至kiosk，则直接返回None。
         if self.kiosk.variable_exists(varname):
             v = varname
         elif self.kiosk.variable_exists(varname.upper()):
@@ -88,7 +78,7 @@ class BaseEngine(HasTraits, DispatcherObject):
         if v in self.kiosk:
             return self.kiosk[v]
 
-        # Search for variable by traversing the hierarchy
+        # 通过遍历层级关系查找变量
         value = None
         for simobj in self.subSimObjects:
             value = simobj.get_variable(v)
@@ -97,9 +87,8 @@ class BaseEngine(HasTraits, DispatcherObject):
         return value
 
     def zerofy(self):
-        """Zerofy the value of all rate variables of any sub-SimulationObjects.
-        """
-        # Walk over possible sub-simulation objects.
+        """将所有子SimulationObjects的速率变量值归零。"""
+        # 遍历所有可能的子SimulationObject对象。
         if self.subSimObjects is not None:
             for simobj in self.subSimObjects:
                 simobj.zerofy()

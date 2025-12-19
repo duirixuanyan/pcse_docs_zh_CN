@@ -5,41 +5,23 @@
 
 .. include:: abbreviations.txt
 
-PCSE: The Python Crop Simulation Environment
+PCSE：Python 作物模拟环境（The Python Crop Simulation Environment）
 ============================================
 
-PCSE (Python Crop Simulation Environment) is a Python package for building crop simulation models,
-in particular the crop models developed in Wageningen (Netherlands). PCSE provides the
-environment to implement crop simulation models, the tools for reading ancillary
-data (weather, soil, agromanagement) and the components for simulating biophysical
-processes such as phenology, respiration and evapotranspiration. PCSE also
-includes implementations of the
-`WOFOST <http://www.wageningenur.nl/wofost>`_, `LINGRA <https://edepot.wur.nl/336784>`_ and
+PCSE (Python Crop Simulation Environment) 是一个用于构建作物模拟模型的 Python 包，特别适用于在瓦赫宁根（荷兰）开发的作物模型。PCSE 提供了实现作物模拟模型的环境、读取辅助数据（气象、土壤、农艺管理）的工具，以及模拟生物物理过程（如物候、呼吸和蒸散）的组件。PCSE 也包含了
+`WOFOST <http://www.wageningenur.nl/wofost>`_、 `LINGRA <https://edepot.wur.nl/336784>`_ 和
 `LINTUL3 <https://models.pps.wur.nl/system/files/LINTUL-N-Shibu-article_1.pdf>`_
-crop and grassland simulation models
-which have been widely used around the world. For example, WOFOST has been implemented in
-the MARS crop yield forecasting system which is used operationally for crop monitoring and
-yield prediction in Europe and beyond.
+作物与草地模拟模型的实现，这些模型已在全球范围内广泛应用。例如，WOFOST 已经被应用于 MARS 作物产量预测系统，并在欧洲及其他地区用作作物监测和产量预测的业务系统。
 
-Originally, models developed in Wageningen were often written using Fortran or the
-Fortran Simulation Translator (`FST`_). Both are very good tools, but they have become
-somewhat outdated and are difficult to integrate with many of the great tools that are available
-nowadays (containers, databases, web, etc).
-Like so many other software packages, PCSE was developed to facilitate my own research work. I wanted something
-that was more easy to work with, more interactive and more flexible while still implementing
-the sound computational approach of FST. For this reason PCSE was developed in Python
-which has become an important programming language for scientific purposes.
-PCSE runs on Python 3.6+ but can adapted to run on lower python
-versions. For example, we run PCSE in the .NET framework on IronPython 2.7 by stripping PCSE down
-to the core system.
+最初，瓦赫宁根开发的模型通常使用 Fortran 或 Fortran Simulation Translator ( `FST`_ ) 编写。这两个工具都非常好，但随着时间推移，它们有些过时，而且难以与当今流行的许多工具（如容器、数据库、Web 等）集成。
+像许多其他软件包一样，PCSE 的开发是为了方便我自己的科研工作。我希望有一个更易于使用、更具交互性且更灵活的工具，同时还能实现 FST 的严谨计算方法。为此，PCSE 用 Python 开发。Python 已成为科学研究领域的重要编程语言。
+PCSE 可在 Python 3.6+ 版本上运行，也可以通过精简为核心系统后适配较低版本的 Python。例如，我们曾在 .NET 框架下通过 IronPython 2.7 运行 PCSE。
 
-Traditionally, crop simulation models in Wageningen have been provided including the
-full source code. PCSE is no exception and its source code is open and licensed under the
-European Union Public License.
+传统上，瓦赫宁根的作物模拟模型都是附带完整源代码提供的。PCSE 也不例外，其源代码是开源的，采用欧盟公共许可证 (European Union Public License) 授权。
 
 .. _FST: https://www.sciencedirect.com/science/article/abs/pii/S1161030102001314
 
-What's new
+最新动态
 ----------
 
 .. toctree::
@@ -47,7 +29,7 @@ What's new
 
    whatsnew.rst
 
-Crop models Available in PCSE
+PCSE 中可用的作物模型
 -----------------------------
 
 .. toctree::
@@ -55,21 +37,21 @@ Crop models Available in PCSE
 
    available_models.rst
 
-User guide
+用户指南
 ----------
 .. toctree::
    :maxdepth: 2
    
    user_guide.rst
 
-Reference guide
+参考指南
 ---------------
 .. toctree::
    :maxdepth: 2
 
    reference_guide.rst
 
-Code documentation
+代码文档
 ------------------
 
 .. toctree::
@@ -77,9 +59,11 @@ Code documentation
 
    code.rst
 
-This document was generated on |date|/|time|.
+中文翻译基于 `PCSE version: 6.0.12（2025年11月6日） <https://github.com/ajwdewit/pcse/tree/3b232476dd1215c0218c4251882e991c4fc12ead>`_
 
-Indices and tables
+本文档生成于 |date|/|time|.
+
+索引和表格
 ==================
 
 * :ref:`genindex`

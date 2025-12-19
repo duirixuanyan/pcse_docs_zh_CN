@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 import os, sys
 import importlib
 import inspect
@@ -9,11 +9,11 @@ from . import default_settings
 
 class Settings(object):
     """
-    Settings for PCSE.
+    PCSE 的设置。
 
-    Default values will be read from the module pcse.settings.default_settings.py
-    User settings are read from $HOME/.pcse/user_settings.py and override the default ones;
-    see the default settings file for a list of all possible variables.
+    默认值将从模块 pcse.settings.default_settings.py 中读取。
+    用户设置从 $HOME/.pcse/user_settings.py 读取，并覆盖默认值；
+    所有可能变量的列表请参见默认设置文件。
     """
 
     def __setattr__(self, name, value):
@@ -27,7 +27,7 @@ class Settings(object):
 
 
     def __init__(self):
-        # update this dict from global settings (but only for ALL_CAPS settings)
+        # 从全局设置中更新此 dict（但只针对所有大写的设置项）
         for setting in dir(default_settings):
             if setting.isupper():
                 setattr(self, setting, getattr(default_settings, setting))
@@ -46,6 +46,7 @@ class Settings(object):
                  " error in the settings file?): %s") % ("$HOME/.pcse/user_settings.py", e)
             )
 
+        # 从用户定义的模块导入设置
         for setting in dir(mod):
             if setting.isupper():
                 setattr(self, setting, getattr(mod, setting))
@@ -56,5 +57,5 @@ class Settings(object):
                        "settings will be ignored.") % setting
                 print(msg)
 
-# Initialize the settings from default_settings and users_settings
+# 从 default_settings 和 user_settings 初始化设置
 settings = Settings()

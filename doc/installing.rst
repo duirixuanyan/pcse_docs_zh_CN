@@ -1,13 +1,13 @@
-Installing PCSE
+安装 PCSE
 ===============
 
-Requirements and dependencies
+需求与依赖
 -----------------------------
 
-PCSE is being developed on Ubuntu Linux 18.04 and Windows 10 using python 3.9 and python 3.10
-As Python is a platform independent language, PCSE works equally well on Linux, Windows or Mac OSX.
-Before installing PCSE, Python itself must be installed on your system which we will demonstrate
-below. PCSE has a number of dependencies on other python packages which are the following::
+PCSE 正在 Ubuntu Linux 18.04 和 Windows 10 平台上使用 python 3.9 和 python 3.10 进行开发。
+由于 Python 是跨平台的语言，PCSE 可以在 Linux、Windows 或 Mac OSX 上同样良好地运行。
+在安装 PCSE 之前，您的系统上必须已经安装 Python，我们将在下文中展示如何操作。
+PCSE 依赖于一些其他的 python 包，具体如下::
 
 - SQLAlchemy<2.0
 - PyYAML>=3.11
@@ -16,9 +16,7 @@ below. PCSE has a number of dependencies on other python packages which are the 
 - pandas>=0.20
 - traitlets-pcse==5.0.0.dev
 
-
-The last package in the list is a modified version of the `traitlets`_ package which provides some
-additional functionality used by PCSE.
+列表中的最后一个包是对 `traitlets`_ 包的修改版本，PCSE 使用它所提供的额外功能。
 
 .. _Enthought Canopy: https://www.enthought.com/products/canopy/
 .. _Anaconda: https://store.continuum.io/cshop/anaconda/
@@ -26,26 +24,20 @@ additional functionality used by PCSE.
 .. _HomeBrew: http://brew.sh
 .. _traitlets: https://traitlets.readthedocs.io/en/stable/
 
-Setting up your python environment
+配置您的 python 环境
 ----------------------------------
 
-A convenient way to set up your python environment for PCSE is through the `Anaconda`_ python distribution.
-In the present PCSE Documentation all examples of installing and using PCSE refer to the Windows 10 platform.
+配置 PCSE 的 python 环境，一种便捷的方法是通过 `Anaconda`_ python 发行版。
+在本 PCSE 文档中，所有 PCSE 的安装和使用示例均基于 Windows 10 平台。
 
-First, we suggest you download and install the `MiniConda`_ python distribution which provides a minimum
-python environment that we will use to bootstrap a dedicated environment for PCSE. For the rest
-of this guide we will assume that you use Windows 10 and install the
-64bit miniconda for python 3 (``Miniconda3-latest-Windows-x86_64.exe``). The environment that
-we will create contains not only the dependencies for PCSE, it also includes many other useful packages
-such as `IPython`_, `Pandas`_ and the `Jupyter notebook`_. These packages will be used in the Getting Started section
-as well.
+首先，我们建议您下载并安装 `MiniConda`_ python 发行版。它提供了最小的 python 环境，我们将用来为 PCSE 启动专用环境。在本指南的其余部分，我们假设您使用 Windows 10 并安装 64 位的 python 3 版 miniconda（``Miniconda3-latest-Windows-x86_64.exe``）。我们即将创建的环境不仅包含了 PCSE 所需依赖，还包含了许多其他有用的包，例如 `IPython`_、`Pandas`_ 和 `Jupyter notebook`_。这些包也将在“入门”部分使用。
 
 .. _MiniConda: http://conda.pydata.org/miniconda.html
 .. _Pandas: http://pandas.pydata.org/
 .. _Jupyter notebook: https://jupyter.org/
 .. _IPython: https://ipython.org/
 
-After installing MiniConda you should open a command box and check that conda is installed properly:
+安装完 MiniConda 后，你应该打开命令行窗口，检查 *conda* 是否已正确安装：
 
 .. code-block:: doscon
 
@@ -87,13 +79,7 @@ After installing MiniConda you should open a command box and check that conda is
                offline mode : False
 
 
-Now we will use a Conda environment file to recreate the python environment that we use to develop and run
-PCSE. First you should download the conda environment file (:download:`downloads/py3_pcse.yml`).
-The environment include the Jupyter notebook and IPython which are
-needed for running the `getting started` section and the example notebooks. Save the environment file
-on a temporary location such as ``d:\temp\make_env\``. We will now create a dedicated virtual environment
-using the command ``conda env create`` and tell conda to use the environment file  with the
-option ``-f py3_pcse.yml`` as show below:
+现在我们将使用 Conda 环境文件来重建我们用于开发和运行 PCSE 的 python 环境。首先你需要下载 conda 环境文件 (:download:`downloads/py3_pcse.yml`)。该环境包含 Jupyter notebook 和 IPython，这些是在 `getting started` 部分和示例 notebook 中需要用到的。请将环境文件保存在一个临时位置，例如 ``d:\temp\make_env\``。现在我们将用 ``conda env create`` 命令创建一个专用虚拟环境，并用 ``-f py3_pcse.yml`` 参数指定环境文件，如下所示：
 
 .. code-block:: doscon
 
@@ -116,7 +102,7 @@ option ``-f py3_pcse.yml`` as show below:
     # * for power-users using bash, you must source
     #
 
-You can then activate your environment (note the addition of ``(py3_pcse)`` on your command prompt):
+你现在可以激活你的环境（注意命令提示符中会多出 ``(py3_pcse)``）:
 
 .. code-block:: doscon
 
@@ -126,15 +112,12 @@ You can then activate your environment (note the addition of ``(py3_pcse)`` on y
 
     (py3_pcse) D:\temp\make_env>
 
-Installing PCSE
+安装 PCSE
 ---------------
 
-The easiest way to install PCSE is through the python package index (`PyPI`_).
-Installing from PyPI is mostly useful if you are interested in using the functionality
-provided by PCSE in your own scripts, but are not interested in modifying or contributing to
-PCSE itself. Installing from PyPI is done using the package installer `pip` which searches
-the python package index for a package, downloads and installs it into your python
-environment (example below for PCSE 6.0.0):
+安装 PCSE 最简单的方法是通过 python 包索引（ `PyPI`_）。
+通过 PyPI 安装主要适用于你希望在自己的脚本中使用 PCSE 提供的功能，但不打算修改或为 PCSE 做贡献的情况。使用 `pip` 包管理器可以从 python 包索引搜索、下载并安装对应包到你的 python 环境中（如下以 PCSE 6.0.0 为例）：
+
 
 .. code-block:: doscon
 
@@ -170,33 +153,21 @@ environment (example below for PCSE 6.0.0):
     Installing collected packages: pcse
     Successfully installed pcse-6.0.0
 
-If you want to develop with or contribute to PCSE, than you should fork the `PCSE
-repository`_ on GitHub and get a local copy of PCSE using `git clone`. See the help on github_
-and for Windows/Mac users the `GitHub Desktop`_ application.
+如果你希望参与 PCSE 的开发或为其做出贡献，那么你应该在 GitHub 上 fork `PCSE repository`_，并通过 `git clone` 获取 PCSE 的本地副本。你可以参考 github_ 上的帮助文档，对于 Windows 或 Mac 用户，也可以使用 `GitHub Desktop`_ 应用程序。
 
 .. _GitHub Desktop: https://desktop.github.com/
 .. _GitHub: https://help.github.com/
 .. _PCSE repository: https://github.com/ajwdewit/pcse
 .. _PyPI: https://pypi.python.org/pypi/PCSE
 
-Testing PCSE
+PCSE 测试
 ------------
 
-To guarantee its integrity, the PCSE package includes a limited number of internal
-tests that are installed automatically with PCSE. In addition, the PCSE
-git repository has a large number of the tests in the `test` folder which do a more
-thorough job in testing but will take a long time to complete (e.g. an hour or more).
-The internal tests present users with a quick way to ensure that the output produced
-by the different components matches with the expected outputs. While the full test
-suite is useful for developers only.
+为了保证其完整性，PCSE 软件包内置了一定数量的内部测试，这些测试会随着 PCSE 的安装自动完成。此外，PCSE 的 git 仓库中还包含了大量位于 `test` 文件夹下的测试用例，这些测试更为全面，但运行时间较长（例如可能需要一小时以上）。内部测试为用户提供了一种快速方式，以确保不同组件产生的输出与预期结果一致。完整的测试集主要面向开发者使用。
 
-Test data for the internal tests can be found in the `pcse.tests.test_data` package as
-well as in an SQLite database (pcse.db). This database can be found under
-`.pcse` in your home folder and will be automatically created when importing
-PCSE for the first time. When you delete the database file manually it will be
-recreated next time you import PCSE.
+内部测试所需的测试数据可以在 `pcse.tests.test_data` 包中找到，同时还包括一个 SQLite 数据库（pcse.db）。该数据库存放于你主目录下的 `.pcse` 文件夹内，并会在你第一次导入 PCSE 时自动创建。如果你手动删除该数据库文件，则在下次导入 PCSE 时会再次自动生成。
 
-For running the internal tests of the PCSE package we need to start python and import pcse:
+要运行 PCSE 的内部测试，需要启动 python 并导入 pcse：
 
 .. code-block:: doscon
 
@@ -207,7 +178,7 @@ For running the internal tests of the PCSE package we need to start python and i
     Building PCSE demo database at: C:\Users\wit015\.pcse\pcse.db ... OK
     >>>
 
-Next, the tests can be executed by calling the `test()` function at the top of the package:
+接下来，可以通过调用包顶层的 `test()` 函数来执行测试：
 
 .. code-block:: doscon
 
@@ -248,12 +219,9 @@ Next, the tests can be executed by calling the `test()` function at the top of t
 
     OK
 
-If the model output matches the expected output the test will report 'OK',
-otherwise an error will be produced with a detailed traceback on where the
-problem occurred. Note that the results may deviate from the output above
-when tests were added or removed.
+如果模型输出与期望输出一致，测试将报告 'OK'，否则将产生错误，并提供详细的回溯以指出问题发生的位置。请注意，当测试用例被增加或删除时，结果可能会与上面的输出有所不同。
 
-Moreover, SQLAlchemy may complain with a warning that can be safely ignored::
+此外，SQLAlchemy 可能会出现一个可以安全忽略的警告：
 
     C:\Miniconda3\envs\py3_pcse\lib\site-packages\sqlalchemy\sql\sqltypes.py:603: SAWarning:
     Dialect sqlite+pysqlite does *not* support Decimal objects natively, and SQLAlchemy must

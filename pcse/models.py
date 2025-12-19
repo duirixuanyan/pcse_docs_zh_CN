@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl) and Herman Berghuijs (herman.berghuijs@wur.nl), May 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl) 和 Herman Berghuijs (herman.berghuijs@wur.nl), 2024年5月
 
 from .engine import Engine
 
 
 class Wofost72_PP(Engine):
-    """Convenience class for running WOFOST7.2 Potential Production.
+    """便捷类，用于运行 WOFOST7.2 潜力产量。
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Wofost72_PP.conf"
     __productionlevel__ = "PP"
@@ -19,9 +19,9 @@ class Wofost72_PP(Engine):
 
 
 class Wofost72_WLP_CWB(Engine):
-    """Convenience class for running WOFOST7.2 water-limited production.
+    """便捷类，用于运行 WOFOST7.2 水分受限产量。
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Wofost72_WLP_CWB.conf"
     __productionlevel__ = "WLP"
@@ -32,9 +32,9 @@ class Wofost72_WLP_CWB(Engine):
 
 
 class Wofost72_Phenology(Engine):
-    """Convenience class for running WOFOST7.2 phenology only.
+    """便捷类，仅运行 WOFOST7.2 物候。
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Wofost72_Pheno.conf"
     __productionlevel__ = "PP"
@@ -45,9 +45,9 @@ class Wofost72_Phenology(Engine):
 
 
 class Wofost73_PP(Engine):
-    """Convenience class for running WOFOST7.3 Potential Production.
+    """便捷类，用于运行 WOFOST7.3 潜力产量。
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Wofost73_PP.conf"
     __productionlevel__ = "PP"
@@ -58,9 +58,9 @@ class Wofost73_PP(Engine):
 
 
 class Wofost73_WLP_CWB(Engine):
-    """Convenience class for running WOFOST7.3 Water=limited Production using the Classic Waterbalance.
+    """便捷类，用于 Classic Waterbalance 的 WOFOST7.3 水分受限产量运行。
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Wofost73_WLP_CWB.conf"
     __productionlevel__ = "WLP"
@@ -71,9 +71,9 @@ class Wofost73_WLP_CWB(Engine):
 
 
 class Wofost73_WLP_MLWB(Engine):
-    """Convenience class for running WOFOST7.3 Water=limited Production using the Multi-layer Waterbalance.
+    """便捷类，用于 Multi-layer Waterbalance 的 WOFOST7.3 水分受限产量运行。
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Wofost73_WLP_MLWB.conf"
     __productionlevel__ = "WLP"
@@ -84,14 +84,12 @@ class Wofost73_WLP_MLWB(Engine):
 
 
 class Lintul10_NWLP_CWB_CNB(Engine):
-    """The LINTUL model (Light INTerception and UtiLisation) is a simple general crop model,
-    which simulates dry matter production as the result of light interception and utilization
-    with a constant light use efficiency.
+    """LINTUL 模型（光拦截与利用，Light INTerception and UtiLisation）是一个简单的通用作物模型，
+    通过假定恒定的光能利用效率，模拟作物因光拦截与利用所产生的干物质。
 
-    In literature, this model is known as LINTUL3 and simulates crop growth under water-limited and
-    nitrogen-limited conditions
+    在文献中，这个模型被称为 LINTUL3，能够模拟水分受限和氮素受限条件下的作物生长。
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Lintul3.conf"
     __productionlevel__ = "NWLP"
@@ -102,10 +100,9 @@ class Lintul10_NWLP_CWB_CNB(Engine):
 
 
 class FAO_WRSI10_WLP_CWB(Engine):
-    """Convenience class for computing actual crop water use using the Water Requirements
-    Satisfaction Index with a (modified) FAO WRSI approach.
+    """该便捷类用于通过（修正的）FAO WRSI 方法，利用作物需水满足指数计算作物实际用水量。
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
 
     config = "FAO_WRSI.conf"
@@ -117,9 +114,9 @@ class FAO_WRSI10_WLP_CWB(Engine):
 
 
 class Lingra10_PP(Engine):
-    """Convenience class for running the LINGRA grassland model for potential production.
+    """LINGRA 草地模型用于潜力产量模拟的便捷类。
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Lingra_PP.conf"
     __productionlevel__ = "PP"
@@ -130,9 +127,9 @@ class Lingra10_PP(Engine):
 
 
 class Lingra10_WLP_CWB(Engine):
-    """Convenience class for running the LINGRA grassland model for water-limited production.
+    """LINGRA 草地模型用于水分受限产量模拟的便捷类。
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Lingra_WLP_FD.conf"
     __productionlevel__ = "WLP"
@@ -143,9 +140,9 @@ class Lingra10_WLP_CWB(Engine):
 
 
 class Lingra10_NWLP_CWB_CNB(Engine):
-    """Convenience class for running the LINGRA grassland model for nitrogen and water-limited production.
+    """LINGRA 草地模型用于水分和氮素受限产量模拟的便捷类。
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Lingra_NWLP_FD.conf"
     __productionlevel__ = "NWLP"
@@ -156,9 +153,9 @@ class Lingra10_NWLP_CWB_CNB(Engine):
 
 
 class Wofost81_PP(Engine):
-    """Convenience class for running WOFOST8.1 potential production
+    """WOFOST8.1 潜力产量模拟的便捷类
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Wofost81_PP.conf"
     __productionlevel__ = "PP"
@@ -169,10 +166,9 @@ class Wofost81_PP(Engine):
 
 
 class Wofost81_WLP_CWB(Engine):
-    """Convenience class for running WOFOST8.1  water-limited production using the classic
-    waterbalance.
+    """WOFOST8.1 经典水分平衡法下水分受限产量模拟的便捷类
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Wofost81_WLP_CWB.conf"
     __productionlevel__ = "WLP"
@@ -183,10 +179,9 @@ class Wofost81_WLP_CWB(Engine):
 
 
 class Wofost81_WLP_MLWB(Engine):
-    """Convenience class for running WOFOST8.1  water-limited production using the multi-layer
-    waterbalance.
+    """WOFOST8.1 多层水分平衡法下水分受限产量模拟的便捷类
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Wofost81_WLP_MLWB.conf"
     __productionlevel__ = "WLP"
@@ -197,10 +192,9 @@ class Wofost81_WLP_MLWB(Engine):
 
 
 class Wofost81_NWLP_CWB_CNB(Engine):
-    """Convenience class for running WOFOST8.1 nutrient and water-limited production
-    using the classic waterbalance and classic nitrogen balance.
+    """WOFOST8.1 经典水分平衡法和经典氮素平衡法下水分和氮素受限产量模拟的便捷类
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Wofost81_NWLP_CWB_CNB.conf"
     __productionlevel__ = "NWLP"
@@ -211,10 +205,9 @@ class Wofost81_NWLP_CWB_CNB(Engine):
 
 
 class Wofost81_NWLP_MLWB_CNB(Engine):
-    """Convenience class for running WOFOST8.1 nutrient and water-limited production
-    using the multi-layer waterbalance and classic nitrogen balance.
+    """WOFOST8.1 多层水分平衡法和经典氮素平衡法下水分和氮素受限产量模拟的便捷类
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Wofost81_NWLP_MLWB_CNB.conf"
     __productionlevel__ = "NWLP"
@@ -225,10 +218,9 @@ class Wofost81_NWLP_MLWB_CNB(Engine):
 
 
 class Wofost81_NWLP_MLWB_SNOMIN(Engine):
-    """Convenience class for running WOFOST8.1 nutrient and water-limited production
-    using the multi-layer waterbalance and the SNOMIN carbon/nitrogen balance.
+    """WOFOST8.1 多层水分平衡法和SNOMIN碳/氮平衡法下水分和氮素受限产量模拟的便捷类
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Wofost81_NWLP_MLWB_SNOMIN.conf"
     __productionlevel__ = "NWLP"
@@ -239,9 +231,9 @@ class Wofost81_NWLP_MLWB_SNOMIN(Engine):
 
 
 class Alcepas10_PP(Engine):
-    """Convenience class for running the ALCEPAS 1.0 onion model for potential production
+    """ALCEPAS 1.0 洋葱模型的潜力产量模拟便捷类
 
-    see `pcse.engine.Engine` for description of arguments and keywords
+    参见 `pcse.engine.Engine` 获取参数和关键字说明
     """
     config = "Alcepas10_PP.conf"
     __productionlevel__ = "PP"
@@ -251,7 +243,7 @@ class Alcepas10_PP(Engine):
     __nitrogenbalance__ = None
 
 
-# This is to ensure that old code keeps working
+# 此操作用于保证旧有代码仍能正常工作
 Wofost71_PP = Wofost72_PP
 Wofost71_WLP_FD = Wofost72_WLP_FD = Wofost72_WLP_CWB
 LINTUL3 = Lintul10_NWLP_CWB_CNB

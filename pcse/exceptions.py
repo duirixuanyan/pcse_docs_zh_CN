@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl) and Herman Berghuijs (herman.berghuijs@wur.nl), April 2024
-"""Exception hierarchy for PCSE
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl) 和 Herman Berghuijs (herman.berghuijs@wur.nl), 2024年4月
+"""PCSE的异常层次结构
 """
 
 class PCSEError(Exception):
-    """Top PCSE Exception"""
+    """PCSE的顶级异常"""
     
 class CarbonBalanceError(PCSEError):
     "Raised when carbon flows are not balanced."

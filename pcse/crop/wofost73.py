@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl) and Herman Berghuijs (herman.berghuijs@wur.nl), January 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl) 和 Herman Berghuijs (herman.berghuijs@wur.nl), 2024年1月
 
 import datetime
 
@@ -24,75 +24,67 @@ from .storage_organ_dynamics import WOFOST_Storage_Organ_Dynamics as \
 
 
 class Wofost73(SimulationObject):
-    """Top level object organizing the different components of the WOFOST crop
-    simulation.
-            
-    The CropSimulation object organizes the different processes of the crop
-    simulation. Moreover, it contains the parameters, rate and state variables
-    which are relevant at the level of the entire crop. The processes that are
-    implemented as embedded simulation objects consist of:
-    
-        1. Phenology (self.pheno)
-        2. Partitioning (self.part)
-        3. Assimilation (self.assim)
-        4. Maintenance respiration (self.mres)
-        5. Evapotranspiration (self.evtra)
-        6. Leaf dynamics (self.lv_dynamics)
-        7. Stem dynamics (self.st_dynamics)
-        8. Root dynamics (self.ro_dynamics)
-        9. Storage organ dynamics (self.so_dynamics)
+    """
+    WOFOST作物模拟各组成部分的顶层组织对象
 
-    **Simulation parameters:**
-    
-    ======== =============================================== =======  ==========
-     Name     Description                                     Type     Unit
-    ======== =============================================== =======  ==========
-    CVL      Conversion factor for assimilates to leaves       SCr     -
-    CVO      Conversion factor for assimilates to storage      SCr     -
-             organs.
-    CVR      Conversion factor for assimilates to roots        SCr     -
-    CVS      Conversion factor for assimilates to stems        SCr     -
-    ======== =============================================== =======  ==========
-    
-    
-    **State variables:**
+    CropSimulation对象负责组织作物模拟的各个过程。此外，还包含对整个作物层面相关的参数、速率和状态变量。其包含作为内嵌模拟对象实现的以下过程：
 
-    =========== ================================================= ==== ===============
-     Name        Description                                      Pbl      Unit
-    =========== ================================================= ==== ===============
-    TAGP        Total above-ground Production                      N    |kg ha-1|
-    GASST       Total gross assimilation                           N    |kg CH2O ha-1|
-    MREST       Total gross maintenance respiration                N    |kg CH2O ha-1|
-    CTRAT       Total crop transpiration                           N    cm
-    HI          Harvest Index (only calculated during              N    -
-                `finalize()`)
-    DOF         Date representing the day of finish of the crop    N    -
-                simulation. 
-    FINISH_TYPE String representing the reason for finishing the   N    -
-                simulation: maturity, harvest, leave death, etc.
-    =========== ================================================= ==== ===============
+        1. 物候（self.pheno）
+        2. 物质分配（self.part）
+        3. 光合同化（self.assim）
+        4. 维持呼吸（self.mres）
+        5. 蒸散发（self.evtra）
+        6. 叶片动态（self.lv_dynamics）
+        7. 茎秆动态（self.st_dynamics）
+        8. 根系动态（self.ro_dynamics）
+        9. 储藏器官动态（self.so_dynamics）
 
- 
-     **Rate variables:**
+
+    **模拟参数:**
+
+    ======== =============================================== =======  ==========
+     名称       描述                                         类型       单位
+    ======== =============================================== =======  ==========
+    CVL      同化物转化为叶片的换算系数                      SCr         -
+    CVO      同化物转化为储藏器官的换算系数                  SCr         -
+    CVR      同化物转化为根的换算系数                        SCr         -
+    CVS      同化物转化为茎的换算系数                        SCr         -
+    ======== =============================================== =======  ==========
+
+
+    **状态变量:**
+
+    =========== ============================================ ==== ===============
+     名称        描述                                        公开       单位
+    =========== ============================================ ==== ===============
+    TAGP        地上部分总生产量                              N     |kg ha-1|
+    GASST       总光合作用量（净同化量加上维持呼吸）          N     |kg CH2O ha-1|
+    MREST       总维持呼吸量                                  N     |kg CH2O ha-1|
+    CTRAT       作物总蒸腾量                                  N     cm
+    HI          收获指数（只在`finalize()`期间计算）          N     -
+    DOF         模拟结束日期                                  N     -
+    FINISH_TYPE 模拟结束原因（如成熟、收获、叶片枯死等）      N     -
+    =========== ============================================ ==== ===============
+
+
+    **速率变量:**
 
     =======  ================================================ ==== =============
-     Name     Description                                      Pbl      Unit
+     名称     描述                                            公开     单位
     =======  ================================================ ==== =============
-    GASS     Assimilation rate corrected for water stress       N  |kg CH2O ha-1 d-1|
-    MRES     Actual maintenance respiration rate, taking into
-             account that MRES <= GASS.                         N  |kg CH2O ha-1 d-1|
-    ASRC     Net available assimilates (GASS - MRES)            N  |kg CH2O ha-1 d-1|
-    DMI      Total dry matter increase, calculated as ASRC
-             times a weighted conversion efficiency.            Y  |kg ha-1 d-1|
-    ADMI     Aboveground dry matter increase                    Y  |kg ha-1 d-1|
+    GASS     校正水分胁迫后的同化速率                          N   |kg CH2O ha-1 d-1|
+    MRES     实际维持呼吸速率，MRES <= GASS                    N   |kg CH2O ha-1 d-1|
+    ASRC     可用同化物净量（GASS - MRES）                     N   |kg CH2O ha-1 d-1|
+    DMI      总干物质增长（ASRC与加权转化效率的乘积）          Y   |kg ha-1 d-1|
+    ADMI     地上部分干物质增加                                Y   |kg ha-1 d-1|
     =======  ================================================ ==== =============
 
     """
-    # Placeholders for biomass available for reallocation
+    # 用于重新分配可用生物量的占位符
     _WLV_REALLOC = Float(None)
     _WST_REALLOC = Float(None)
     
-    # sub-model components for crop simulation
+    # 作物模拟的子模型组件
     pheno = Instance(SimulationObject)
     part  = Instance(SimulationObject)
     assim = Instance(SimulationObject)
@@ -103,8 +95,7 @@ class Wofost73(SimulationObject):
     ro_dynamics = Instance(SimulationObject)
     so_dynamics = Instance(SimulationObject)
     
-    # Parameters, rates and states which are relevant at the main crop
-    # simulation level
+    # 在主要作物模拟层面相关的参数、速率和状态变量
     class Parameters(ParamTemplate):
         CVL = Float(-99.)
         CVO = Float(-99.)
@@ -121,7 +112,7 @@ class Wofost73(SimulationObject):
         TAGP  = Float(-99.)
         GASST = Float(-99.)
         MREST = Float(-99.)
-        CTRAT = Float(-99.) # Crop total transpiration
+        CTRAT = Float(-99.) # 作物总蒸腾量
         HI    = Float(-99.)
         DOF = Instance(datetime.date)
         FINISH_TYPE = Unicode(allow_none=True)
@@ -142,17 +133,16 @@ class Wofost73(SimulationObject):
 
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE  instance
-        :param parvalues: `ParameterProvider` object providing parameters as
-                key/value pairs
+        :param day: 模拟开始日期
+        :param kiosk: 此 PCSE 实例的变量 kiosk
+        :param parvalues: `ParameterProvider` 对象，提供参数的键/值对
         """
         
         self.params = self.Parameters(parvalues)
         self.rates  = self.RateVariables(kiosk, publish=["DMI","ADMI", "REALLOC_LV", "REALLOC_ST", "REALLOC_SO"])
         self.kiosk = kiosk
         
-        # Initialize components of the crop
+        # 初始化作物的组件
         self.pheno = Phenology(day, kiosk, parvalues)
         self.part  = Partitioning(day, kiosk, parvalues)
         self.assim = Assimilation(day, kiosk, parvalues)
@@ -163,7 +153,7 @@ class Wofost73(SimulationObject):
         self.so_dynamics = Storage_Organ_Dynamics(day, kiosk, parvalues)
         self.lv_dynamics = Leaf_Dynamics(day, kiosk, parvalues)
 
-        # Initial total (living+dead) above-ground biomass of the crop
+        # 作物初始的地上（活+死）生物量总量
         TAGP = self.kiosk["TWLV"] + \
                self.kiosk["TWST"] + \
                self.kiosk["TWSO"]
@@ -173,13 +163,13 @@ class Wofost73(SimulationObject):
                                           CTRAT=0.0, HI=0.0, LV_REALLOCATED = 0., ST_REALLOCATED = 0.,
                                           DOF=None, FINISH_TYPE=None)
 
-        # Check partitioning of TDWI over plant organs
+        # 检查 TDWI 在器官间的分配正确性
         checksum = parvalues["TDWI"] - self.states.TAGP - self.kiosk["TWRT"]
         if abs(checksum) > 0.0001:
             msg = "Error in partitioning of initial biomass (TDWI)!"
             raise exc.PartitioningError(msg)
             
-        # assign handler for CROP_FINISH signal
+        # 关联 CROP_FINISH 信号的处理器
         self._connect_signal(self._on_CROP_FINISH, signal=signals.crop_finish)
 
     @staticmethod
@@ -200,33 +190,31 @@ class Wofost73(SimulationObject):
         r = self.rates
         k = self.kiosk
 
-        # Phenology
+        # 发育进程
         self.pheno.calc_rates(day, drv)
         crop_stage = self.pheno.get_variable("STAGE")
 
-        # if before emergence there is no need to continue
-        # because only the phenology is running.
+        # 如果作物尚未出苗，则无需继续，因为只有物候模块在运行
         if crop_stage == "emerging":
             return
 
-        # Potential assimilation
+        # 潜在同化速率
         PGASS = self.assim(day, drv)
 
-        # (evapo)transpiration rates
+        # （蒸发）蒸腾速率
         self.evtra(day, drv)
 
-        # water stress reduction
+        # 水分胁迫修正
         r.GASS = PGASS * k.RFTRA
 
-        # Respiration
+        # 呼吸作用
         PMRES = self.mres(day, drv)
         r.MRES  = min(r.GASS, PMRES)
 
-        # Net available assimilates
+        # 可用净同化物
         r.ASRC  = r.GASS - r.MRES
 
-        # DM partitioning factors (pf), conversion factor (CVF),
-        # dry matter increase (DMI) and check on carbon balance
+        # 干物质量分配因子（pf）、转换因子（CVF）、干物质量增加量（DMI），以及碳平衡检验
         pf = self.part.calc_rates(day, drv)
         CVF = 1./((pf.FL/p.CVL + pf.FS/p.CVS + pf.FO/p.CVO) *
                   (1.-pf.FR) + pf.FR/p.CVR)
@@ -234,16 +222,17 @@ class Wofost73(SimulationObject):
         self._check_carbon_balance(day, r.DMI, r.GASS, r.MRES,
                                    CVF, pf)
 
-        # Reallocation from stems/leaves
+        # 茎/叶物质再分配
         if k.DVS < p.REALLOC_DVS:
             r.REALLOC_LV = 0.0
             r.REALLOC_ST = 0.0
             r.REALLOC_SO = 0.0
         else:
-            if self._WST_REALLOC is None:  # Start of reallocation, compute max reallocatable biomass
+            # 开始再分配，计算最大可再分配生物量
+            if self._WST_REALLOC is None:
                 self._WST_REALLOC = k.WST * p.REALLOC_STEM_FRACTION
                 self._WLV_REALLOC = k.WLV * p.REALLOC_LEAF_FRACTION
-            # Reallocation rate in terms of loss of stem/leaf dry matter
+            # 按茎/叶干物质损耗计算的再分配速率
             if self.states.LV_REALLOCATED < self._WLV_REALLOC:
                 r.REALLOC_LV = min(self._WLV_REALLOC * p.REALLOC_LEAF_RATE, self._WLV_REALLOC - self.states.LV_REALLOCATED)
             else:
@@ -253,16 +242,14 @@ class Wofost73(SimulationObject):
                 r.REALLOC_ST = min(self._WST_REALLOC * p.REALLOC_STEM_RATE, self._WST_REALLOC - self.states.ST_REALLOCATED)
             else:
                 r.REALLOC_ST = 0.
-            # Reallocation rate in terms of increase in storage organs taking
-            # into account CVL/CVO ratio, CVS/CVO ratio and losses due to respiration
+            # 按贮藏器官增加量计算的再分配速率，考虑CVL/CVO、CVS/CVO比与呼吸耗损
             r.REALLOC_SO = (r.REALLOC_LV + r.REALLOC_ST) * p.REALLOC_EFFICIENCY
 
-        # distribution over plant organ
+        # 植物器官间分配
 
-        # Below-ground dry matter increase and root dynamics
+        # 地下部分干物质量增加及根系动态
         self.ro_dynamics.calc_rates(day, drv)
-        # Aboveground dry matter increase and distribution over stems,
-        # leaves, organs
+        # 地上部分干物质量增加及分配到茎、叶、贮藏器官
         r.ADMI = (1. - pf.FR) * r.DMI
         self.st_dynamics.calc_rates(day, drv)
         self.so_dynamics.calc_rates(day, drv)
@@ -273,49 +260,48 @@ class Wofost73(SimulationObject):
         rates = self.rates
         states = self.states
 
-        # crop stage before integration
+        # 积分前的作物生育阶段
         crop_stage = self.pheno.get_variable("STAGE")
 
-        # Phenology
+        # 发育进程
         self.pheno.integrate(day, delt)
 
-        # if before emergence there is no need to continue
-        # because only the phenology is running.
-        # Just run a touch() to ensure that all state variables are available
-        # in the kiosk
+        # 如果作物尚未出苗，则无需继续
+        # 因为此时只有发育进程在运行。
+        # 只需运行一次 touch()，确保所有状态变量都已在 kiosk 中可用
         if crop_stage == "emerging":
             self.touch()
             return
 
-        # Partitioning
+        # 物质分配
         self.part.integrate(day, delt)
         
-        # Integrate states on leaves, storage organs, stems and roots
+        # 积分叶片、贮藏器官、茎和根的状态
         self.ro_dynamics.integrate(day, delt)
         self.so_dynamics.integrate(day, delt)
         self.st_dynamics.integrate(day, delt)
         self.lv_dynamics.integrate(day, delt)
 
-        # Integrate total (living+dead) above-ground biomass of the crop
+        # 积分作物地上（活+死）总干物质量
         states.TAGP = self.kiosk["TWLV"] + \
                       self.kiosk["TWST"] + \
                       self.kiosk["TWSO"]
 
-        # total gross assimilation and maintenance respiration 
+        # 总同化量与维持呼吸耗损
         states.GASST += rates.GASS * delt
         states.MREST += rates.MRES * delt
         
-        # total crop transpiration (CTRAT)
+        # 作物总蒸腾量（CTRAT）
         states.CTRAT += self.kiosk.TRA * delt
 
-        # Keep track of amount of reallocated biomass
+        # 记录已再分配的生物量
         states.LV_REALLOCATED += rates.REALLOC_LV * delt
         states.ST_REALLOCATED += rates.REALLOC_ST * delt
 
     @prepare_states
     def finalize(self, day):
 
-        # Calculate Harvest Index
+        # 计算收获指数
         if self.states.TAGP > 0:
             self.states.HI = self.kiosk["TWSO"]/self.states.TAGP
         else:
@@ -326,8 +312,7 @@ class Wofost73(SimulationObject):
         SimulationObject.finalize(self, day)
 
     def _on_CROP_FINISH(self, day, finish_type=None):
-        """Handler for setting day of finish (DOF) and reason for
-        crop finishing (FINISH).
+        """用于设置作物生长结束日(DOF)以及作物结束原因(FINISH_TYPE)的处理函数。
         """
         self._for_finalize["DOF"] = day
         self._for_finalize["FINISH_TYPE"]= finish_type

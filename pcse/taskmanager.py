@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
-"""Taskmanager which reads tasks from a database table and updates the status
-when the tasks is finished.
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
+"""任务管理器，从数据库表中读取任务，并在任务完成时更新状态
 
-Classes defined here:
+定义的类:
  TaskManager
 """
 
@@ -15,18 +14,16 @@ from sqlalchemy import select, and_, MetaData, Table
 import socket
 
 class TaskManager:
-    """Class defines a taskmanager which reads from a table called 'tasklist'.
+    """定义了一个任务管理器类，它从名为 'tasklist' 的表中读取任务。
 
-    Usage: tm = TaskManager(engine, dbtype=dbtype, tasklist)
+    用法: tm = TaskManager(engine, dbtype=dbtype, tasklist)
 
-    Public methods:
-    get_task() - picks a 'Pending' task from the list
-    set_task_finished(task) - set the task status to 'Finished'
-    set_task_error(task) - set the task status to 'Error occurred'
+    公共方法:
+    get_task() - 从列表中选择一个“Pending”状态的任务
+    set_task_finished(task) - 将任务状态设置为“Finished”
+    set_task_error(task) - 将任务状态设置为“Error occurred”
 
-    A task table could be created with the following SQL command
-    (example taken from MySQL)::
-
+    可以通过如下SQL命令（以MySQL为例）创建一个任务表::
 
         CREATE TABLE `tasklist` (
            `task_id` int(11) NOT NULL AUTO_INCREMENT,
@@ -37,7 +34,7 @@ class TaskManager:
            `parameter1` int(11) DEFAULT NULL,
            `parameter2` decimal(10,2) DEFAULT NULL,
 
-           ... Additional columns can be put here.
+           ... 此处可添加更多列。
 
            PRIMARY KEY (`task_id`),
            KEY `status_ix` (`status`)
@@ -50,14 +47,14 @@ class TaskManager:
 
 #-------------------------------------------------------------------------------
     def __init__(self, engine, dbtype=None, tasklist='tasklist'):
-        """Class constructor for TaskManager.
+        """TaskManager 的类构造函数。
         
-        Arguments:
-        * engine - An SQLAlchemy engine object
+        参数:
+        * engine - SQLAlchemy 的 engine 对象
 
-        Keywords:
-        * dbtype - the type of DB to connect either 'MySQL', 'ORACLE' or 'SQLite'
-        * tasklist - Name of table to read tasks from, default 'tasklist'
+        关键字参数:
+        * dbtype - 要连接的数据库类型，为'MySQL'，'ORACLE'或'SQLite'
+        * tasklist - 要读取任务的表名，默认为 'tasklist'
         """
         db_ok = False
         if isinstance(dbtype, str):
@@ -78,7 +75,7 @@ class TaskManager:
         self.process_id = os.getpid()
         self.tasklist_tablename = tasklist
 
-        # Check if tasklist exists and database is readable
+        # 检查任务表是否存在并且数据库可读
         try:
             conn = self.engine.connect()
             metadata = MetaData(conn)
@@ -90,7 +87,7 @@ class TaskManager:
 
 #-------------------------------------------------------------------------------
     def get_task(self):
-        "Return 'Pending' task to processing unit."
+        """返回一个状态为'Pending'的任务，交由处理单元。"""
         
         conn = self.engine.connect()
         self._lock_table(conn)
@@ -114,9 +111,8 @@ class TaskManager:
     
 #-------------------------------------------------------------------------------
     def _lock_table(self, connection):
-        """Locks the TASKLIST table. Note that locking/unlocking is carried out
-        by directly sending SQL to the database instead of using SQLAlchemy,
-        which does not support this kind of table locking."""
+        """锁定TASKLIST表。注意，锁表/解锁通过直接发送SQL到数据库实现，而不是通过SQLAlchemy，
+        因为SQLAlchemy不支持这种表级锁定。"""
     
         if self.dbtype=="mysql":
             connection.execute("LOCK TABLE %s WRITE" % self.tasklist_tablename)
@@ -124,23 +120,23 @@ class TaskManager:
             connection.execute("LOCK TABLE %s IN EXCLUSIVE MODE" %
                                self.tasklist_tablename)
         elif self.dbtype=="sqlite":
-            pass # No locking needed for SQLite: assuming one client only.
+            pass # SQLite不需要锁定：假设只有一个客户端。
         
 
 #-------------------------------------------------------------------------------
     def _unlock_table(self, connection):
-        "Unlocks the TASKLIST table"
+        """解锁TASKLIST表"""
     
         if self.dbtype=="mysql":
             connection.execute("UNLOCK TABLES")
         elif self.dbtype=="oracle":
             connection.execute("COMMIT")
         elif self.dbtype=="sqlite":
-            pass # No locking needed for SQLite: assuming one client only.
+            pass # SQLite不需要锁定：假设只有一个客户端。
         
 #-------------------------------------------------------------------------------
     def set_task_finished(self, task, comment="OK"):
-        "Sets a task to status 'Finished'"
+        """将任务状态设置为'Finished'"""
         
         conn = self.engine.connect()
         self._lock_table(conn)
@@ -150,7 +146,7 @@ class TaskManager:
         
 #-------------------------------------------------------------------------------
     def set_task_error(self, task, comment=None):
-        "Sets a task to status 'Error occurred' with given comment"
+        """将任务状态设置为'Error occurred'，并填写相应注释"""
         
         conn = self.engine.connect()
         self._lock_table(conn)

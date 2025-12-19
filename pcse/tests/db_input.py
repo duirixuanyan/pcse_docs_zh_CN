@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
 # Allard de Wit (allard.dewit@wur.nl), March 2024
-"""Routines for retrieving data from the PCSE demo database.
- 
-Implements the following functions:
+"""从PCSE演示数据库中检索数据的相关程序。
+
+实现了以下函数:
     - fetch_cropdata()
     - fetch_sitedata()
     - fetch_soildata()
@@ -23,7 +23,7 @@ from .. import settings
 
 
 def fetch_crop_name(DBconn, crop):
-    # Get crop name from crop table
+    # 从crop表获取作物名称
     cursor = DBconn.cursor()
     cursor.execute("select crop_name from crop where crop_no=?", (crop,))
     row = cursor.fetchone()
@@ -34,32 +34,31 @@ def fetch_crop_name(DBconn, crop):
 
 
 def fetch_cropdata(DBconn, grid, year, crop):
-    """Retrieve crop parameter values for given grid, year, crop from DB.
+    """从数据库检索指定grid、年份和作物的作物参数值。
     
-    Parameter values are pulled from tables 'crop_parameter_value'
-    and 'variety_parameter_value'. Metadata is an SQLAlchemy metadata object.
+    参数值由表 'crop_parameter_value' 和 'variety_parameter_value' 提供。
+    Metadata 为 SQLAlchemy 的元数据对象。
     
-    Returns a dictionary with WOFOST crop parameter name/value pairs.
+    返回一个包含WOFOST作物参数（名称/数值对）的字典。
     
-    Note that the parameter names are defined in the function itself in order
-    to distinguish scalar and table parameters. These definitions will need to
-    be extended when additional parameters are to be retrieved.
+    请注意，参数名称在本函数内部定义，以区分标量参数和表格参数。
+    当需要检索其他参数时，这些定义需要扩展。
     """
     
-    # Define a logger for the PCSE db_util routines
+    # 为PCSE db_util函数定义一个日志记录器
     logger = logging.getLogger(__name__)
 
-    # Create initial dictionary 
+    # 创建初始字典
     cropdata = {}
     cropdata["CRPNAM"] = fetch_crop_name(DBconn, crop)
 
-    # Get crop variety from crop_calendar;
+    # 从crop_calendar表获取作物品种
     cursor = DBconn.cursor()
     cursor.execute("select variety_no from crop_calendar where crop_no=? and grid_no=? and year=?", (crop, grid, year))
     rows = cursor.fetchall()
     variety = rows[0].variety_no
 
-    # Define crop parameter values
+    # 定义作物参数值
     parameter_codes_sngl = ("CFET", "CVL", "CVO", "CVR", "CVS", "DEPNR", "DLC", 
                             "DLO", "DVSEND", "EFF", "IAIRDU", "IDSL", "KDIF", 
                             "LAIEM", "PERDL", "Q10", "RDI", "RDMCR", "RGRLAI", 
@@ -70,15 +69,15 @@ def fetch_cropdata(DBconn, grid, year, crop):
                             "RDRRTB", "RDRSTB", "RFSETB", "SLATB", "TMNFTB", 
                             "TMPFTB")
     
-    # Pull single value parameters from CROP_PARAMETER_VALUE first
+    # 首先从CROP_PARAMETER_VALUE拉取单值参数
     sql = "select * from crop_parameter_value where crop_no=? and parameter_code=?"
     for paramcode in parameter_codes_sngl:
         r = cursor.execute(sql, (crop, paramcode))
         rows = r.fetchall()
         cropdata[paramcode] = float(rows[0].parameter_xvalue)
 
-    # Pull array parameter values from CROP_PARAMETER_VALUE
-    # note the change in the mask value and the use of "LIKE" in the SQL query
+    # 从CROP_PARAMETER_VALUE拉取数组参数值
+    # 注意掩码值的变化以及SQL查询中使用了“LIKE”
     sql = "select * from crop_parameter_value where crop_no=? and parameter_code like ?"
     for paramcode in parameter_codes_mltp:
         pattern = paramcode + r'%'
@@ -89,9 +88,9 @@ def fetch_cropdata(DBconn, grid, year, crop):
             values.append(float(row.parameter_yvalue))
         cropdata[paramcode] = values
 
-    # Pull same parameter values from VARIETY_PARAMETER_VALUES
-    # if they are defined for that variety.
-    # Pull single value parameters first
+    # 从VARIETY_PARAMETER_VALUES拉取相同参数值
+    # 如果该品种有定义则覆盖
+    # 先拉取单值参数
     sql = "select * from variety_parameter_value where crop_no=? and variety_no=? and parameter_code=?"
     for paramcode in parameter_codes_sngl:
         r = cursor.execute(sql, (crop, variety, paramcode))
@@ -99,8 +98,7 @@ def fetch_cropdata(DBconn, grid, year, crop):
         if rows:
             cropdata[paramcode] = float(rows[0].parameter_xvalue)
 
-    # pull array value parameters - note the change in the mask value and
-    # the use of "LIKE" in the SQL query
+    # 拉取数组参数值 —— 注意掩码值的变化以及SQL查询中使用了“LIKE”
     sql = "select * from variety_parameter_value where crop_no=? and variety_no=? and parameter_code like ?"
     for paramcode in parameter_codes_mltp:
         pattern = paramcode + r'%'
@@ -115,21 +113,20 @@ def fetch_cropdata(DBconn, grid, year, crop):
 
     cursor.close()
 
-    # Make some specific changes for PCSE wofost 7.2 with regard to variables
-    # SSA, KDIF and EFF. This is needed because the 7.2 code expects a
-    # parameter array, while these parameters have been defined in CGMS as
-    # single values. DVSI does not exist in CGMS, therefore set DVSI to zero.
-    
-    # SSA convert to SSATB:
+    # 针对PCSE wofost 7.2对变量SSA、KDIF和EFF做特殊处理
+    # 由于7.2代码期望接收参数数组，而这些参数在CGMS中被定义为单值
+    # DVSI在CGMS中不存在，因此设为0
+
+    # SSA转换为SSATB:
     SSA = cropdata["SSA"]
     cropdata.update({"SSATB": [0, SSA, 2.0, SSA]})
-    # KDIF convert to KDIFTB:
+    # KDIF转换为KDIFTB:
     KDIF = cropdata["KDIF"]
     cropdata.update({"KDIFTB": [0., KDIF, 2.0, KDIF]})
-    # EFF convert to EFFTB
+    # EFF转换为EFFTB
     EFF = cropdata["EFF"]
     cropdata.update({"EFFTB": [0., EFF, 40.0, EFF]})
-    # DVSI set to 0
+    # DVSI设为0
     cropdata.update({"DVSI":0})
     
     logger.info("Succesfully retrieved crop parameter values from database")
@@ -137,25 +134,23 @@ def fetch_cropdata(DBconn, grid, year, crop):
 
 
 def fetch_soildata(DBconn, grid):
-    """Retrieve soil parameters for given grid from DB for a 1-layer soil.
+    """根据给定网格从数据库中提取单层土壤参数。
     
-    Retrieves soil_type_no from the table SOIL_TYPE and associated soil layers
-    and soil physical data from tables SOIL_LAYERS and SOIL_PHYSICAL_GROUP. 
+    从表 SOIL_TYPE 获取 soil_type_no，并从表 SOIL_LAYERS 和 SOIL_PHYSICAL_GROUP 获取相关土壤层和土壤理化数据。
     
-    Returns a dictionary with WOFOST soil parameter name/value pairs.
+    返回一个包含 WOFOST 土壤参数名称/数值对的字典。
     """
     
     cursor = DBconn.cursor()
 
     soildata = {}
-    # Select soil from the table SOIL_TYPE
+    # 从 SOIL_TYPE 表中选择土壤类型
     sql = "select * from soil_type where grid_no=?"
     r = cursor.execute(sql, (grid,))
     row = r.fetchone()
     soil_type_no = row.soil_type_no
     
-    # Derive layers for given soil_type_no. This should return only one
-    # layer, otherwise raise an error.
+    # 根据 soil_type_no 获取土壤层。只允许有一个土壤层，否则报错。
     sql = "select * from soil_layers where soil_type_no=? order by layer_no"
     r  = cursor.execute(sql, (soil_type_no,))
     rows = r.fetchall()
@@ -170,8 +165,8 @@ def fetch_soildata(DBconn, grid):
         soildata["RDMSOL"] = float(rows[0].thickness)
         soil_group_no = rows[0].soil_group_no
     
-    # Retrieve soil physical properties for given layer for given soil
-    # parameter codes: (wofost_parname, database_name)
+    # 获取该土壤层的理化属性
+    # 参数代码：(wofost参数名, 数据库名)
     soil_parameters = [("CRAIRC", "CRITICAL_AIR_CONTENT"),
                        ("K0", "HYDR_CONDUCT_SATUR"),
                        ("SOPE", "MAX_PERCOL_ROOT_ZONE"),
@@ -193,18 +188,15 @@ def fetch_soildata(DBconn, grid):
 
 
 class AgroManagementDataProvider(list):
-    """Class for providing agromanagement data from the CROP_CALENDAR table in a PCSE database.
+    """从PCSE数据库 CROP_CALENDAR 表提供农艺管理数据的类。
 
-    :param engine: SqlAlchemy engine object providing DB access
-    :param grid_no: Integer grid ID, maps to the grid_no column in the table
-    :param crop_no: Integer id of crop, maps to the crop_no column in the table
-    :param campaign_year: Integer campaign year, maps to the YEAR column in the table.
-           The campaign year refers to the year of the crop start. Thus for crops
-           crossing calendar years, the start_date can be in the previous year as the
-           harvest.
+    :param engine: 提供数据库访问的SqlAlchemy engine对象
+    :param grid_no: 整型网格ID，对应表中的grid_no字段
+    :param crop_no: 作物的整型ID，对应表中的crop_no字段
+    :param campaign_year: 整型年度，对应表中的YEAR字段。
+           作物生长期参考作物开始年份。对于跨年作物，start_date 可能在收获年份的前一年。
     
-    Note that this AgroManagementDataProvider is only used for the internal PCSE database
-    and not to be used for CGMS databases.
+    注意：本类仅用于内部PCSE数据库，不应用于CGMS数据库。
     """
     agro_management_template = """
           - {campaign_start_date}:
@@ -235,20 +227,20 @@ class AgroManagementDataProvider(list):
             msg = f"Failed deriving crop calendar for grid_no {self.grid_no}, crop_no {self.crop_no}, year {self.campaign_year}"
             raise PCSEError(msg)
 
-        # Determine the start date.
+        # 判定作物开始日期
         self.crop_start_date = check_date(row.crop_start_date)
         self.campaign_start_date = row.start_date
 
-        # Determine the start date/type. Only sowing|emergence is accepted by PCSE/WOFOST
+        # 判定开始类型。PCSE/WOFOST 仅支持sowing/emergence
         self.crop_start_type = str(row.crop_start_type).strip()
         if self.crop_start_type not in ["sowing","emergence"]:
             msg = "Unrecognized crop start type: %s" % self.crop_start_type
             raise PCSEError(msg)
 
-        # Determine maximum duration of the crop
+        # 判定最大生长期
         self.max_duration = int(row.max_duration)
 
-        # Determine crop end date/type and the end of the campaign
+        # 判定结束类型以及生长季结束
         self.crop_end_type = str(row.crop_end_type).strip().lower()
         if self.crop_end_type not in ["harvest", "earliest", "maturity"]:
             msg = ("Unrecognized option for END_TYPE in table "
@@ -264,24 +256,24 @@ class AgroManagementDataProvider(list):
         self._parse_yaml(input)
 
     def _build_yaml_agromanagement(self):
-        """Builds the YAML agromanagent string"""
+        """构建 YAML 农业管理字符串"""
 
-        # We do not get a variety_name from the CGMS database, so we make one
-        # as <crop_name>_<grid>_<year>
+        # 未从 CGMS 数据库获取 variety_name，因此我们自定义为 <crop_name>_<grid>_<year>
         variety_name = "%s_%s_%s" % (self.crop_name, self.grid_no, self.campaign_year)
-        input = self.agro_management_template.format(campaign_start_date=self.campaign_start_date,
-                                                     crop_name=self.crop_name,
-                                                     variety_name=variety_name,
-                                                     crop_start_date=self.crop_start_date,
-                                                     crop_start_type=self.crop_start_type,
-                                                     crop_end_date=self.crop_end_date,
-                                                     crop_end_type=self.crop_end_type,
-                                                     duration=self.max_duration
-                                                     )
+        input = self.agro_management_template.format(
+            campaign_start_date=self.campaign_start_date,
+            crop_name=self.crop_name,
+            variety_name=variety_name,
+            crop_start_date=self.crop_start_date,
+            crop_start_type=self.crop_start_type,
+            crop_end_date=self.crop_end_date,
+            crop_end_type=self.crop_end_type,
+            duration=self.max_duration
+        )
         return input
 
     def _parse_yaml(self, input):
-        """Parses the input YAML string and assigns to self"""
+        """解析输入的 YAML 字符串并赋值给 self"""
         try:
             items = yaml.safe_load(input)
         except yaml.YAMLError as e:
@@ -291,11 +283,11 @@ class AgroManagementDataProvider(list):
 
 
 def fetch_sitedata(DBconn, grid, year):
-    """Retrieve site data from DB for given grid, year.
-    
-    Pulls sitedata from the PCSE database 'SITE' table,
-    
-    Returns a dictionary with site parameter name/value pairs.
+    """根据指定的 grid 和 year 从数据库中提取站点数据。
+
+    从 PCSE 数据库 'SITE' 表中提取站点数据，
+
+    返回一个包含站点参数名和值对的字典。
     """
 
     cursor = DBconn.cursor()
@@ -316,25 +308,20 @@ def fetch_sitedata(DBconn, grid, year):
 
 
 class GridWeatherDataProvider(WeatherDataProvider):
-    """Retrieves meteodata from the GRID_WEATHER table in a CGMS database.
+    """从 CGMS 数据库的 GRID_WEATHER 表中检索气象数据。
 
-    :param metadata: SqlAlchemy metadata object providing DB access
-    :param grid_no:  CGMS Grid ID
-    :param startdate: Retrieve meteo data starting with startdate
-        (datetime.date object)
-    :param enddate: Retrieve meteo data up to and including enddate
-        (datetime.date object)
-    :param recalc_ET: Set to True to force calculation of reference
-        ET values. Mostly useful when values have not been calculated
-        in the CGMS database.
-    :param use_cache: Set to False to ignore read/writing a cache file.
+    :param metadata: 提供数据库访问的 SqlAlchemy 元数据对象
+    :param grid_no:  CGMS 网格 ID
+    :param startdate: 检索从 startdate 开始的气象数据
+        (datetime.date 对象)
+    :param enddate: 检索截止到 enddate（含） 的气象数据
+        (datetime.date 对象)
+    :param recalc_ET: 设置为 True 时强制计算参考 ET 值。主要用于 CGMS 数据库中未计算时。
+    :param use_cache: 设置为 False 时忽略读取/写入缓存文件。
 
-    Note that all meteodata is first retrieved from the DB and stored
-    internally. Therefore, no DB connections are stored within the class
-    instance. This makes that class instances can be pickled.
-
+    注意，所有气象数据会先从数据库中读取并存储于内部。因此类实例内不会持有数据库连接。因此可以对类实例进行 pickling。
     """
-    # default values for the Angstrom parameters in the sunshine duration model
+    # 阳光持续时间模型中的 Angstrom 参数默认值
     angstA = 0.29
     angstB = 0.49
 
@@ -357,27 +344,28 @@ class GridWeatherDataProvider(WeatherDataProvider):
 
             cursor = DBconn.cursor()
 
-            # Get location info (lat/lon/elevation)
+            # 获取位置信息（纬度/经度/海拔）
             self._fetch_location_from_db(cursor)
 
-            # Retrieved meteo data
+            # 获取气象数据
             self._fetch_grid_weather_from_db(cursor)
 
-            # Description
+            # 描述
             self.description = "Weather data derived for grid_no: %i" % self.grid_no
 
-            # Save cache file
+            # 保存缓存文件
             if self.use_cache:
                 fname = self._get_cache_filename(self.grid_no)
                 self._dump(fname)
 
     def _get_cache_filename(self, grid_no):
+        # 获取缓存文件名的方法
         fname = "%s_grid_%i.cache" % (self.__class__.__name__, grid_no)
         cache_filename = os.path.join(settings.METEO_CACHE_DIR, fname)
         return cache_filename
 
     def _self_load_cache(self, grid_no):
-        """Checks if a cache file exists and tries to load it."""
+        """检查缓存文件是否存在并尝试加载。"""
         cache_fname = self._get_cache_filename(grid_no)
         if os.path.exists(cache_fname):
             r = os.stat(cache_fname)
@@ -392,10 +380,9 @@ class GridWeatherDataProvider(WeatherDataProvider):
         return False
 
     def _fetch_location_from_db(self, cursor):
-        """Retrieves latitude, longitude, elevation from 'grid' table and
-        assigns them to self.latitude, self.longitude, self.elevation."""
+        """从'grid'表获取纬度，经度和海拔，然后赋值给self.latitude, self.longitude, self.elevation。"""
 
-        # Pull Latitude value for grid nr from database
+        # 从数据库中拉取当前网格编号的纬度值
         sql = "select latitude, longitude, altitude from grid where grid_no=?"
         r = cursor.execute(sql, (self.grid_no,))
         row = r.fetchone()
@@ -407,8 +394,7 @@ class GridWeatherDataProvider(WeatherDataProvider):
         self.elevation = float(row.altitude)
 
     def _fetch_grid_weather_from_db(self, cursor):
-        """Retrieves the meteo data from table 'grid_weather'.
-        """
+        """从'grid_weather'表中获取气象数据。"""
 
         try:
             sql = "select * from grid_weather where grid_no=? and day>=? and day<=?"
@@ -416,6 +402,7 @@ class GridWeatherDataProvider(WeatherDataProvider):
             rows = r.fetchall()
 
             c = len(rows)
+            # 如果选中的记录数小于所需的时间区间，警告
             if c < self.timeinterval:
                 msg = "Only %i records selected from table 'grid_weather' "+\
                        "for grid %i, period %s -- %s."
@@ -430,11 +417,12 @@ class GridWeatherDataProvider(WeatherDataProvider):
                 wdc = meteopackager(row, t)
                 self._store_WeatherDataContainer(wdc, DAY)
         except Exception as e:
+            # 读取指定日期气象数据失败时抛出异常
             errstr = "Failure reading meteodata for day %s: %s" % (row.day, str(e))
             raise PCSEError(errstr)
 
     def _make_WeatherDataContainer(self, row, t):
-        """Process record from grid_weather including unit conversion."""
+        """处理grid_weather表的数据，同时包含单位换算。"""
 
         t.update({"TMAX": float(row.maximum_temperature),
                   "TMIN": float(row.minimum_temperature),
@@ -444,6 +432,7 @@ class GridWeatherDataProvider(WeatherDataProvider):
                   "IRRAD": float(row.calculated_radiation)*1000.,
                   "SNOWDEPTH": safe_float(row.snow_depth)})
 
+        # 是否重算ET相关值
         if not self.recalc_ET:
             t.update({"E0":  float(row.e0)/10.,
                       "ES0": float(row.es0)/10.,
@@ -456,5 +445,4 @@ class GridWeatherDataProvider(WeatherDataProvider):
                       "ET0": et0/10.})
 
         wdc = WeatherDataContainer(**t)
-
         return wdc

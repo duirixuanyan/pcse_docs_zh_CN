@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl) and Herman Berghuijs (herman.berghuijs@wur.nl), April 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl) 和 Herman Berghuijs (herman.berghuijs@wur.nl), 2024年4月
 
 from ..traitlets import Float, Int, Instance
 from ..decorators import prepare_rates, prepare_states
@@ -9,67 +9,60 @@ from ..base import ParamTemplate, StatesTemplate, RatesTemplate, \
     SimulationObject, VariableKiosk
 
 class WOFOST_Stem_Dynamics(SimulationObject):
-    """Implementation of stem biomass dynamics.
+    """茎生物量动态的实现。
     
-    Stem biomass increase results from the assimilates partitioned to
-    the stem system. Stem death is defined as the current stem biomass
-    multiplied by a relative death rate (`RDRSTB`). The latter as a function
-    of the development stage (`DVS`).
+    茎生物量的增加来源于分配到茎系统的同化物。茎的死亡定义为当前茎生物量
+    乘以相对死亡率（`RDRSTB`）。后者是发育阶段（`DVS`）的函数。
     
-    Stems are green elements of the plant canopy and can as such contribute
-    to the total photosynthetic active area. This is expressed as the Stem
-    Area Index which is obtained by multiplying stem biomass with the
-    Specific Stem Area (SSATB), which is a function of DVS.
+    茎是植物冠层中的绿色器官，因此也可以贡献于总光合活性面积。
+    这通过茎面积指数（SAI）表现出来，SAI由茎生物量与茎面积系数（SSATB）相乘获得，后者为DVS的函数。
 
-    **Simulation parameters**:
+    **模拟参数**：
     
-    =======  ============================================= =======  ============
-     Name     Description                                   Type     Unit
-    =======  ============================================= =======  ============
-    TDWI     Initial total crop dry weight                  SCr       |kg ha-1|
-    RDRSTB   Relative death rate of stems as a function     TCr       -
-             of development stage
-    SSATB    Specific Stem Area as a function of            TCr       |ha kg-1|
-             development stage
-    =======  ============================================= =======  ============
+    =======  ================================ =======  ============
+     名称         描述                         类型     单位
+    =======  ================================ =======  ============
+    TDWI     初始作物干物质量                  SCr       |kg ha-1|
+    RDRSTB   茎相对死亡率，作为发育阶段的函数  TCr       -
+    SSATB    茎面积系数，作为发育阶段的函数    TCr       |ha kg-1|
+    =======  ================================ =======  ============
     
 
-    **State variables**
+    **状态变量**
 
-    =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
-    =======  ================================================= ==== ============
-    SAI      Stem Area Index                                    Y     -
-    WST      Weight of living stems                             Y     |kg ha-1|
-    DWST     Weight of dead stems                               N     |kg ha-1|
-    TWST     Total weight of stems                              Y     |kg ha-1|
-    =======  ================================================= ==== ============
+    =======  ========================== ==== ============
+     名称      描述                     公布      单位
+    =======  ========================== ==== ============
+    SAI      茎面积指数                   Y     -
+    WST      活茎质量                     Y     |kg ha-1|
+    DWST     死茎质量                     N     |kg ha-1|
+    TWST     总茎质量                     Y     |kg ha-1|
+    =======  ========================== ==== ============
 
-    **Rate variables**
+    **速率变量**
 
-    =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
-    =======  ================================================= ==== ============
-    GRST     Growth rate stem biomass                           N   |kg ha-1 d-1|
-    DRST     Death rate stem biomass                            N   |kg ha-1 d-1|
-    GWST     Net change in stem biomass                         N   |kg ha-1 d-1|
-    =======  ================================================= ==== ============
+    =======  ========================== ==== ============
+     名称      描述                     公布      单位
+    =======  ========================== ==== ============
+    GRST     茎生物量增长速率             N   |kg ha-1 d-1|
+    DRST     茎生物量死亡速率             N   |kg ha-1 d-1|
+    GWST     茎生物量净变化速率           N   |kg ha-1 d-1|
+    =======  ========================== ==== ============
     
-    **Signals send or handled**
+    **发送或处理的信号**
     
-    None
+    无
     
-    **External dependencies:**
+    **外部依赖**：
     
-    =======  =================================== =================  ============
-     Name     Description                         Provided by         Unit
-    =======  =================================== =================  ============
-    DVS      Crop development stage              DVS_Phenology       -
-    ADMI     Above-ground dry matter             CropSimulation     |kg ha-1 d-1|
-             increase
-    FR       Fraction biomass to roots           DVS_Partitioning    - 
-    FS       Fraction biomass to stems           DVS_Partitioning    - 
-    =======  =================================== =================  ============
+    =======  =========================== ================  ============
+     名称        描述                      提供者             单位
+    =======  =========================== ================  ============
+    DVS      作物发育阶段                DVS_Phenology      -
+    ADMI     地上部分干物质增加          CropSimulation    |kg ha-1 d-1|
+    FR       分配到根的生物量分数        DVS_Partitioning   - 
+    FS       分配到茎的生物量分数        DVS_Partitioning   - 
+    =======  =========================== ================  ============
     """
 
     class Parameters(ParamTemplate):      
@@ -81,7 +74,7 @@ class WOFOST_Stem_Dynamics(SimulationObject):
         WST  = Float(-99.)
         DWST = Float(-99.)
         TWST = Float(-99.)
-        SAI  = Float(-99.) # Stem Area Index
+        SAI  = Float(-99.) # 茎面积指数
 
     class RateVariables(RatesTemplate):
         GRST = Float(-99.)
@@ -90,25 +83,24 @@ class WOFOST_Stem_Dynamics(SimulationObject):
         
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE  instance
-        :param parvalues: `ParameterProvider` object providing parameters as
-                key/value pairs
+        :param day: 模拟的起始日期
+        :param kiosk: 当前PCSE实例的变量kiosk
+        :param parvalues: 提供参数（键/值对）的`ParameterProvider`对象
         """
         
         self.params = self.Parameters(parvalues)
         self.rates  = self.RateVariables(kiosk, publish=["DRST", "GRST"])
         self.kiosk  = kiosk
 
-        # INITIAL STATES
+        # 初始化状态
         params = self.params
-        # Set initial stem biomass
+        # 设置初始茎生物量
         FS = self.kiosk["FS"]
         FR = self.kiosk["FR"]
         WST  = (params.TDWI * (1-FR)) * FS
         DWST = 0.
         TWST = WST + DWST
-        # Initial Stem Area Index
+        # 初始茎面积指数
         DVS = self.kiosk["DVS"]
         SAI = WST * params.SSATB(DVS)
 
@@ -126,7 +118,7 @@ class WOFOST_Stem_Dynamics(SimulationObject):
         FS = self.kiosk["FS"]
         ADMI = self.kiosk["ADMI"]
 
-        # Growth/death rate stems
+        # 茎的生长/死亡速率
         rates.GRST = ADMI * FS
         rates.DRST = params.RDRSTB(DVS) * states.WST
         rates.GWST = rates.GRST - rates.DRST - k.REALLOC_ST
@@ -137,12 +129,12 @@ class WOFOST_Stem_Dynamics(SimulationObject):
         rates = self.rates
         states = self.states
 
-        # Stem biomass (living, dead, total)
+        # 茎生物量（活茎、死茎、总茎）
         states.WST += rates.GWST
         states.DWST += rates.DRST
         states.TWST = states.WST + states.DWST
 
-        # Calculate Stem Area Index (SAI)
+        # 计算茎面积指数（SAI）
         DVS = self.kiosk["DVS"]
         states.SAI = states.WST * params.SSATB(DVS)
 

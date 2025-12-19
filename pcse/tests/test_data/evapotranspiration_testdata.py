@@ -1,4 +1,4 @@
-#--------TEST DATA FOR POTENTIAL EVAPOTRANSPIRATION------------------------
+#--------潜在蒸散发的测试数据------------------------
 pot_headers = "DVS,E0,ES0,ET0,LAI,EVWMX,EVSMX,TRAMX,TRA" 
 pot_raw_data = [
     "5.69523834E-02;6.10846654E-02;5.89581951E-02;6.57282174E-02;0.15345266;5.70088848E-02;5.50242998E-02;4.38561430E-03;4.38561430E-03",
@@ -36,14 +36,14 @@ for strline in pot_raw_data:
     pot_evtra_testdata.append(c)
 
 
-#--------TEST DATA FOR WATER-LIMITED EVAPOTRANSPIRATION: DEPNR=4.5--------------
+#--------水分受限蒸散发的测试数据: DEPNR=4.5--------------
 
-# Evapotranspiration parameter values for testing
+# 用于测试的蒸散发参数值
 parvalues = (1, 0, 0, (0,0.60000002,2.0,0.60000002), 1.0000000, 4.5000000, 0.40000001, 0.26300001, 0.10000000, 9.00000036E-02)
 parnames = ("IWB", "IOX", "IAIRDU", "KDIFTB", "CFET", "DEPNR", "SM0", "SMFCF", "SMW", "CRAIRC")
 wl_parvalue_dict1 = dict(list(zip(parnames, parvalues)))
 
-# evapotranspiration test data
+# 蒸散发测试数据
 wl1_headers = "IWB,E0,ES0,ET0,LAI,SM,EVWMX,EVSMX,TRAMX,TRA,DVS"
 wl1_raw_data = [
     ";1;4.12496999E-02;3.92372534E-02;4.25780937E-02;0.14618465;0.37103572;3.86234932E-02;3.67391743E-02;2.71077896E-03;2.71077896E-03;5.57142869E-03",
@@ -80,13 +80,13 @@ for strline in wl1_raw_data:
         setattr(c, hname, float(value))
     wl_evtra_testdata1.append(c)
 
-#--------TEST DATA FOR WATER-LIMITED EVAPOTRANSPIRATION: DEPNR=2.5--------------
-# Evapotranspiration parameter values for testing
+#--------水分受限蒸散发的测试数据: DEPNR=2.5--------------
+# 用于测试的蒸散发参数值
 parvalues = (1, 0, 0, (0,0.60000002,2.0,0.60000002), 1.0000000, 2.5000000, 0.40000001, 0.26300001, 0.10000000, 9.00000036E-02)
 parnames = ("IWB", "IOX", "IAIRDU", "KDIFTB", "CFET", "DEPNR", "SM0", "SMFCF", "SMW", "CRAIRC")
 wl_parvalue_dict2 = dict(list(zip(parnames,parvalues)))
 
-# evapotranspiration test data
+# 蒸散发测试数据
 wl2_headers = "IWB,E0,ES0,ET0,LAI,SM,EVWMX,EVSMX,TRAMX,TRA,DVS"
 wl2_raw_data = [
     ";1;4.12496999E-02;3.92372534E-02;4.25780937E-02;0.14618465;0.37103572;3.86234932E-02;3.67391743E-02;2.71077896E-03;2.71077896E-03;5.57142869E-03",

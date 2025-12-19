@@ -4,27 +4,20 @@ from .exceptions import PCSEError
 import textwrap
 
 class Rerunner(list):
-    """Class for reading and iterating through an FSE rerun file.
+    """用于读取和遍历 FSE 重运行文件的类。
 
-    Rerun files are used for executing many model runs with varying inputs.
-    This was particularly useful for FSE models that were not easily
-    scriptable and adjustable. For PCSE models this functionality is
-    less relevant as the model can be easily embedded within a python
-    loop to iterate over combinations of input values.
+    重运行文件用于使用不同输入执行多个模型运行。对于不易编写脚本和调整的 FSE 模型，这尤其有用。
+    对于 PCSE 模型，这一功能意义不大，因为模型可以轻松嵌入在 python 循环中，以遍历输入值的组合。
 
-    Nevertheless, as the concept of rerun files is still highly popular
-    in Wageningen this class was added to accomodate users that like to
-    work with rerun files.
+    尽管如此，由于重运行文件的概念在瓦赫宁根仍然很流行，因此添加了此类，以方便喜欢使用重运行文件的用户。
 
-    This class parses a rerun file and stores the individual reruns
-    as a list of dictionaries. Each new rerun in the file should be
-    separated by a line stating "RUNNAME='<run name>';"
+    本类解析重运行文件，并将每个重运行作为字典列表存储。文件中每个新的重运行应以“RUNNAME='<run name>';”开头的行分隔。
 
-     :
+    示例：
 
         >>>reruns = Rerunner('reruns.txt')
         >>>for rerun in reruns:
-            # processing goes here..
+            # 这里进行处理..
     """
 
     def __init__(self, rerun_file):
@@ -41,11 +34,13 @@ class Rerunner(list):
         try:
             for i, line in enumerate(lines):
                 ln = i+1
+                # 去除首尾空白字符
                 line = line.strip() #.replace(" ","")
-                if not line:  # empty line
+                if not line:  # 空行跳过
                     continue
-                if line.startswith("*"):
+                if line.startswith("*"):    # 以 * 开头为注释行跳过
                     continue
+                # 检查分号结尾，可根据需要取消注释
                 # if not line.endswith(";"):
                 #     msg = "';' character missing on line %i" % ln
                 #     raise PCSEError(msg)
@@ -54,6 +49,7 @@ class Rerunner(list):
                 name = name.strip()
                 value = eval(strvalue)
 
+                # 新的运行块以 RUNNAM 开头
                 if name.upper() == "RUNNAM":
                     if not rerun_set is None:
                         self.append(rerun_set)
@@ -61,7 +57,7 @@ class Rerunner(list):
                 else:
                     rerun_set[name] = value
 
-            # Append last rerun set
+            # 添加最后一个 rerun_set
             if rerun_set is not None:
                 self.append(rerun_set)
 

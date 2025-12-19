@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl)，2024年3月
 
 import unittest
 from datetime import date
@@ -11,7 +11,7 @@ from .test_data import respiration_testdata
 
 
 class Test_WOFOSTMaintenanceRespiration(unittest.TestCase):
-    """Unit tests for WOFOST maintenance respiration"""
+    """WOFOST 维护呼吸的单元测试"""
     def setUp(self):
         self.testdata = respiration_testdata
         self.cropdata = {"RMR":0.015,"RML":0.03,"RMS":0.015,"RMO":0.01,
@@ -22,13 +22,13 @@ class Test_WOFOSTMaintenanceRespiration(unittest.TestCase):
         self.kiosk.register_variable(0, "WST", type="S", publish=True)
         self.kiosk.register_variable(0, "WSO", type="S", publish=True)
         self.kiosk.register_variable(0, "DVS", type="S", publish=True)
-        # initialize respiration model
+        # 初始化呼吸模型
         dummyday = date(2000,1,1)
         self.respiration = WOFOST_Maintenance_Respiration(dummyday, self.kiosk,
                                                         self.cropdata)
 
     def runTest(self):
-        day = date(2000,1,1) # dummy date value
+        day = date(2000,1,1) # 虚拟日期值
         for drvref in self.testdata:
             self.kiosk.set_variable(0, "WRT", drvref.WRT)
             self.kiosk.set_variable(0, "WLV", drvref.WLV)
@@ -39,7 +39,7 @@ class Test_WOFOSTMaintenanceRespiration(unittest.TestCase):
             self.assertTrue(abs(PMRES - drvref.PMRES) < 0.0001)
 
 def suite():
-    """ This defines all the tests of a module"""
+    """ 这定义了模块中所有的测试 """
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(Test_WOFOSTMaintenanceRespiration))
     return suite

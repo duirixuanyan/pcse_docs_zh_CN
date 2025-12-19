@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 瓦赫宁根环境研究院，瓦赫宁根-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 from collections import namedtuple
 
 from ...base import StatesTemplate, ParamTemplate, SimulationObject, RatesTemplate
@@ -12,140 +12,126 @@ MaxNutrientConcentrations = namedtuple("MaxNutrientConcentrations",
                                        ["NMAXLV","NMAXST", "NMAXRT", "NMAXSO"])
 
 class N_Demand_Uptake(SimulationObject):
-    """Calculates the crop N demand and its uptake from the soil.
+    """计算作物氮素需求及其从土壤中的吸收。
 
-    Crop N demand is calculated as the difference between the actual N
-    (kg N per kg biomass) in the vegetative plant organs (leaves, stems and roots)
-    and the maximum N concentration for each organ. N uptake is then 
-    estimated as the minimum of supply from the soil and demand from the crop.
+    作物氮需求是通过植物营养器官（叶、茎、根）中实际氮含量（kg N 每 kg 干生物量）与每个器官最大氮浓度的差值计算得出。氮素吸收量则取土壤氮素供应和作物需求的最小值。
 
-    Nitrogen fixation (leguminous plants) is calculated by assuming that a
-    fixed fraction of the daily N demand is supplied by nitrogen fixation.
-    The remaining part has to be supplied by the soil.
+    对于豆科植物的固氮，是通过假设作物每天氮素需求的一定比例由固氮供给，其余部分需由土壤提供来计算。
 
-    The N demand of the storage organs is calculated in a somewhat
-    different way because it is assumed that the demand from the storage
-    organs is fulfilled by translocation of N/P/K from the leaves, stems
-    and roots. Therefore the uptake of the storage organs is calculated
-    as the minimum of the daily translocatable N supply and the demand from
-    the storage organs.
+    贮藏器官的氮素需求的计算方式略有不同，因为假设贮藏器官的需求是通过叶、茎、根的N/P/K搬运来满足。因此，贮藏器官的吸收量取每日可搬运氮供应和贮藏器官需求的最小值。
 
-    **Simulation parameters**
+    **模拟参数**
 
     ============  =============================================  ======================
-     Name          Description                                    Unit
+     名称           说明                                           单位
     ============  =============================================  ======================
-    NMAXLV_TB      Maximum N concentration in leaves as          kg N kg-1 dry biomass
-                   function of DVS
-    NMAXRT_FR      Maximum N concentration in roots as fraction  -
-                   of maximum N concentration in leaves
-    NMAXST_FR      Maximum N concentration in stems as fraction  -
-                   of maximum N concentration in leaves
-    NMAXSO         Maximum N concentration in storage organs     kg N kg-1 dry biomass
-    NCRIT_FR       Critical N concentration as fraction of       -
-                   maximum N concentration for vegetative
-                   plant organs as a whole (leaves + stems)
-    TCNT           Time coefficient for N translation to         days
-                   storage organs
-    NFIX_FR        fraction of crop nitrogen uptake by           kg N kg-1 dry biomass biological fixation
-    RNUPTAKEMAX    Maximum rate of N uptake                      |kg N ha-1 d-1|
+    NMAXLV_TB      叶片最大氮浓度，DVS的函数                      kg N kg-1 干物质
+    NMAXRT_FR      根最大氮浓度，为叶片最大氮浓度的分数           -
+    NMAXST_FR      茎最大氮浓度，为叶片最大氮浓度的分数           -
+    NMAXSO         贮藏器官最大氮浓度                             kg N kg-1 干物质
+    NCRIT_FR       临界氮浓度，为营养器官（叶+茎）                -
+                   最大氮浓度的分数
+    TCNT           向贮藏器官氮转运的时间系数                      天
+    NFIX_FR        作物氮素吸收中由生物固氮提供的比例            kg N kg-1 干物质
+                                                                 生物固氮量
+    RNUPTAKEMAX    最大氮素吸收速率                              |kg N ha-1 d-1|
     ============  =============================================  ======================
 
-    **State variables**
+    **状态变量**
 
     ============= ================================================= ==== ============
-     Name          Description                                      Pbl      Unit
+     名称             说明                                           Pbl      单位
     ============= ================================================= ==== ============
-    NuptakeTotal  Total N uptake by the crop                        N   |kg N ha-1|
-    NfixTotal     Total N fixated by the crop                       N   |kg N ha-1|
-    NdemandST     N Demand in living stems                          N   |kg N ha-1|
-    NdemandRT     N Demand in living roots                          N   |kg N ha-1|
-    NdemandSO     N Demand in storage organs                        N   |kg N ha-1|
-    ==========    ================================================= ==== ============
+    NuptakeTotal    作物总氮吸收                                      N   |kg N ha-1|
+    NfixTotal       作物总氮固定量                                    N   |kg N ha-1|
+    NdemandST       活茎的氮需求                                      N   |kg N ha-1|
+    NdemandRT       活根的氮需求                                      N   |kg N ha-1|
+    NdemandSO       贮藏器官的氮需求                                  N   |kg N ha-1|
+    ============= ================================================= ==== ============
 
 
-    **Rate variables**
+    **速率变量**
 
     ===========  ================================================= ==== ================
-     Name         Description                                      Pbl      Unit
+     名称            说明                                          Pbl      单位
     ===========  ================================================= ==== ================
-    RNuptakeLV     Rate of N uptake in leaves                        Y   |kg N ha-1 d-1|
-    RNuptakeST     Rate of N uptake in stems                         Y   |kg N ha-1 d-1|
-    RNuptakeRT     Rate of N uptake in roots                         Y   |kg N ha-1 d-1|
-    RNuptakeSO     Rate of N uptake in storage organs                Y   |kg N ha-1 d-1|
-    RNuptake       Total rate of N uptake                            Y   |kg N ha-1 d-1|
-    RNfixation     Rate of N fixation                                Y   |kg N ha-1 d-1|
-    NdemandLV      N Demand in living leaves                         N   |kg N ha-1|
-    NdemandST      N Demand in living stems                          N   |kg N ha-1|
-    NdemandRT      N Demand in living roots                          N   |kg N ha-1|
-    NdemandSO      N Demand in storage organs                        N   |kg N ha-1|
-    Ndemand        Total crop N demand                               N   |kg N ha-1 d-1|
+    RNuptakeLV     叶片氮吸收速率                                   Y   |kg N ha-1 d-1|
+    RNuptakeST     茎氮吸收速率                                     Y   |kg N ha-1 d-1|
+    RNuptakeRT     根氮吸收速率                                     Y   |kg N ha-1 d-1|
+    RNuptakeSO     贮藏器官氮吸收速率                               Y   |kg N ha-1 d-1|
+    RNuptake       氮素总吸收速率                                   Y   |kg N ha-1 d-1|
+    RNfixation     固氮速率                                         Y   |kg N ha-1 d-1|
+    NdemandLV      活叶的氮需求                                     N   |kg N ha-1|
+    NdemandST      活茎的氮需求                                     N   |kg N ha-1|
+    NdemandRT      活根的氮需求                                     N   |kg N ha-1|
+    NdemandSO      贮藏器官的氮需求                                 N   |kg N ha-1|
+    Ndemand        作物氮素总需求                                   N   |kg N ha-1 d-1|
     ===========  ================================================= ==== ================
 
-    **Signals send or handled**
+    **信号发送或处理**
 
-    None
+    无
 
-    **External dependencies**
+    **外部依赖变量**
 
     ================  =================================== ====================  ===========
-     Name              Description                        Provided by            Unit
+     名称              说明                                 提供者                  单位
     ================  =================================== ====================  ===========
-    DVS               Crop development stage              DVS_Phenology              -
-    TRA               Crop transpiration                  Evapotranspiration     |cm d-1|
-    TRAMX             Potential crop transpiration        Evapotranspiration     |cm d-1|
-    NAVAIL            Total available N from soil         N_Soil_Dynamics      |kg ha-1|
+    DVS               作物发育进程                          DVS_Phenology              -
+    TRA               作物蒸腾量                            Evapotranspiration     |cm d-1|
+    TRAMX             潜在作物蒸腾量                        Evapotranspiration     |cm d-1|
+    NAVAIL            土壤中可用总氮                        N_Soil_Dynamics      |kg ha-1|
     ================  =================================== ====================  ===========
 
     """
 
     class Parameters(ParamTemplate):
-        NMAXLV_TB = AfgenTrait()  # maximum N concentration in leaves as function of dvs        
+        NMAXLV_TB = AfgenTrait()  # 叶片最大氮浓度，作为dvs（发育阶段）的函数
         DVS_N_TRANSL = Float(-99.)
 
-        NMAXRT_FR = Float(-99.)  # maximum N concentration in roots as fraction of maximum N concentration in leaves
-        NMAXST_FR = Float(-99.)  # maximum N concentration in stems as fraction of maximum N concentration in leaves        
-        NMAXSO = Float(-99.)  # maximum P concentration in storage organs [kg N kg-1 dry biomass]        
-        TCNT = Float(-99.)  # time coefficient for N translocation to storage organs [days]
+        NMAXRT_FR = Float(-99.)  # 根中最大氮浓度（占叶片最大氮浓度的比例）
+        NMAXST_FR = Float(-99.)  # 茎中最大氮浓度（占叶片最大氮浓度的比例）
+        NMAXSO = Float(-99.)  # 贮藏器官中的最大P浓度 [kg N kg-1 干物质]
+        TCNT = Float(-99.)  # 氮向贮藏器官转移的时间系数 [天]
 
-        NFIX_FR = Float(-99.)  # fraction of crop nitrogen uptake by biological fixation
-        RNUPTAKEMAX = Float()  # Maximum N uptake rate
-        NRESIDLV = Float(-99.)  # residual N fraction in leaves [kg N kg-1 dry biomass]
-        NRESIDST = Float(-99.)  # residual N fraction in stems [kg N kg-1 dry biomass]
-        NRESIDRT = Float(-99.)  # residual N fraction in roots [kg N kg-1 dry biomass]
+        NFIX_FR = Float(-99.)  # 作物吸收氮的生物固氮比例
+        RNUPTAKEMAX = Float()  # 最大氮吸收速率
+        NRESIDLV = Float(-99.)  # 叶片中的残余氮比例 [kg N kg-1 干物质]
+        NRESIDST = Float(-99.)  # 茎中的残余氮比例 [kg N kg-1 干物质]
+        NRESIDRT = Float(-99.)  # 根中的残余氮比例 [kg N kg-1 干物质]
 
     class RateVariables(RatesTemplate):
-        RNtranslocationLV = Float(-99.)  # N translocation rate from leaves [kg ha-1 d-1]
-        RNtranslocationST = Float(-99.)  # N translocation rate from stems [kg ha-1 d-1]
-        RNtranslocationRT = Float(-99.)  # N translocation rate from roots [kg ha-1 d-1]
-        RNtranslocation = Float(-99.)    # N translocation rate to storage organs [kg ha-1 d-1]
+        RNtranslocationLV = Float(-99.)  # 叶片向贮藏器官转移的氮速率 [kg ha-1 d-1]
+        RNtranslocationST = Float(-99.)  # 茎向贮藏器官转移的氮速率 [kg ha-1 d-1]
+        RNtranslocationRT = Float(-99.)  # 根向贮藏器官转移的氮速率 [kg ha-1 d-1]
+        RNtranslocation = Float(-99.)    # 向贮藏器官总的氮转移速率 [kg ha-1 d-1]
 
-        RNuptakeLV = Float(-99.)  # N uptake rates in organs [kg ha-1 d -1]
+        RNuptakeLV = Float(-99.)  # 各器官氮吸收速率 [kg ha-1 d-1]
         RNuptakeST = Float(-99.)
         RNuptakeRT = Float(-99.)
         RNuptakeSO = Float(-99.)
 
-        RNuptake = Float(-99.)  # Total N uptake rates [kg ha-1 d -1]
-        RNfixation = Float(-99.)  # Total N fixated
+        RNuptake = Float(-99.)  # 氮总吸收速率 [kg ha-1 d-1]
+        RNfixation = Float(-99.)  # 固氮总量
 
-        NdemandLV = Float(-99.)  # N demand in organs [kg ha-1]
+        NdemandLV = Float(-99.)  # 各器官氮需求量 [kg ha-1]
         NdemandST = Float(-99.)
         NdemandRT = Float(-99.)
         NdemandSO = Float(-99.)
 
-        Ndemand = Float()  # Total N/P/K demand of the crop
+        Ndemand = Float()  # 作物对N/P/K的总需求
 
     class StateVariables(StatesTemplate):
-        NtranslocatableLV = Float(-99.)  # translocatable N amount in leaves [kg N ha-1]
-        NtranslocatableST = Float(-99.)  # translocatable N amount in stems [kg N ha-1]
-        NtranslocatableRT = Float(-99.)  # translocatable N amount in roots [kg N ha-1]
+        NtranslocatableLV = Float(-99.)  # 叶片可转移的氮含量 [kg N ha-1]
+        NtranslocatableST = Float(-99.)  # 茎可转移的氮含量 [kg N ha-1]
+        NtranslocatableRT = Float(-99.)  # 根可转移的氮含量 [kg N ha-1]
         Ntranslocatable = Float(-99.)
 
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE instance
-        :param parvalues: a ParameterProvider with parameter key/value pairs
+        :param day: 模拟的启动日期
+        :param kiosk: 本PCSE实例的变量kiosk
+        :param parvalues: 参数提供器，包含参数键值对
         """
 
         self.params = self.Parameters(parvalues)
@@ -168,13 +154,13 @@ class N_Demand_Uptake(SimulationObject):
         delt = 1.0
         mc = self._compute_N_max_concentrations()
 
-        # No nutrients are absorbed when severe water shortage occurs i.e. RFTRA <= 0.01
+        # 当发生严重水分短缺时（即 RFTRA <= 0.01），不吸收养分
         if k.RFTRA > 0.01:
             NutrientLIMIT = 1.0
         else:
             NutrientLIMIT = 0.
 
-        # N demand [kg ha-1]
+        # 氮需求量 [kg ha-1]
         r.NdemandLV = max(mc.NMAXLV * k.WLV - k.NamountLV, 0.) + max(k.GRLV * mc.NMAXLV, 0) * delt
         r.NdemandST = max(mc.NMAXST * k.WST - k.NamountST, 0.) + max(k.GRST * mc.NMAXST, 0) * delt
         r.NdemandRT = max(mc.NMAXRT * k.WRT - k.NamountRT, 0.) + max(k.GRRT * mc.NMAXRT, 0) * delt
@@ -182,11 +168,10 @@ class N_Demand_Uptake(SimulationObject):
 
         r.Ndemand = r.NdemandLV + r.NdemandST + r.NdemandRT + r.NdemandSO
 
-
-        # biological nitrogen fixation
+        # 生物固氮
         r.RNfixation = (max(0., p.NFIX_FR * r.Ndemand) * NutrientLIMIT)
 
-        # Calculate translocatable nitrogen in different organs
+        # 计算各器官可转移的氮
         if(k.DVS < p.DVS_N_TRANSL):
             s.NTranslocatableLV = 0.
             s.NTranslocatableRT = 0.
@@ -228,11 +213,10 @@ class N_Demand_Uptake(SimulationObject):
         pass
 
     def _compute_N_max_concentrations(self):
-        """Computes the maximum N concentrations in leaves, stems, roots and storage organs.
-        
-        Note that max concentrations are first derived from the dilution curve for leaves. 
-        Maximum concentrations for stems and roots are computed as a fraction of the 
-        concentration for leaves.
+        """计算叶、茎、根和贮藏器官的最大氮浓度。
+
+        注意：最大浓度首先通过叶片稀释曲线获得；
+        茎和根的最大浓度按叶片浓度的某一比例计算。
         """
 
         p = self.params
@@ -240,9 +224,9 @@ class N_Demand_Uptake(SimulationObject):
         NMAXLV = p.NMAXLV_TB(k.DVS)
 
         max_N_conc = MaxNutrientConcentrations(
-            # Maximum N concentrations in leaves [kg N kg-1 DM]
+            # 叶片最大氮浓度 [kg N kg-1 DM]
             NMAXLV=NMAXLV,
-            # Maximum N concentrations in stems and roots [kg N kg-1 DM]
+            # 茎和根最大氮浓度 [kg N kg-1 DM]
             NMAXST=(p.NMAXST_FR * NMAXLV),
             NMAXRT=p.NMAXRT_FR * NMAXLV,
             NMAXSO=p.NMAXSO

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 import sys, os
 from collections import namedtuple
 import sqlite3
@@ -13,9 +13,9 @@ from .settings import settings
 
 
 def namedtuple_factory(cursor, row):
-    """Creates an SQLite row factor for named tuples.
+    """为命名元组创建一个SQLite行工厂。
 
-    see: https://docs.python.org/3/library/sqlite3.html#how-to-create-and-use-row-factories
+    参见: https://docs.python.org/3/library/sqlite3.html#how-to-create-and-use-row-factories
     """
     fields = [column[0] for column in cursor.description]
     cls = namedtuple("Row", fields)
@@ -23,20 +23,19 @@ def namedtuple_factory(cursor, row):
 
 
 def start_wofost(grid=31031, crop=1, year=2000, mode='wlp'):
-    """Provides a convenient interface for starting a WOFOST instance for the internal Demo DB.
+    """为内部演示数据库启动WOFOST实例提供便捷接口。
     
-    If started with no arguments, the routine will connnect to the
-    demo database and initialize WOFOST for winter-wheat (cropno=1)
-    in Spain (grid_no=31031) for the year 2000 in water-limited
-    production (mode='wlp')
+    如果不带参数调用，函数将连接到演示数据库，
+    并为西班牙（grid_no=31031）在2000年初始化冬小麦（cropno=1）
+    的有限水分生产（mode='wlp'）
     
     
-    :param grid: grid number, defaults to 31031
-    :param crop: crop number, defaults to 1 (winter-wheat in the demo database)
-    :param year: year to start, defaults to 2000
-    :param mode: production mode ('pp' or 'wlp'), defaults to 'wlp'
+    :param grid: 网格编号，默认为31031
+    :param crop: 作物编号，默认为1（演示数据库中的冬小麦）
+    :param year: 开始年份，默认为2000
+    :param mode: 生产模式（'pp' 或 'wlp'），默认为 'wlp'
 
-    example::
+    示例::
     
         >>> import pcse
         >>> wofsim = pcse.start_wofost(grid=31031, crop=1, year=2000, 
@@ -49,12 +48,12 @@ def start_wofost(grid=31031, crop=1, year=2000, mode='wlp'):
         15261.752187075261
     """
 
-    # Open database connections
+    # 打开数据库连接
     db_location = os.path.join(settings.PCSE_USER_HOME, "pcse.db")
     DBconn = sqlite3.connect(db_location)
     DBconn.row_factory = namedtuple_factory
 
-    # Get input data from database
+    # 从数据库获取输入数据
     agromanagement = AgroManagementDataProvider(DBconn, grid, crop, year)
     sited  = fetch_sitedata(DBconn, grid, year)
     cropd = fetch_cropdata(DBconn, grid, year, crop)
@@ -63,7 +62,7 @@ def start_wofost(grid=31031, crop=1, year=2000, mode='wlp'):
 
     wdp = GridWeatherDataProvider(DBconn, grid_no=grid)
                              
-    # Initialize PCSE/WOFOST
+    # 初始化PCSE/WOFOST
     mode = mode.strip().lower()
     if mode == 'pp':
         wofsim = Wofost72_PP(parvalues, wdp, agromanagement)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 from __future__ import print_function
 import datetime
 
@@ -12,23 +12,20 @@ from .util import is_a_dekad, is_a_month, is_a_week
 
 
 class Timer(AncillaryObject):
-    """This class implements a basic timer for use with the WOFOST crop model.
+    """该类为WOFOST作物模型实现了一个基本的定时器。
     
-    This object implements a simple timer that increments the current time with
-    a fixed time-step of one day at each call and returns its value. Moreover,
-    it generates OUTPUT signals in daily, dekadal or monthly time-steps that
-    can be caught in order to store the state of the simulation for later use.
-        
-    Initializing the timer::
+    该对象实现了一个简单的定时器，每次调用时以一天为固定时间步长递增当前时间并返回其数值。此外，
+    它可以按日、旬或月的时间步长生成OUTPUT信号，这些信号可以被捕获以便存储模拟状态以备后用。
+    
+    初始化定时器::
 
         timer = Timer(start_date, kiosk, final_date, mconf)
         CurrentDate = timer()
         
-    **Signals sent or handled:**
+    **发送或处理的信号:**
  
-        * "OUTPUT": sent when the condition for generating output is True
-          which depends on the output type and interval.
- 
+        * "OUTPUT": 当生成输出的条件为真时发送，
+          这取决于输出类型和间隔。
 
   """
 
@@ -46,15 +43,13 @@ class Timer(AncillaryObject):
 
     def initialize(self, kiosk, start_date, end_date, mconf):
         """
-        :param day: Start date of the simulation
-        :param kiosk: Variable kiosk of the PCSE instance
-        :param end_date: Final date of the simulation. For example, this date
-            represents (START_DATE + MAX_DURATION) for a single cropping season.
-            This date is *not* the harvest date because signalling harvest is taken
-            care of by the `AgroManagement` module.
-        :param mconf: A ConfigurationLoader object, the timer needs access to the
-            configuration attributes mconf.OUTPUT_INTERVAL, mconf.OUTPUT_VARS and
-            mconf.OUTPUT_INTERVAL_DAYS
+        :param day: 模拟的起始日期
+        :param kiosk: PCSE实例的变量kiosk
+        :param end_date: 模拟的结束日期。例如，该日期
+            对于单一作季来说为(START_DATE + MAX_DURATION)。
+            此日期不是收获日期，因为收获的信号由`AgroManagement`模块处理。
+        :param mconf: ConfigurationLoader对象，定时器需要访问配置属性
+            mconf.OUTPUT_INTERVAL, mconf.OUTPUT_VARS 和 mconf.OUTPUT_INTERVAL_DAYS
 
         """
         
@@ -63,8 +58,8 @@ class Timer(AncillaryObject):
         self.end_date = end_date
         self.current_date = start_date
         # self.day_counter = 0
-        # Settings for generating output. Note that if no OUTPUT_VARS are listed
-        # in that case no OUTPUT signals will be generated.
+        # 生成输出的相关设置。注意，如果没有列出OUTPUT_VARS，
+        # 则不会生成任何OUTPUT信号。
         self.generate_output = bool(mconf.OUTPUT_VARS)
         self.interval_type = mconf.OUTPUT_INTERVAL.lower()
         self.output_weekday = mconf.OUTPUT_WEEKDAY
@@ -74,7 +69,7 @@ class Timer(AncillaryObject):
 
     def __call__(self):
         
-        # On first call only return the current date, do not increase time
+        # 首次调用时只返回当前日期，不增加时间
         if self.first_call is True:
             self.first_call = False
             self.logger.debug("Model time at first call: %s" % self.current_date)
@@ -83,7 +78,7 @@ class Timer(AncillaryObject):
             self.day_counter += 1
             self.logger.debug("Model time updated to: %s" % self.current_date)
 
-        # Check if output should be generated
+        # 检查是否需要生成输出
         output = False
         if self.generate_output:
             if self.interval_type == "daily":
@@ -99,11 +94,11 @@ class Timer(AncillaryObject):
                 if is_a_month(self.current_date):
                     output = True
 
-        # Send output signal if True
+        # 如果需要则发送输出信号
         if output:
             self._send_signal(signal=signals.output)
             
-        # If end date is reached send the terminate signal
+        # 如果已到达结束日期则发送终止信号
         if self.current_date >= self.end_date:
             msg = "Reached end of simulation period as specified by END_DATE."
             self.logger.info(msg)
@@ -113,7 +108,7 @@ class Timer(AncillaryObject):
 
 
 def simple_test():
-    "Only used for testing timer routine"
+    "仅用于测试定时器过程"
 
     class Container(object):
         pass

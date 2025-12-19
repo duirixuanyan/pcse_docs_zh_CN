@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 import logging
 
 from ..traitlets import (HasTraits, List, Float, Int, Instance, Dict, Bool, All)
@@ -10,12 +10,11 @@ from .variablekiosk import VariableKiosk
 
 
 class ParamTemplate(HasTraits):
-    """Template for storing parameter values.
+    """用于存储参数值的模板。
 
-    This is meant to be subclassed by the actual class where the parameters
-    are defined.
+    此类应该被实际定义参数的类继承。
 
-    example::
+    示例::
 
         >>> import pcse
         >>> from pcse.base import ParamTemplate
@@ -49,21 +48,19 @@ class ParamTemplate(HasTraits):
         HasTraits.__init__(self)
 
         for parname in self.trait_names():
-            # If the attribute of the class starts with "trait" than
-            # this is a special attribute and not a WOFOST parameter
+            # 如果类的属性名称以 "trait" 开头，则这是一个特殊属性，不是 WOFOST 参数
             if parname.startswith("trait"):
                 continue
-            # else check if the parname is available in the dictionary
-            # of parvalues
+            # 否则检查参数名是否在 parvalues 字典中
             if parname not in parvalues:
                 msg = "Value for parameter %s missing." % parname
                 raise exc.ParameterError(msg)
             value = parvalues[parname]
             if isinstance(getattr(self, parname), (Afgen)):
-                # AFGEN table parameter
+                # AFGEN 表参数
                 setattr(self, parname, Afgen(value))
             else:
-                # Single value parameter
+                # 单值参数
                 setattr(self, parname, value)
 
     def __setattr__(self, attr, value):
@@ -72,13 +69,13 @@ class ParamTemplate(HasTraits):
         elif hasattr(self, attr):
             HasTraits.__setattr__(self, attr, value)
         else:
+            # 阻止对不存在的属性赋值
             msg = "Assignment to non-existing attribute '%s' prevented." % attr
             raise AttributeError(msg)
 
 
 def check_publish(publish):
-    """ Convert the list of published variables to a set with unique elements.
-    """
+    """将要发布的变量列表转换为具有唯一元素的集合。"""
 
     if publish is None:
         publish = []
@@ -87,6 +84,7 @@ def check_publish(publish):
     elif isinstance(publish, (list, tuple)):
         pass
     else:
+        # publish 参数应指定为字符串或字符串列表
         msg = "The publish keyword should specify a string or a list of strings"
         raise RuntimeError(msg)
     return set(publish)
@@ -98,31 +96,31 @@ class StatesRatesCommon(HasTraits):
     _locked = Bool(False)
 
     def __init__(self, kiosk=None, publish=None):
-        """Set up the common stuff for the states and rates template
-        including variables that have to be published in the kiosk
+        """
+        设置states和rates模板的通用部分，包括必须在kiosk中发布的变量
         """
 
         HasTraits.__init__(self)
 
-        # Make sure that the variable kiosk is provided
+        # 确保提供了变量kiosk
         if not isinstance(kiosk, VariableKiosk):
             msg = ("Variable Kiosk must be provided when instantiating rate " +
                    "or state variables.")
             raise RuntimeError(msg)
         self._kiosk = kiosk
 
-        # Check publish variable for correct usage
+        # 检查publish变量是否正确使用
         publish = check_publish(publish)
 
-        # Determine the rate/state attributes defined by the user
+        # 确定用户定义的rate/state属性
         self._valid_vars = self._find_valid_variables()
 
-        # Register all variables with the kiosk and optionally publish them.
+        # 在kiosk中注册所有变量，并可选发布它们
         self._register_with_kiosk(publish)
 
     def _find_valid_variables(self):
-        """Returns a set with the valid state/rate variables names. Valid rate
-        variables have names not starting with 'trait' or '_'.
+        """
+        返回有效state/rate变量名的集合。有效的rate变量名不能以'trait'或'_'开头。
         """
 
         valid = lambda s: not (s.startswith("_") or s.startswith("trait"))
@@ -130,18 +128,14 @@ class StatesRatesCommon(HasTraits):
         return set(r)
 
     def _register_with_kiosk(self, publish):
-        """Register the variable with the variable kiosk.
+        """
+        在variable kiosk中注册变量。
 
-        Here several operations are carried out:
-         1. Register the  variable with the kiosk, if rates/states are
-            registered twice an error will be raised, this ensures
-            uniqueness of rate/state variables across the entire model.
-         2 If the  variable name is included in the list set by publish
-           keyword then set a trigger on that variable to update its value
-           in the kiosk.
+        这里进行了以下几步操作：
+         1. 在kiosk中注册变量，如果rates/states被注册两次会抛出错误，这确保了整个模型变量的唯一性。
+         2. 如果变量名包含在publish关键字指定的列表中，则对该变量设置触发器，在kiosk中自动更新其值。
 
-         Note that self._vartype determines if the variables is registered
-         as a state variable (_vartype=="S") or rate variable (_vartype=="R")
+         注意self._vartype用于指定该变量注册为state变量(_vartype=="S")还是rate变量(_vartype=="R")
         """
 
         for attr in self._valid_vars:
@@ -153,19 +147,16 @@ class StatesRatesCommon(HasTraits):
             else:
                 self._kiosk.register_variable(id(self), attr, type=self._vartype,
                                               publish=False)
-        # Check if the set of published variables is exhausted, otherwise
-        # raise an error.
+        # 检查publish变量集合是否已被完全处理，否则抛出错误。
         if len(publish) > 0:
             msg = ("Unknown variable(s) specified with the publish " +
                    "keyword: %s") % publish
             raise exc.PCSEError(msg)
 
     # def __setattr__(self, attr, value):
-    #     # Attributes starting with "_" can be assigned or updated regardless
-    #     # of whether the object is locked.
+    #     # 以“_”开头的属性无论对象是否锁定都可以赋值或更新。
     #     #
-    #     # Note that the check on startswith("_") *MUST* be the first otherwise
-    #     # the assignment of some trait internals will fail
+    #     # 注意：startswith("_") 的判断必须放在最前面，否则部分trait内部赋值会失败
     #     if attr.startswith("_"):
     #         HasTraits.__setattr__(self, attr, value)
     #     elif attr in self._valid_vars:
@@ -179,24 +170,22 @@ class StatesRatesCommon(HasTraits):
     #         raise AttributeError(msg)
 
     def _update_kiosk(self, change):
-        """Update the variable_kiosk through trait notification.
-        """
+        """通过trait通知更新variable_kiosk。"""
         self._kiosk.set_variable(id(self), change["name"], change["new"])
 
     def unlock(self):
-        "Unlocks the attributes of this class."
+        "解锁此类的属性。"
         self._locked = False
 
     def lock(self):
-        "Locks the attributes of this class."
+        "锁定此类的属性。"
         self._locked = True
 
     def _delete(self):
-        """Deregister the variables from the kiosk before garbage
-        collecting.
+        """在垃圾回收前从kiosk注销变量。
 
-        This method is coded as _delete() and must by explicitly called
-        because of precarious handling of __del__() in python.
+        该方法命名为_delete()，必须显式调用，
+        因为python中__del__()的处理方式较为极端和不确定。
         """
         for attr in self._valid_vars:
             self._kiosk.deregister_variable(id(self), attr)
@@ -209,22 +198,15 @@ class StatesRatesCommon(HasTraits):
 
 
 class StatesTemplate(StatesRatesCommon):
-    """Takes care of assigning initial values to state variables, registering
-    variables in the kiosk and monitoring assignments to variables that are
-    published.
+    """负责为state变量分配初始值、在kiosk中注册变量和监控需要发布变量的赋值。
 
-    :param kiosk: Instance of the VariableKiosk class. All state variables
-        will be registered in the kiosk in order to enfore that variable names
-        are unique across the model. Moreover, the value of variables that
-        are published will be available through the VariableKiosk.
-    :param publish: Lists the variables whose values need to be published
-        in the VariableKiosk. Can be omitted if no variables need to be
-        published.
+    :param kiosk: VariableKiosk类的实例。所有state变量都会被注册到kiosk，
+        用于确保整个模型中变量名唯一。同时，被发布的变量值会通过VariableKiosk对外可见。
+    :param publish: 需要在VariableKiosk中发布的变量名列表。如果不需要发布变量可以省略。
 
-    Initial values for state variables can be specified as keyword when instantiating
-    a States class.
+    State变量的初始值可在实例化States类时用关键字参数指定。
 
-    example::
+    示例::
 
         >>> import pcse
         >>> from pcse.base import VariableKiosk, StatesTemplate
@@ -267,7 +249,7 @@ class StatesTemplate(StatesRatesCommon):
 
         StatesRatesCommon.__init__(self, kiosk, publish)
 
-        # set initial state value
+        # 设置初始state值
         for attr in self._valid_vars:
             if attr in kwargs:
                 value = kwargs.pop(attr)
@@ -276,18 +258,17 @@ class StatesTemplate(StatesRatesCommon):
                 msg = "Initial value for state %s missing." % attr
                 raise exc.PCSEError(msg)
 
-        # Check if kwargs is empty, otherwise issue a warning
+        # 检查kwargs是否为空，否则发出警告
         if len(kwargs) > 0:
             msg = ("Initial value given for unknown state variable(s): " +
                    "%s") % kwargs.keys()
             self.logger.warning(msg)
 
-        # Lock the object to prevent further changes at this stage.
+        # 锁定对象，防止此阶段进一步更改。
         self._locked = True
 
     def touch(self):
-        """Re-assigns the value of each state variable, thereby updating its
-        value in the variablekiosk if the variable is published."""
+        """重新为每个state变量赋值，如果变量被发布，则更新其在variablekiosk中的值。"""
 
         self.unlock()
         for name in self._valid_vars:
@@ -297,14 +278,13 @@ class StatesTemplate(StatesRatesCommon):
 
 
 class StatesWithImplicitRatesTemplate(StatesTemplate):
-    """Container class for state variables that have an associated rate.
+    """具有相关rate的state变量的容器类。
 
-    The rates will be generated upon initialization having the same name as their states,
-    prefixed by a lowercase character 'r'.
-    After initialization no more attributes can be implicitly added.
-    Call integrate() to integrate all states with their current rates; the rates are reset to 0.0.
+    rates会在初始化时被创建，名称与其对应state相同，但前面加小写字母'r'。
+    初始化后不允许隐式添加新属性。
+    调用integrate()方法用当前rate积分所有state；积分后rate会重置为0.0。
 
-    States are all attributes descending from Float and not prefixed by an underscore.
+    state为所有继承自Float且不是以下划线开头的属性。
     """
 
     rates = {}
@@ -312,13 +292,13 @@ class StatesWithImplicitRatesTemplate(StatesTemplate):
 
     def __setattr__(self, name, value):
         if name in self.rates:
-            # known attribute: set value:
+            # 已知属性：设置值
             self.rates[name] = value
         elif not self.__initialized:
-            # new attribute: allow whe not yet initialized:
+            # 尚未初始化时的新属性：允许
             object.__setattr__(self, name, value)
         else:
-            # new attribute: disallow according ancestorial ruls:
+            # 初始化后尝试添加新属性：不允许，按父类规则处理
             super(StatesWithImplicitRatesTemplate, self).__setattr__(name, value)
 
     def __getattr__(self, name):
@@ -335,14 +315,14 @@ class StatesWithImplicitRatesTemplate(StatesTemplate):
             self.rates['r' + s] = 0.0
 
     def integrate(self, delta):
-        # integrate all:
+        # 积分所有state
         for s in self.listIntegratedStates():
             rate = getattr(self, 'r' + s)
             state = getattr(self, s)
             newvalue = state + delta * rate
             setattr(self, s, newvalue)
 
-        # reset all rates
+        # 重置所有rate
         for r in self.rates:
             self.rates[r] = 0.0
 
@@ -356,49 +336,39 @@ class StatesWithImplicitRatesTemplate(StatesTemplate):
 
 
 class RatesTemplate(StatesRatesCommon):
-    """Takes care of registering variables in the kiosk and monitoring
-    assignments to variables that are published.
+    """负责在 kiosk 中注册变量，并监控已经发布变量的赋值。
 
-    :param kiosk: Instance of the VariableKiosk class. All rate variables
-        will be registered in the kiosk in order to enfore that variable names
-        are unique across the model. Moreover, the value of variables that
-        are published will be available through the VariableKiosk.
-    :param publish: Lists the variables whose values need to be published
-        in the VariableKiosk. Can be omitted if no variables need to be
-        published.
+    :param kiosk: VariableKiosk 类的实例。所有速率变量将被注册到 kiosk，
+        以确保变量名在整个模型中唯一。此外，已发布变量的值可以通过 VariableKiosk 获取。
+    :param publish: 需要在 VariableKiosk 中发布值的变量名列表。如果没有需要发布的变量，可以省略。
 
-    For an example see the `StatesTemplate`. The only difference is that the
-    initial value of rate variables does not need to be specified because
-    the value will be set to zero (Int, Float variables) or False (Boolean
-    variables).
+    具体示例见 `StatesTemplate`。唯一的区别是速率变量初始值无需指定，
+    因为 Int、Float 类型的会自动设为零，Boolean 类型会设为 False。
     """
 
     _rate_vars_zero = Instance(dict)
     _vartype = "R"
 
     def __init__(self, kiosk=None, publish=None):
-        """Set up the RatesTemplate and set monitoring on variables that
-        have to be published.
-        """
+        """初始化 RatesTemplate，并设置对需要发布变量的监控。"""
 
         StatesRatesCommon.__init__(self, kiosk, publish)
 
-        # Determine the zero value for all rate variable if possible
+        # 尽可能确定所有速率变量的零值
         self._rate_vars_zero = self._find_rate_zero_values()
 
-        # Initialize all rate variables to zero or False
+        # 初始化所有速率变量为零或False
         self.zerofy()
 
-        # Lock the object to prevent further changes at this stage.
+        # 锁定对象，防止后续更改变量
         self._locked = True
 
     def _find_rate_zero_values(self):
-        """Returns a dict with the names with the valid rate variables names as keys and
-        the values are the zero values used by the zerofy() method. This means 0 for Int,
-        0.0 for Float en False for Bool.
+        """返回一个字典，其 key 是所有有效速率变量名，value 是 zerofy() 方法使用的零值。
+        Int 类型为 0，Float 类型为 0.0，Bool 类型为 False。
         """
 
-        # Define the zero value for Float, Int and Bool
+        # 定义 Float, Int, Bool 类型的零值
         zero_value = {Bool: False, Int: 0, Float: 0.}
 
         d = {}
@@ -415,7 +385,5 @@ class RatesTemplate(StatesRatesCommon):
         return d
 
     def zerofy(self):
-        """Sets the values of all rate values to zero (Int, Float)
-        or False (Boolean).
-        """
+        """将所有速率变量的值设为零（Int，Float）或 False（Boolean）。"""
         self._trait_values.update(self._rate_vars_zero)

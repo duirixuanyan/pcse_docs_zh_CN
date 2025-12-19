@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 import os
 import unittest
 import csv
@@ -10,14 +10,13 @@ from datetime import datetime
 from ..util import penman_monteith
 
 
-# Lat, lon, AngstA, AngstB for each station
+# 每个站点的纬度、经度、高程、AngstA、AngstB
 stations = {8011: (43.5667, -6.0442, 130., 0.243, 0.541),
             2297: (64.4833, 21.5833, 37., 0.241, 0.419),
             10870:(48.3667, 11.8, 453., 0.225, 0.505),
             8443: (36.75, -5.1667, 3., 0.3064, 0.4846)}
 
-# Allow an ET0 difference of 0.2 mm to account for limited precision
-# in CGMS database.
+# 允许ET0的差异为0.2 mm，以考虑CGMS数据库的有限精度
 delta = 0.2
 
 class DottedContainer(object):
@@ -39,7 +38,7 @@ class DottedContainer(object):
             setattr(self, key, value)
 
 class PenmanMonteith_TestingTemplate(unittest.TestCase):
-    test_input = None # Must be replaced by real csv filename in subclass
+    test_input = None # 必须在子类中替换为真实的csv文件名
 
     def setUp(self):
         test_dir = os.path.dirname(__file__)
@@ -78,7 +77,7 @@ class Test_PenmanMonteith4(PenmanMonteith_TestingTemplate):
     test_input = '10870_munchen_flughafen.csv'
 
 def suite():
-    """ This defines all the tests of a module"""
+    """ 本函数定义该模块的所有测试 """
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(Test_PenmanMonteith1))
     suite.addTest(unittest.makeSuite(Test_PenmanMonteith2))

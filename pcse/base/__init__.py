@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
-"""Base classes for creating PCSE simulation units.
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
+"""用于创建PCSE模拟单元的基类。
 
-In general these classes are not to be used directly, but are to be subclassed
-when creating PCSE simulation units.
+通常这些类不是直接使用的，而是在创建PCSE模拟单元时进行子类化。
 """
 from .variablekiosk import VariableKiosk
 from .engine import BaseEngine

@@ -1,41 +1,30 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2014 Alterra, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), April 2014
+# 版权所有 (c) 2004-2014 Alterra, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2014年4月
 import copy
 import os, sys
 import inspect
 import textwrap
 
 class PCSEFileReader(dict):
-    """Reader for parameter files in the PCSE format.
+    """PCSE格式参数文件的读取器。
 
-    This class is a replacement for the `CABOFileReader`. The latter can be
-    used for reading parameter files in the CABO format, however this format
-    has rather severe limitations: it only supports string, integer, float
-    and array parameters. There is no support for specifying parameters with
-    dates for example (other then specifying them as a string).
+    本类是`CABOFileReader`的替代。后者可用于读取CABO格式的参数文件，但该格式有相当严重的限制：只支持字符串、整型、浮点型和数组参数。不支持，用于指定参数为日期（只能以字符串的形式指定）。
 
-    The `PCSEFileReader` is a much more versatile tool for creating parameter
-    files because it leverages the power of the python interpreter for
-    processing parameter files through the `execfile` functionality in python.
-    This means that anything that can be done in a python script can also be
-    done in a PCSE parameter file.
+    `PCSEFileReader`是一个功能更强大的参数文件创建工具，因为它利用了python解释器的能力，通过python中的`execfile`功能处理参数文件。这意味着在python脚本中能做的任何事情，在PCSE参数文件中也能实现。
 
-    :param fname: parameter file to read and parse
-    :returns: dictionary object with parameter key/value pairs.
+    :param fname: 需要读取和解析的参数文件
+    :returns: 包含参数键/值对的字典对象。
 
-    *Example*
+    *示例*
 
-    Below is an example of a parameter file 'parfile.pcse'. Parameters can
-    be defined the 'CABO'-way, but also advanced functionality can be used by
-    importing modules, defining parameters as dates or numpy arrays and even
-    applying function on arrays (in this case `np.sin`)::
+    下面是参数文件'parfile.pcse'的一个示例。参数可以以“CABO”的方式定义，也可以通过导入模块、将参数定义为日期或numpy数组，甚至对数组应用函数（例如`np.sin`）来使用高级功能::
 
-        '''This is the header of my parameter file.
+        '''这是我的参数文件的头部。
 
-        This file is derived from the following sources
-        * dummy file for demonstrating the PCSEFileReader
-        * contains examples how to leverage dates, arrays and functions, etc.
+        该文件来源如下
+        * 用于演示PCSEFileReader的示例文件
+        * 包含如何利用日期、数组和函数等功能的例子
         '''
 
         import numpy as np
@@ -51,7 +40,7 @@ class PCSEFileReader(dict):
         cropname = 'alfalfa'
         CROP_START_DATE = dt.date(2010,5,14)
 
-    Can be read with the following statements::
+    可通过如下语句读取::
 
         >>>fileparameters = PCSEFileReader('parfile.pcse')
         >>>print fileparameters['TSUM1']
@@ -62,11 +51,11 @@ class PCSEFileReader(dict):
         PCSE parameter file contents loaded from:
         D:\\UserData\\pcse_examples\\parfile.pw
 
-        This is the header of my parameter file.
+        这是我的参数文件的头部。
 
-        This file is derived from the following sources
-        * dummy file for demonstrating the PCSEFileReader
-        * contains examples how to leverage dates, arrays and functions, etc.
+        该文件来源如下
+        * 用于演示PCSEFileReader的示例文件
+        * 包含如何利用日期、数组和函数等功能的例子
         DTSMTB: [0.0, 0.0, 5.0, 5.0, 20.0, 25.0, 30.0, 25.0] (<type 'list'>)
         CROP_START_DATE: 2010-05-14 (<type 'datetime.date'>)
         TSUM2: 900 (<type 'int'>)
@@ -80,24 +69,27 @@ class PCSEFileReader(dict):
     def __init__(self, fname):
         dict.__init__(self)
 
-        # Construct full path to parameter file and check file existence
+        # 构建参数文件的完整路径并检查文件是否存在
         cwd = os.getcwd()
         self.fname_fp = os.path.normpath(os.path.join(cwd, fname))
         if not os.path.exists(self.fname_fp):
             msg = "Could not find parameter file '%s'" % self.fname_fp
             raise RuntimeError(msg)
 
-        # compile and execute the contents of the file
-        bytecode = compile(open(self.fname_fp).read(), self.fname_fp, 'exec')
+        # 编译并执行文件内容
+        # bytecode = compile(open(self.fname_fp).read(), self.fname_fp, 'exec')
+        # 使用 UTF-8 编码打开文件并编译
+        bytecode = compile(open(self.fname_fp, encoding='utf-8').read(), 
+                        self.fname_fp, 'exec')
         exec(bytecode, {}, self)
 
-        # Remove any members in self that are python modules
+        # 移除self中所有是python模块的成员
         keys = list(self.keys())
         for k in keys:
             if inspect.ismodule(self[k]):
                 self.pop(k)
 
-        # If the file has a header (e.g. __doc__) store it.
+        # 如果文件中有头部（例如__doc__），则保存之。
         if "__doc__" in self:
             header = self.pop("__doc__")
             if len(header) > 0:
@@ -119,7 +111,6 @@ class PCSEFileReader(dict):
 
     def copy(self):
         """
-        Overrides the inherited dict.copy method, which returns a dict.
-        This instead preserves the class and attributes like .header.
+        重载继承自dict的copy方法（该方法返回一个字典）。本方法保留类及.header等属性。
         """
         return copy.copy(self)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 import unittest
 from datetime import date
 
@@ -42,7 +42,7 @@ class Test_WOFOST_Assimilation(unittest.TestCase):
     def runTest(self):
         from datetime import date, timedelta
         refdate = date(1999,12,31)
-        # Register DVS and LAI with the kiosk
+        # 用kiosk注册DVS和LAI
         self.kiosk.register_variable(1, "LAI", type="S", publish=True)
         self.kiosk.register_variable(1, "DVS", type="S", publish=True)
         for (IDAY,LAT,DVS,IRRAD,TMINRA,DTEMP,LAI,PGASS) in self.ref_results:
@@ -58,7 +58,7 @@ class Test_WOFOST_Assimilation(unittest.TestCase):
             self.assertAlmostEqual(rpgass, PGASS, 3)
 
 def suite():
-    """ This defines all the tests of a module"""
+    """ 定义本模块的所有测试 """
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(Test_WOFOST_Assimilation))
     return suite

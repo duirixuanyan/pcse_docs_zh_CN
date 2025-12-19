@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2021 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2021
-"""Implementation of the LINGRA grassland simulation model
+# 版权所有 (c) 2021 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2021年3月
+"""LINGRA草地模拟模型的实现
 
-This module provides an implementation of the LINGRA (LINtul GRAssland)
-simulation model for grasslands as described by Schapendonk et al. 1998
-(https://doi.org/10.1016/S1161-0301(98)00027-6) for use within the
-Python Crop Simulation Environment.
+本模块实现了LINGRA (LINtul GRAssland)草地模拟模型，参见Schapendonk等, 1998
+(https://doi.org/10.1016/S1161-0301(98)00027-6)，用于
+Python Crop Simulation Environment。
+
 """
 from math import exp, log
 
@@ -20,65 +20,52 @@ import pcse.signals
 
 
 class SourceLimitedGrowth(SimulationObject):
-    """Calculates the source-limited growth rate for grassland based on radiation and
-    temperature as driving variables and possibly limited by soil moisture or
-    leaf nitrogen content.The latter is based on static values for current and
-    maximum N concentrations and is mainly there for connecting an N module in the
-    future.
+    """基于辐射和温度这两个驱动变量计算受源限制的草地生长速率，生长速率也可能受土壤湿度或叶片氮含量的限制。
+    叶片氮含量限制目前基于当前和最大氮浓度的静态值，实现主要是为将来连接氮模块做准备。
 
-    This routine uses a light use efficiency (LUE) approach where the LUE is adjusted
-    for effects of temperature and radiation level. The former is need as photosynthesis
-    has a clear temperature response. The latter is required as photosynthesis rate
-    flattens off at higher radiation levels which leads to a lower 'apparent' light use \
-    efficiency. The parameter `LUEreductionRadiationTB` is a crude empirical correction
-    for this effect.
+    本过程采用光能利用效率（LUE）方法，其中LUE会根据温度和辐射水平做调整。
+    温度调整反映了光合作用对温度的响应，辐射调整反映光合作用随辐射增加趋于平缓，导致“表观”LUE下降。
+    参数`LUEreductionRadiationTB`为该效应的粗略经验修正。
 
-    Note that a reduction in growth rate due to soil moisture is obtained through the
-    reduction factor for transpiration (RFTRA).
+    注意：土壤湿度对生长速率的抑制通过蒸腾的还原因子（RFTRA）来实现。
 
-    This module does not provide any true rate variables, but returns the computed
-    growth rate directly to the calling routine through __call__().
+    本模块不提供真正的速率变量，而是通过__call__()直接返回计算得到的生长速率。
 
-    *Simulation parameters*:
+    *模拟参数*:
 
     =======================  =============================================  ==============
-     Name                      Description                                     Unit
+     名称                      描述                                            单位
     =======================  =============================================  ==============
-    KDIFTB                    Extinction coefficient for diffuse visible        -
-                              as function of DVS.
-    CO2A                      Atmospheric CO2 concentration                    ppm
-    LUEreductionSoilTempTB    Reduction function for light use efficiency      C, -
-                              as a function of soil temperature.
-    LUEreductionRadiationTB   Reduction function for light use efficiency      MJ, -
-                              as a function of radiation level.
-    LUEmax                    Maximum light use efficiency.
+    KDIFTB                    漫射可见光消光系数，随着DVS变化                    -
+    CO2A                      大气CO2浓度                                     ppm
+    LUEreductionSoilTempTB    随土壤温度变化的LUE降低函数                       °C, -
+    LUEreductionRadiationTB   随辐射水平变化的LUE降低函数                       MJ, -
+    LUEmax                    最大光能利用效率
     =======================  =============================================  ==============
 
 
-    *Rate variables*
+    *速率变量*
 
     ===================  =============================================  ===============
-     Name                 Description                                     Unit
+     名称                 描述                                            单位
     ===================  =============================================  ===============
-    RF_RadiationLevel     Reduction factor for light use efficiency       -
-                          due to the radiation level
-    RF_RadiationLevel     Reduction factor for light use efficiency       -
-                          due to the radiation level
-    LUEact                The actual light use efficiency                g /(MJ PAR)
+    RF_RadiationLevel     由于辐射水平导致的LUE降低因子                         -
+    RF_RadiationLevel     由于辐射水平导致的LUE降低因子                         -
+    LUEact                实际的光能利用效率                                 g/(MJ PAR)
     ===================  =============================================  ===============
 
-    *Signals send or handled*
+    *信号发送或处理*
 
-    None
+    无
 
-    *External dependencies:*
+    *外部依赖:*
 
     ===============  =================================== ==============================
-     Name             Description                         Provided by
+     名称             描述                                  提供方
     ===============  =================================== ==============================
-    DVS               Crop development stage              pylingra.LINGRA
-    TemperatureSoil   Soil Temperature                    pylingra.SoilTemperature
-    RFTRA             Reduction factor for transpiration  pcse.crop.Evapotranspiration
+    DVS               作物发育阶段                           pylingra.LINGRA
+    TemperatureSoil   土壤温度                               pylingra.SoilTemperature
+    RFTRA             蒸腾还原因子                           pcse.crop.Evapotranspiration
     ===============  =================================== ==============================
     """
 
@@ -104,110 +91,86 @@ class SourceLimitedGrowth(SimulationObject):
         r = self.rates
         k = self.kiosk
 
-        # From J/m2/d to MJ/m2/d
+        # 从 J/m2/d 转换为 MJ/m2/d
         DTR = drv.IRRAD / 1.E+6
         PAR = DTR * 0.50
 
-        # Photosynthesis reduction factors for temperature and radiation level
+        # 温度和辐射水平对光合作用的抑制因子
         r.RF_Temperature = p.LUEreductionSoilTempTB(k.TemperatureSoil)
         r.RF_RadiationLevel = p.LUEreductionRadiationTB(DTR)
 
-        # Fraction of light interception
+        # 光截获分数
         FINT = (1.-exp(-p.KDIFTB(k.DVS) * k.LAI))
 
-        # Total intercepted photosynthetically active
-        # radiation, MJ m-2 d-1
+        # 总截获有效光合辐射，单位 MJ m-2 d-1
         PARINT = FINT * PAR
 
-        # Light use efficiency corrected for temp and radiation level, g MJ PAR-1
+        # 修正温度和辐射水平后的最大光能利用效率，单位 g MJ PAR-1
         LUEpot = p.LUEmax * r.RF_Temperature * r.RF_RadiationLevel
 
-        # LUE corrected for transpiration stress
+        # 修正蒸腾胁迫后的光能利用效率
         r.LUEact = LUEpot * k.RFTRA
 
-        if k.dWeightHARV == 0.:  # No grass harvest today, normal growth
-            # (10: conversion from g m-2 d-1 to kg ha-1 d-1)
+        if k.dWeightHARV == 0.:  # 今天未割草，正常生长
+            # (10: 单位从 g m-2 d-1 转换为 kg ha-1 d-1)
             GrowthSource = r.LUEact * PARINT * (1. + 0.8 * log(p.CO2A / 360.)) * 10.
         else:
-            # growth is zero at day when mowing occurs
+            # 割草当天生长为零
             GrowthSource = 0.
 
         return GrowthSource
 
 
 class SinkLimitedGrowth(SimulationObject):
-    """Calculates the sink-limited growth rate for grassland assuming a temperature
-    driven maximum leaf elongation rate multiplied by the number of tillers. The
-    conversion to growth in kg/ha dry matter is done by dividing by the specific
-    leaf area (SLA).
+    """计算草地的汇受限生长速率，假设最大叶片伸长速率由温度驱动，并乘以分蘖数。
+    通过用比叶面积（SLA）进行除法，将其转换为干物质kg/ha的生长量。
 
-    Besides the sink-limited growth rate, this class also computes the change
-    in tiller number taking into account the growth rate, death rate and number
-    of days after defoliation due to harvest.
+    除了汇受限的生长速率，此类还计算分蘖数的变化，考虑了生长速率、死亡率以及收割后天数的影响。
 
-    *Simulation parameters*:
+    *模拟参数*:
 
     =======================  =============================================  ==============
-     Name                      Description                                     Unit
+     名称                        描述                                             单位
     =======================  =============================================  ==============
-    TempBase                  Base temperature for leaf development and
-                              grass phenology                                  C
-    LAICrit                   Cricical leaf area beyond which leaf death
-                              due to self-shading occurs                       -
-    SiteFillingMax            Maximum site filling for new buds             tiller/leaf-1
-    SLA                       Specific leaf area                             ha/kg
-    TSUMmax                   Temperature sum to max development stage        C.d
-    TillerFormRateA0          A parameter in the equation for tiller
-                              formation rate valid up till 7 days after
-                              harvest
-    TillerFormRateB0          B parameter in the equation for tiller
-                              formation rate valid up till 7 days after
-                              harvest
-    TillerFormRateA8          A parameter in the equation for tiller
-                              formation rate starting from 8 days after
-                              harvest
-    TillerFormRateB8          B parameter in the equation for tiller
-                              formation rate starting from 8 days after
-                              harvest
+    TempBase                  叶片发育和禾草物候的基温                            ℃
+    LAICrit                   临界叶面积指数，超过此值因自遮阴导致叶片死亡           -
+    SiteFillingMax            新芽最大部位填充数                                  tiller/leaf-1
+    SLA                       比叶面积                                           ha/kg
+    TSUMmax                   达到最大发育阶段所需的温度积算                       ℃·d
+    TillerFormRateA0          分蘖形成速率方程中A参数，适用于收割后7天以内
+    TillerFormRateB0          分蘖形成速率方程中B参数，适用于收割后7天以内
+    TillerFormRateA8          分蘖形成速率方程中A参数，适用于收割后第8天及以后
+    TillerFormRateB8          分蘖形成速率方程中B参数，适用于收割后第8天及以后
     =======================  =============================================  ==============
 
-
-    *Rate variables*
+    *速率变量*:
 
     ===================  =============================================  ===============
-     Name                 Description                                     Unit
+     名称                  描述                                              单位
     ===================  =============================================  ===============
-    dTillerNumber         Change in tiller number                        tillers/m2/d
-                          due to the radiation level
-    dLeafLengthPot        Potential change in leaf length. Later on      cm/d
-                          the actual change in leaf length will be
-                          computed taking source limitation into
-                          account.
-    LAIGrowthSink         Growth of LAI based on sink-limited growth     d-1
-                          rate.
+    dTillerNumber         分蘖数变化，受到辐射水平影响                         tillers/m2/d
+    dLeafLengthPot        潜在叶片长度变化。实际叶片长度变化将在下一步考虑
+                          源限制后计算。                                     cm/d
+    LAIGrowthSink         基于汇受限生长率的叶面积增长                         d-1
     ===================  =============================================  ===============
 
-    *Signals send or handled*
+    *发送或处理的信号*
 
-    None
+    无
 
-    *External dependencies:*
+    *外部依赖*:
 
-    ===============  =================================== ==============================
-     Name             Description                         Provided by
-    ===============  =================================== ==============================
-    DVS               Crop development stage              pylingra.LINGRA
-    LAI               Leaf Area Index                     pylingra.LINGRA
-    TemperatureSoil   Soil Temperature                    pylingra.SoilTemperature
-    RF_Temperature    Reduction factor for LUE based on
-                      temperature                         pylingra.SourceLimitedGrowth
-    TillerNumber      Actual number of tillers            pylingra.LINGRA
-    LVfraction        Fraction of assimilates going to    pylingra.LINGRA
-                      leaves
-    dWeightHARV       Change in harvested weight          pylingra.LINGRA
-                      (indicates that a harvest took
-                      place today)
-    ===============  =================================== ==============================
+    ===============      ===================================       ==============================
+     名称                   描述                                        提供者
+    ===============      ===================================       ==============================
+    DVS                     作物发育阶段                               pylingra.LINGRA
+    LAI                     叶面积指数                                 pylingra.LINGRA
+    TemperatureSoil         土壤温度                                   pylingra.SoilTemperature
+    RF_Temperature          基于温度的光能利用效率降低因子               pylingra.SourceLimitedGrowth
+    TillerNumber            实际分蘖数                                 pylingra.LINGRA
+    LVfraction              同化物分配到叶片的比例                     pylingra.LINGRA
+    dWeightHARV             收获重变化（表明当天是否收割）               pylingra.LINGRA
+    ===============      ===================================       ==============================
 """
 
     class Parameters(ParamTemplate):
@@ -236,21 +199,18 @@ class SinkLimitedGrowth(SimulationObject):
         r = self.rates
         k = self.kiosk
 
-        # Temperature dependent leaf appearance rate, according to
-        # (Davies and Thomas, 1983), soil temperature (TemperatureSoil) is used as
-        # driving force which is estimated from a 10 day running average
+        # 叶片出现率受温度影响，根据(Davies and Thomas, 1983)，土壤温度（TemperatureSoil）作为驱动力，估算自10天滑动平均值
         LeafAppRate = k.TemperatureSoil * 0.01 if k.RF_Temperature > 0. else 0.
-        # derive tiller rate
+        # 计算分蘖数变化率
         r.dTillerNumber = self._calc_tillering_rate(LeafAppRate)
 
-        # Leaf elongation rate affected by temperature: cm day-1 tiller-1
+        # 叶片伸长速率受温度影响：cm/天/分蘖
         r.dLeafLengthPot = 0.83 * log(max(drv.TEMP, 2.)) - 0.8924 if (drv.TEMP - p.TempBase) > 0. else 0.
 
-        # Rate of sink limited leaf growth, unit of TillerNumber is tillers m-2
-        # 1.0E-8 is conversion from cm-2 to ha-1, ha leaf ha ground-1 d-1
+        # 汇受限（sink limited）叶面积生长率，TillerNumber单位为tillers m-2
+        # 1.0E-8用于cm-2到ha-1的单位换算，单位：ha叶/ha地/天
         r.LAIgrowthSink = (k.TillerNumber * 1.0E4 * (r.dLeafLengthPot * 0.3)) * 1.0E-8
-        # Conversion of leaf growth rate to total sink limited carbon demand using SLA
-        # in kg leaf ha-1 d-1
+        # 利用SLA换算叶生长速率为总的汇受限碳需求，单位为kg叶/ha/天
         GrowthSink = r.LAIgrowthSink * (1./p.SLA) * (1./k.LVfraction) if k.dWeightHARV <= 0. else 0.
 
         return GrowthSink
@@ -258,22 +218,20 @@ class SinkLimitedGrowth(SimulationObject):
     def _calc_tillering_rate(self, LeafAppRate):
         k = self.kiosk
         p = self.params
-        # Actual site filling equals maximum site filling without N stress
+        # 实际分蘖位点填充等于无氮胁迫时的最大填充
         SiteFillingAct =  p.SiteFillingMax
 
         if k.DaysAfterHarvest < 8.:
-            # Relative rate of tiller formation when defoliation less
-            # than 8 days ago, tiller tiller-1 d-1
+            # 当离最后一次割草小于8天时的分蘖形成相对速率，单位：根/根/天
             TillerFormationRate = max(0., p.TillerFormRateA0 - p.TillerFormRateB0 * k.LAI) * k.RF_Temperature
         else:
-            # Relative rate of tiller formation when defoliation is more
-            # than 8 days ago, tiller tiller-1 d-1
+            # 当离最后一次割草大于8天时的分蘖形成相对速率，单位：根/根/天
             TillerFormationRate = limit(0., SiteFillingAct, p.TillerFormRateA8 - p.TillerFormRateB8 * k.LAI) * k.RF_Temperature
 
-        # Relative death rate of tillers due to self-shading (DTILD), tiller tiller-1 d-1
+        # 分蘖因自我遮荫（DTILD）导致的相对死亡速率，单位：根/根/天
         TillerDeathRate = max(0.01 * (1. + k.TSUM / p.TSUMmax), 0.05 * (k.LAI - p.LAIcrit) / p.LAIcrit)
 
-        # Change in Tiller number
+        # 分蘖数变化
         if k.TillerNumber <= 14000.:
             dTillerNumber = (TillerFormationRate - TillerDeathRate) * LeafAppRate * k.TillerNumber
         else:
@@ -283,39 +241,38 @@ class SinkLimitedGrowth(SimulationObject):
 
 
 class SoilTemperature(SimulationObject):
-    """Calculates the soil temperature in the upper 10 cm using a 10-day
-    moving average of the daily average air temperature at 2m.
+    """计算上层10厘米土壤温度，采用2米高度日平均气温的10天滑动平均。
 
-    *Simulation parameters*:
+    *模拟参数*:
 
-    =======================  =============================================  ==============
-     Name                      Description                                     Unit
-    =======================  =============================================  ==============
-    SoilTemperatureInit       Initial soil temperature                         C
-    =======================  =============================================  ==============
+    =======================  ================================  ==============
+       名称                    描述                                    单位
+    =======================  ================================  ==============
+    SoilTemperatureInit       初始土壤温度                             摄氏度
+    =======================  ================================  ==============
 
 
-    *Rate variables*
-    ===================  =============================================  ===============
-     Name                 Description                                     Unit
-    ===================  =============================================  ===============
-    dTemperatureSoil      Change in soil temperature                      C/d
-    ===================  =============================================  ===============
+    *速率变量*
+    ===================  ============================  ==============
+        名称                  描述                                单位
+    ===================  ============================  ==============
+    dTemperatureSoil      土壤温度变化                           摄氏度/天
+    ===================  ============================  ==============
 
-    *State variables*
-    ===================  =============================================  ===============
-     Name                 Description                                     Unit
-    ===================  =============================================  ===============
-    TemperatureSoil       Actual soil temperature                         C
-    ===================  =============================================  ===============
+    *状态变量*
+    ===================  ============================  ==============
+        名称                  描述                                单位
+    ===================  ============================  ==============
+    TemperatureSoil       当前土壤温度                            摄氏度
+    ===================  ============================  ==============
 
-    *Signals send or handled*
+    *发送或处理的信号*
 
-    None
+    无
 
-    *External dependencies:*
+    *外部依赖*
 
-    None
+    无
     """
 
     class Parameters(ParamTemplate):
@@ -347,108 +304,88 @@ class SoilTemperature(SimulationObject):
 
 
 class LINGRA(SimulationObject):
-    """Top level implementation of LINGRA, integrating all components
+    """LINGRA顶层实现，集成所有组成模块
 
-    This class integrates all components from the LINGRA model and includes the
-    main state variables related to weights of the different biomass pools, the
-    leaf area, tiller number and leaf length. The integrated components include the
-    implementations for source/sink limited growth, soil temperature,
-    evapotranspiration and root dynamics. The latter two are taken from WOFOST in
-    order to avoid duplication of code.
+    该类集成了LINGRA模型的所有组成模块，并包含与不同生物量库的重量、叶面积、分蘖数和叶长相关的主要状态变量。集成的组成部分包括源/库限制生长（土壤源/库的潜力）、土壤温度、蒸散和根系动态。最后两者（蒸散和根系动态）来自WOFOST以避免代码重复。
 
-    Compared to the original code from Schapendonk et al. (1998) several improvements
-    have been made:
+    与Schapendonk等（1998）的原始代码相比，做出了如下改进：
 
-    - an overall restructuring of the code, removing unneeded variables and renaming
-      the remaining variables to have more readable names.
-    - A clearer implementation of sink/source limited growth including the use of
-      reserves
-    - the potential leaf elongation rate as calculated by the Sink-limited growth
-      module is now corrected for actual growth. Thereby avoiding unlimited leaf
-      growth under water-stressed conditions which led to unrealistic results.
+    - 对代码进行了整体重构，删除了不需要的变量，并将剩余变量重命名为更易读的名称。
+    - 更清晰地实现了源/库限制生长，包括储备的利用。
+    - 由库限制生长模块计算的潜在叶片伸长速率现在已被实际生长校正。这样可以避免在水分胁迫条件下出现叶片无限制生长导致不现实结果。
 
-    *Simulation parameters*:
+    *模拟参数*:
 
     =======================  =============================================  ==============
-     Name                      Description                                     Unit
+     名称                      描述                                             单位
     =======================  =============================================  ==============
-     LAIinit                  Initial leaf area index                           -
-     TillerNumberinit         Initial number of tillers                      tillers/m2
-     WeightREinit             Initial weight of reserves                     kg/ha
-     WeightRTinit             Initial weight of roots                        kg/ha
-     LAIcrit                  Critical LAI for death due to self-shading     -
-     RDRbase                  Background relative death rate for roots       d-1
-     RDRShading               Max relative death rate of leaves due to       d-1
-                              self-shading
-     RDRdrought               Max relative death rate of leaves due to
-                              drought stress                                 d-1
-     SLA                      Specific leaf area                             ha/kg
-     TempBase                 Base temperature for photosynthesis and        C
-                              development
-     PartitioningRootsTB      Partitioning fraction to roots as a            -, -
-                              function of the reduction factor for
-                              transpiration (RFTRA)
-     TSUMmax                  Temperature sum to max development stage       C.d
+     LAIinit                  初始叶面积指数                                      -
+     TillerNumberinit         初始分蘖数                                        tillers/m2
+     WeightREinit             初始储备重                                        kg/ha
+     WeightRTinit             初始根重                                          kg/ha
+     LAIcrit                  因自我遮荫导致死亡的临界LAI                          -
+     RDRbase                  根的基础相对死亡速率                               d-1
+     RDRShading               因自我遮荫导致叶片的最大相对死亡速率                 d-1
+     RDRdrought               因干旱胁迫导致叶片的最大相对死亡速率                 d-1
+     SLA                      比叶面积                                           ha/kg
+     TempBase                 光合与发育的基础温度                                  C
+     PartitioningRootsTB      根分配分数，作为蒸腾调节因子的函数（RFTRA）             -, -
+     TSUMmax                  到最大发育阶段的温度积累                              C.d
     =======================  =============================================  ==============
 
-
-    *Rate variables*
-
-    ===================  =============================================  ===============
-     Name                 Description                                     Unit
-    ===================  =============================================  ===============
-    dTSUM                 Change in temperature sum for development       C
-    dLAI                  Net change in Leaf Area Index                   d-1
-    dDaysAfterHarvest     Change in Days after Harvest                    -
-    dCuttingNumber        Change in number of cuttings (harvests)         -
-    dWeightLV             Net change in leaf weight                       kg/ha/d
-    dWeightRE             Net change in reserve pool                      kg/ha/d
-    dLeafLengthAct        Change in actual leaf length                    cm/d
-    LVdeath               Leaf death rate                                 kg/ha/d
-    LVgrowth              Leaf growth rate                                kg/ha/d
-    dWeightHARV           Change in harvested dry matter                  kg/ha/d
-    dWeightRT             Net change in root weight                       kg/ha/d
-    LVfraction            Fraction partitioned to leaves                  -
-    RTfraction            Fraction partitioned to roots                   -
-    ===================  =============================================  ===============
-
-    *State variables*
+    *变化率变量*:
 
     ===================  =============================================  ===============
-     Name                 Description                                     Unit
+     名称                 描述                                             单位
     ===================  =============================================  ===============
-     TSUM                 Temperature sum                                  C d
-     LAI                  Leaf area Index                                  -
-     DaysAfterHarvest     number of days after harvest                     d
-     CuttingNumber        number of cuttings (harvests)                    -
-     TillerNumber         Tiller number                                    tillers/m2
-     WeightLVgreen        Weight of green leaves                           kg/ha
-     WeightLVdead         Weight of dead leaves                            kg/ha
-     WeightHARV           Weight of harvested dry matter                   kg/ha
-     WeightRE             Weight of reserves                               kg/ha
-     WeightRT             Weight of roots                                  kg/ha
-     LeafLength           Length of leaves                                 kg/ha
-     WeightABG            Total aboveground weight (harvested +            kg/ha
-                          current)
-     SLAINT               Integrated SLA during the season                 ha/kg
-     DVS                  Development stage                                -
+    dTSUM                 发育温度积变化                                    C
+    dLAI                  叶面积指数净变化                                   d-1
+    dDaysAfterHarvest     距上次收割天数变化                                  -
+    dCuttingNumber        收割（收获）次数变化                                 -
+    dWeightLV             叶片重净变化                                      kg/ha/d
+    dWeightRE             储备池净变化                                      kg/ha/d
+    dLeafLengthAct        实际叶长变化                                      cm/d
+    LVdeath               叶死亡速率                                        kg/ha/d
+    LVgrowth              叶生长速率                                        kg/ha/d
+    dWeightHARV           收获干物质量变化                                   kg/ha/d
+    dWeightRT             根重净变化                                        kg/ha/d
+    LVfraction            分配到叶片的比例                                   -
+    RTfraction            分配到根的比例                                     -
     ===================  =============================================  ===============
 
-    *Signals sent or handled*
+    *状态变量*:
 
-    Mowing of grass will take place when a `pcse.signals.mowing` event is broadcasted.
-    This will reduce the amount of living leaf weight assuming that a certain
-    amount of biomass will remain on the field (this is a parameter on the MOWING
-    event).
+    ===================  =============================================  ===============
+     名称                 描述                                             单位
+    ===================  =============================================  ===============
+     TSUM                 温度积累                                         C d
+     LAI                  叶面积指数                                        -
+     DaysAfterHarvest     距上次收割天数                                     d
+     CuttingNumber        收割（收获）次数                                    -
+     TillerNumber         分蘖数                                           tillers/m2
+     WeightLVgreen        绿叶质量                                         kg/ha
+     WeightLVdead         死叶质量                                         kg/ha
+     WeightHARV           收获干物质量                                      kg/ha
+     WeightRE             储备质量                                          kg/ha
+     WeightRT             根质量                                            kg/ha
+     LeafLength           叶片长度                                          kg/ha
+     WeightABG            地上部总质量（收获+现有）                            kg/ha
+     SLAINT               季节内集成比叶面积                                   ha/kg
+     DVS                  发育阶段                                            -
+    ===================  =============================================  ===============
 
-    *External dependencies:*
+    *发送或处理的信号*
+
+    当广播 `pcse.signals.mowing` 事件时，会进行割草。这将减少活叶的数量（认为田间会保留一定生物量，这个量由MOWING事件的参数控制）。
+
+    *外部依赖*:
 
     ===============  =================================== ====================================
-     Name             Description                         Provided by
+     名称             描述                                   提供模块
     ===============  =================================== ====================================
-    RFTRA             Reduction factor for transpiration  pcse.crop.Evapotranspiration
-    dLeafLengthPot    Potential growth in leaf length     pcse.crop.lingra.SinkLimitedGrowth
-    dTillerNumber     Change in tiller number             pcse.crop.lingra.SinkLimitedGrowth
+    RFTRA             蒸腾调节因子                            pcse.crop.Evapotranspiration
+    dLeafLengthPot    潜在叶长增长                            pcse.crop.lingra.SinkLimitedGrowth
+    dTillerNumber     分蘖数变化                              pcse.crop.lingra.SinkLimitedGrowth
     ===============  =================================== ====================================
     """
 
@@ -549,7 +486,7 @@ class LINGRA(SimulationObject):
         self.root_dynamics.calc_rates(day, drv)
         self.evapotranspiration(day, drv)
 
-        # grassland management options for mowing
+        # 草地割草管理选项
         if self._flag_MOWING:
             r.dWeightHARV = max(0, s.WeightLVgreen - self.WeightLV_remaining)
             r.dDaysAfterHarvest = -s.DaysAfterHarvest
@@ -562,64 +499,61 @@ class LINGRA(SimulationObject):
             else:
                 r.dDaysAfterHarvest = 0
 
-        # *** Death rates leaves ***
-        # Relative death rate of leaves due to drought stress, d-1
+        # *** 叶片死亡速率 ***
+        # 由于干旱胁迫导致的叶片相对死亡速率，d-1
         RDRdrought = limit(0., p.RDRdrought, p.RDRdrought * (1.-k.RFTRA))
-        # Relative death rate of leaves due to self-shading, d-1
+        # 由于自遮阴导致的叶片相对死亡速率，d-1
         RDRshading = limit(0., p.RDRshading, p.RDRshading * (s.LAI-p.LAIcrit)/p.LAIcrit)
-        # Actual relative death rate of leaves is sum of base death
-        # rate plus maximum of death rates of shading and drought, d-1
+        # 实际叶片相对死亡速率是基础死亡速率与遮阴和干旱死亡速率最大值之和，d-1
         RDRtotal = p.RDRbase + max(RDRshading, RDRdrought)
-        # Actual death rate of leaf area, due to relative death
-        # rate of leaf area or rate of change due to cutting, ha ha-1 d-1
+        # 实际叶面积死亡速率，由叶面积的相对死亡速率或割草引起的变化决定，ha ha-1 d-1
         if self._flag_MOWING:
             LAIdeath = r.dWeightHARV * s.SLAINT
         else:
             LAIdeath = s.LAI * (1. - exp(-RDRtotal))
 
-        # Fraction of dry matter allocated to roots/leaves, kg kg-1
+        # 分配到根/叶的干物质比例，kg kg-1
         r.RTfraction = p.PartitioningRootsTB(k.RFTRA)
         r.LVfraction = 1. - r.RTfraction
 
-        # *** Growth rates ***
+        # *** 生长速率 ***
         GrowthSource = self.source_limited_growth(day, drv)
         GrowthSink = self.sink_limited_growth(day, drv)
 
-        # Actual growth switches between sink- and source limitation
-        if GrowthSource < GrowthSink:  # source limited growth
-            gap = GrowthSink - GrowthSource  # gap in assimilates
-            dWeightRE = min(s.WeightRE, gap)  # available reserves
+        # 实际生长在源限制和库限制之间切换
+        if GrowthSource < GrowthSink:  # 源限制生长
+            gap = GrowthSink - GrowthSource  # 同化物缺口
+            dWeightRE = min(s.WeightRE, gap)  # 可用贮藏物质
             GrowthAct = GrowthSource + dWeightRE
             r.dWeightRE = -dWeightRE
-        else:  # Sink limited growth
-            r.dWeightRE = GrowthSource - GrowthSink  # surplus in assimilates
+        else:  # 库限制生长
+            r.dWeightRE = GrowthSource - GrowthSink  # 同化物过剩
             GrowthAct = GrowthSink
 
-        # Actual growth rate of leaf area, ha ha-1 d-1
+        # 实际叶面积生长速率，ha ha-1 d-1
         LAIgrowthAct = GrowthAct * r.LVfraction * p.SLA
 
-        # rate of change of dry weight of green leaves due to
-        # growth and senescence of leaves or periodical harvest, kg ha-1
+        # 由于叶片生长和衰老/定期收割引起的绿色叶片干重变化速率，kg ha-1
         r.LVgrowth = GrowthAct * r.LVfraction if r.dWeightHARV <= 0 else 0.
 
-        # Actual death rate of leaf biomass, kg ha-1 d-1 incl. harvested leaves
+        # 包括收割叶片的叶片干重实际死亡速率，kg ha-1 d-1
         r.LVdeath = LAIdeath / s.SLAINT
 
-        # Change in LAI
+        # LAI的变化量
         r.dLAI = LAIgrowthAct - LAIdeath
 
-        # Change in green leaf weight
+        # 绿色叶片干重的变化量
         r.dWeightLV = r.LVgrowth - r.LVdeath
 
-        # Actual growth rate of roots, kg ha-1 d-1
+        # 根的实际生长速率，kg ha-1 d-1
         r.dWeightRT = GrowthAct * r.RTfraction
 
-        # Actual change in leaf length
-        if r.dWeightHARV > 0:  # Correction for harvesting
+        # 叶片长度的实际变化量
+        if r.dWeightHARV > 0:  # 割草修正
             r.dLeafLengthAct = -s.LeafLength
         else:
             if GrowthSink > 0:
-                # Correction for source limitation
+                # 源限制修正
                 r.dLeafLengthAct = k.dLeafLengthPot * GrowthAct/GrowthSink
             else:
                 r.dLeafLengthAct = 0
@@ -645,14 +579,14 @@ class LINGRA(SimulationObject):
         s.WeightRT += r.dWeightRT * delt
         s.LeafLength += r.dLeafLengthAct * delt
 
-        # Total above ground dry weight including harvests, kg ha-1
+        # 地上部分（包括收割后）总干重，单位: kg ha-1
         s.WeightABG = s.WeightHARV + s.WeightLVgreen
 
-        # Running specific leaf area in model, ha kg-1
+        # 模型中即时比叶面积, 单位: ha kg-1
         s.SLAINT = s.LAI / s.WeightLVgreen
 
         s.DVS = s.TSUM / p.TSUMmax
-        # TODO: decide whether to reset TSUM after mowing
+        # TODO: 是否在割草后重置TSUM
 
         self.soil_temperature.integrate(day, delt)
         self.root_dynamics.integrate(day, delt)
@@ -662,7 +596,7 @@ class LINGRA(SimulationObject):
         SimulationObject.finalize(self, day)
 
     def _on_MOWING(self, biomass_remaining):
-        """Handler for grass mowing events
+        """处理割草事件的函数
         """
         self.WeightLV_remaining = biomass_remaining
         self._flag_MOWING = True

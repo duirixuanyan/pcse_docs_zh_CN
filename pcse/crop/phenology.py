@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
-"""Implementation of a models for phenological development in WOFOST
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
+"""在WOFOST中实现物候发育模型
 
-Classes defined here:
-- DVS_Phenology: Implements the algorithms for phenologic development
+此文件中定义的类:
+- DVS_Phenology: 实现物候发育的相关算法
 - Vernalisation: 
 """
 import datetime
@@ -20,115 +20,91 @@ from .. import exceptions as exc
 
 #-------------------------------------------------------------------------------
 class Vernalisation(SimulationObject):
-    """ Modification of phenological development due to vernalisation.
-    
-    The vernalization approach here is based on the work of Lenny van Bussel
-    (2011), which in turn is based on Wang and Engel (1998). The basic
-    principle is that winter wheat needs a certain number of days with temperatures
-    within an optimum temperature range to complete its vernalisation
-    requirement. Until the vernalisation requirement is fulfilled, the crop
-    development is delayed.
-    
-    The rate of vernalization (VERNR) is defined by the temperature response
-    function VERNRTB. Within the optimal temperature range 1 day is added
-    to the vernalisation state (VERN). The reduction on the phenological
-    development is calculated from the base and saturated vernalisation
-    requirements (VERNBASE and VERNSAT). The reduction factor (VERNFAC) is
-    scaled linearly between VERNBASE and VERNSAT.
-    
-    A critical development stage (VERNDVS) is used to stop the effect of
-    vernalisation when this DVS is reached. This is done to improve model
-    stability in order to avoid that Anthesis is never reached due to a
-    somewhat too high VERNSAT. Nevertheless, a warning is written to the log
-    file, if this happens.   
-    
+    """
+    由于春化作用导致的物候发育变化。
+
+    这里的春化处理基于Lenny van Bussel（2011）的工作，这又基于Wang和Engel（1998）。其基本原理是冬小麦需要若干天处于最适温度范围内以完成春化需求。在满足春化需求之前，作物的发育会被延迟。
+
+    春化速率（VERNR）由温度响应函数VERNRTB决定。在最适温度范围内，春化状态（VERN）每天增加1。物候发育的减缓根据基本和饱和春化需求（VERNBASE和VERNSAT）计算。减缓因子（VERNFAC）在VERNBASE和VERNSAT之间线性缩放。
+
+    设置了一个临界发育阶段（VERNDVS），当DVS达到该值时，春化作用的影响被终止。这是为了提高模型的稳定性，避免由于VERNSAT设置过高导致抽穗期永远无法到达。如果发生这种情况，会向日志文件写入警告。
+
     * Van Bussel, 2011. From field to globe: Upscaling of crop growth modelling.
-      Wageningen PhD thesis. http://edepot.wur.nl/180295
+      Wageningen博士论文. http://edepot.wur.nl/180295
     * Wang and Engel, 1998. Simulation of phenological development of wheat
       crops. Agric. Systems 58:1 pp 1-24
 
-    *Simulation parameters* (provide in cropdata dictionary)
-    
+    *模拟参数* （在cropdata字典中提供）
+
     ======== ============================================= =======  ============
-     Name     Description                                   Type     Unit
+     名称       描述                                         类型      单位
     ======== ============================================= =======  ============
-    VERNSAT  Saturated vernalisation requirements           SCr        days
-    VERNBASE Base vernalisation requirements                SCr        days
-    VERNRTB  Rate of vernalisation as a function of daily   TCr        -
-             mean temperature.
-    VERNDVS  Critical development stage after which the     SCr        -
-             effect of vernalisation is halted
+    VERNSAT  饱和春化需求                                   SCr      天
+    VERNBASE 基本春化需求                                   SCr      天
+    VERNRTB  春化速率作为日均温的函数                       TCr      -
+    VERNDVS  达到此发育阶段后终止春化作用                   SCr      -
     ======== ============================================= =======  ============
 
-    **State variables**
+    **状态变量**
 
     ============ ================================================= ==== ========
-     Name        Description                                       Pbl   Unit
+     名称         描述                                             公布  单位
     ============ ================================================= ==== ========
-    VERN         Vernalisation state                                N    days
-    DOV          Day when vernalisation requirements are            N    -
-                 fulfilled.
-    ISVERNALISED Flag indicated that vernalisation                  Y    -
-                 requirement has been reached
+    VERN         春化状态                                           N    天
+    DOV          完成春化需求的日期                                 N    -
+    ISVERNALISED 指示春化需求是否已经满足的标志                     Y    -
     ============ ================================================= ==== ========
 
-
-    **Rate variables**
+    **速率变量**
 
     =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
+     名称       描述                                           公布     单位
     =======  ================================================= ==== ============
-    VERNR    Rate of vernalisation                              N     -
-    VERNFAC  Reduction factor on development rate due to        Y     -
-             vernalisation effect.
+    VERNR    春化速率                                           N     -
+    VERNFAC  由于春化作用导致发育速率的减缓因子                 Y     -
     =======  ================================================= ==== ============
 
-    
-    **External dependencies:**
+    **外部依赖：**
 
     ============ =============================== ========================== =====
-     Name        Description                         Provided by             Unit
+     名称         描述                              提供者                  单位
     ============ =============================== ========================== =====
-    DVS          Development Stage                 Phenology                 -
-                 Used only to determine if the
-                 critical development stage for
-                 vernalisation (VERNDVS) is
-                 reached.
+    DVS          发育阶段。                           Phenology              -
+                 仅用于判断是否达到春化作用
+                 （VERNDVS）对应的临界阶段。
     ============ =============================== ========================== =====
     """
-    # Helper variable to indicate that DVS > VERNDVS
+    # 辅助变量，用于指示 DVS > VERNDVS
     _force_vernalisation = Bool(False)
 
     class Parameters(ParamTemplate):
-        VERNSAT = Float(-99.)     # Saturated vernalisation requirements
-        VERNBASE = Float(-99.)     # Base vernalisation requirements
-        VERNRTB = AfgenTrait()    # Vernalisation temperature response
-        VERNDVS = Float(-99.)     # Critical DVS for vernalisation fulfillment
+        VERNSAT = Float(-99.)     # 饱和春化需求
+        VERNBASE = Float(-99.)    # 基本春化需求
+        VERNRTB = AfgenTrait()    # 春化速率关于日均温的响应函数
+        VERNDVS = Float(-99.)     # 达到春化完成的关键DVS
 
     class RateVariables(RatesTemplate):
-        VERNR = Float(-99.)        # Rate of vernalisation
-        VERNFAC = Float(-99.)      # Red. factor for phenol. devel.
+        VERNR = Float(-99.)        # 春化速率
+        VERNFAC = Float(-99.)      # 物候发育的减缓因子
 
     class StateVariables(StatesTemplate):
-        VERN = Float(-99.)              # Vernalisation state
-        DOV = Instance(datetime.date)  # Day when vernalisation
-                                            # requirements are fulfilled
-        ISVERNALISED =  Bool()              # True when VERNSAT is reached and
-                                            # Forced when DVS > VERNDVS
+        VERN = Float(-99.)              # 春化状态
+        DOV = Instance(datetime.date)   # 达到春化需求的日期
+        ISVERNALISED =  Bool()          # 达到VERNSAT为True，如果DVS>VERNDVS被强制为True
 
     #---------------------------------------------------------------------------
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE  instance
-        :param cropdata: dictionary with WOFOST cropdata key/value pairs
+        :param day: 仿真起始日期
+        :param kiosk: 本PCSE实例的变量kiosk
+        :param cropdata: 带有WOFOST作物数据键值对的字典
 
         """
         self.params = self.Parameters(parvalues)
         self.rates = self.RateVariables(kiosk, publish=["VERNFAC"])
         self.kiosk = kiosk
 
-        # Define initial states
+        # 定义初始状态变量
         self.states = self.StateVariables(kiosk, VERN=0., VERNFAC=0.,
                                           DOV=None, ISVERNALISED=False,
                                           publish=["ISVERNALISED"])
@@ -161,156 +137,136 @@ class Vernalisation(SimulationObject):
         
         states.VERN += rates.VERNR
         
-        if states.VERN >= params.VERNSAT:  # Vernalisation requirements reached
+        if states.VERN >= params.VERNSAT:  # 达到春化需求
             states.ISVERNALISED = True
             if states.DOV is None:
                 states.DOV = day
                 msg = "Vernalization requirements reached at day %s."
                 self.logger.info(msg % day)
 
-        elif self._force_vernalisation:  # Critical DVS for vernalisation reached
-            # Force vernalisation, but do not set DOV
+        elif self._force_vernalisation:  # 达到春化关键DVS
+            # 强制完成春化，但不设置DOV
             states.ISVERNALISED = True
 
-            # Write log message to warn about forced vernalisation
+            # 写入日志，警告发生了强制春化
             msg = ("Critical DVS for vernalization (VERNDVS) reached " +
                    "at day %s, " +
                    "but vernalization requirements not yet fulfilled. " +
                    "Forcing vernalization now (VERN=%f).")
             self.logger.warning(msg % (day, states.VERN))
 
-        else:  # Reduction factor for phenologic development
+        else:  # 用于物候发育的减缓因子
             states.ISVERNALISED = False
 
 #-------------------------------------------------------------------------------
 class DVS_Phenology(SimulationObject):
-    """Implements the algorithms for phenologic development in WOFOST.
-    
-    Phenologic development in WOFOST is expresses using a unitless scale which
-    takes the values 0 at emergence, 1 at Anthesis (flowering) and 2 at
-    maturity. This type of phenological development is mainly representative
-    for cereal crops. All other crops that are simulated with WOFOST are
-    forced into this scheme as well, although this may not be appropriate for
-    all crops. For example, for potatoes development stage 1 represents the
-    start of tuber formation rather than flowering.
-    
-    Phenological development is mainly governed by temperature and can be
-    modified by the effects of day length and vernalization 
-    during the period before Anthesis. After Anthesis, only temperature
-    influences the development rate.
+    """
+    实现WOFOST作物发育（物候）发展算法。
 
+    WOFOST中的物候发育使用一个无量纲标度来表示，该标度在出苗时取0，开花（Anthesis）时取1，成熟时取2。这种物候发育方式主要适用于谷物类作物。所有其他用WOFOST模拟的作物也被强制使用该方案，尽管这对所有作物可能并不都合适。例如，对马铃薯来说，发育阶段1表示块茎形成的开始，而不是开花。
 
-    **Simulation parameters**
-    
+    物候发育主要受温度控制，在开花之前还可以受到日长和春化作用的影响。开花后，只有温度影响发育速率。
+
+    **模拟参数**
+
     =======  ============================================= =======  ============
-     Name     Description                                   Type     Unit
+     名称      描述                                         类型       单位
     =======  ============================================= =======  ============
-    TSUMEM   Temperature sum from sowing to emergence       SCr        |C| day
-    TBASEM   Base temperature for emergence                 SCr        |C|
-    TEFFMX   Maximum effective temperature for emergence    SCr        |C|
-    TSUM1    Temperature sum from emergence to anthesis     SCr        |C| day
-    TSUM2    Temperature sum from anthesis to maturity      SCr        |C| day
-    IDSL     Switch for phenological development options    SCr        -
-             temperature only (IDSL=0), including           SCr
-             daylength (IDSL=1) and including               
-             vernalization (IDSL>=2)
-    DLO      Optimal daylength for phenological             SCr        hr
-             development
-    DLC      Critical daylength for phenological            SCr        hr
-             development
-    DVSI     Initial development stage at emergence.        SCr        -
-             Usually this is zero, but it can be higher
-             for crops that are transplanted (e.g. paddy
-             rice)
-    DVSEND   Final development stage                        SCr        -
-    DTSMTB   Daily increase in temperature sum as a         TCr        |C|
-             function of daily mean temperature.
+    TSUMEM   从播种到出苗的温度积（积温）                   SCr        |C| day
+    TBASEM   出苗的基温                                     SCr        |C|
+    TEFFMX   出苗的最大有效温度                             SCr        |C|
+    TSUM1    从出苗到开花的温度积                           SCr        |C| day
+    TSUM2    从开花到成熟的温度积                           SCr        |C| day
+    IDSL     发育方案选项开关                               SCr        -
+             温度控制(IDSL=0)，包括日长(IDSL=1)             SCr
+             或包括春化（IDSL>=2）
+    DLO      发育的最适日长                                 SCr        hr
+    DLC      发育的临界日长                                 SCr        hr
+    DVSI     出苗时的初始发育阶段                           SCr        -
+             通常为零，但对于移栽作物（如水稻）可更高
+    DVSEND   最终发育阶段                                   SCr        -
+    DTSMTB   日均温响应函数（温度对发育的贡献）             TCr        |C|
     =======  ============================================= =======  ============
 
-    **State variables**
+    **状态变量**
 
     =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
+     名称      描述                                            公共      单位
     =======  ================================================= ==== ============
-    DVS      Development stage                                  Y    - 
-    TSUM     Temperature sum                                    N    |C| day
-    TSUME    Temperature sum for emergence                      N    |C| day
-    DOS      Day of sowing                                      N    - 
-    DOE      Day of emergence                                   N    - 
-    DOA      Day of Anthesis                                    N    - 
-    DOM      Day of maturity                                    N    - 
-    DOH      Day of harvest                                     N    -
-    STAGE    Current phenological stage, can take the           N    -
-             folowing values:
+    DVS      发育阶段                                           Y        - 
+    TSUM     积温                                               N    |C| day
+    TSUME    出苗积温                                           N    |C| day
+    DOS      播种日期                                           N        - 
+    DOE      出苗日期                                           N        - 
+    DOA      开花日期                                           N        - 
+    DOM      成熟日期                                           N        - 
+    DOH      收获日期                                           N        -
+    STAGE    当前物候阶段，取值如下：                           N        -
              `emerging|vegetative|reproductive|mature`
     =======  ================================================= ==== ============
 
-    **Rate variables**
+    **速率变量**
 
     =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
+     名称      描述                                            公共      单位
     =======  ================================================= ==== ============
-    DTSUME   Increase in temperature sum for emergence          N    |C|
-    DTSUM    Increase in temperature sum for anthesis or        N    |C|
-             maturity
-    DVR      Development rate                                   Y    |day-1|
+    DTSUME   出苗积温的增加量                                   N    |C|
+    DTSUM    开花/成熟积温的增加量                              N    |C|
+    DVR      发育速度                                           Y    |day-1|
     =======  ================================================= ==== ============
-    
-    **External dependencies:**
 
-    None    
+    **外部依赖：**
 
-    **Signals sent or handled**
-    
-    `DVS_Phenology` sends the `crop_finish` signal when maturity is
-    reached and the `end_type` is 'maturity' or 'earliest'.
-    
+    无  
+
+    **信号发送或处理**
+
+    当达到成熟并且end_type为'maturity'或'earliest'时，`DVS_Phenology`发送`crop_finish`信号。
     """
-    # Placeholder for start/stop types and vernalisation module
+    # 用于起止类型和春化模块的占位符
     vernalisation = Instance(Vernalisation)
 
     class Parameters(ParamTemplate):
-        TSUMEM = Float(-99.)  # Temp. sum for emergence
-        TBASEM = Float(-99.)  # Base temp. for emergence
-        TEFFMX = Float(-99.)  # Max eff temperature for emergence
-        TSUM1  = Float(-99.)  # Temperature sum emergence to anthesis
-        TSUM2  = Float(-99.)  # Temperature sum anthesis to maturity
-        IDSL   = Float(-99.)  # Switch for photoperiod (1) and vernalisation (2)
-        DLO    = Float(-99.)  # Optimal day length for phenol. development
-        DLC    = Float(-99.)  # Critical day length for phenol. development
-        DVSI   = Float(-99.)  # Initial development stage
-        DVSEND = Float(-99.)  # Final development stage
-        DTSMTB = AfgenTrait() # Temperature response function for phenol.
-                              # development.
+        TSUMEM = Float(-99.)  # 出苗所需的积温
+        TBASEM = Float(-99.)  # 出苗基温
+        TEFFMX = Float(-99.)  # 出苗最大有效温度
+        TSUM1  = Float(-99.)  # 出苗到开花的积温
+        TSUM2  = Float(-99.)  # 开花到成熟的积温
+        IDSL   = Float(-99.)  # 日长敏感性开关（1为敏感，2为包括春化）
+        DLO    = Float(-99.)  # 发育最适日长
+        DLC    = Float(-99.)  # 发育临界日长
+        DVSI   = Float(-99.)  # 初始发育阶段
+        DVSEND = Float(-99.)  # 最终发育阶段
+        DTSMTB = AfgenTrait() # 发育阶段的温度响应函数
+                              # 
         CROP_START_TYPE = Enum(["sowing", "emergence"])
         CROP_END_TYPE = Enum(["maturity", "harvest", "earliest"])
 
     #-------------------------------------------------------------------------------
     class RateVariables(RatesTemplate):
-        DTSUME = Float(-99.)  # increase in temperature sum for emergence
-        DTSUM  = Float(-99.)  # increase in temperature sum
-        DVR    = Float(-99.)  # development rate
+        DTSUME = Float(-99.)  # 出苗积温的增加量
+        DTSUM  = Float(-99.)  # 开花/成熟积温的增加量
+        DVR    = Float(-99.)  # 发育速度
 
     #-------------------------------------------------------------------------------
     class StateVariables(StatesTemplate):
-        DVS = Float(-99.)  # Development stage
-        TSUM = Float(-99.)  # Temperature sum state
-        TSUME = Float(-99.)  # Temperature sum for emergence state
-        # States which register phenological events
-        DOS = Instance(datetime.date) # Day of sowing
-        DOE = Instance(datetime.date) # Day of emergence
-        DOA = Instance(datetime.date) # Day of anthesis
-        DOM = Instance(datetime.date) # Day of maturity
-        DOH = Instance(datetime.date) # Day of harvest
+        DVS = Float(-99.)  # 发育阶段
+        TSUM = Float(-99.)  # 积温状态量
+        TSUME = Float(-99.)  # 出苗积温状态量
+        # 注册物候事件的状态量
+        DOS = Instance(datetime.date) # 播种日期
+        DOE = Instance(datetime.date) # 出苗日期
+        DOA = Instance(datetime.date) # 开花日期
+        DOM = Instance(datetime.date) # 成熟日期
+        DOH = Instance(datetime.date) # 收获日期
         STAGE = Enum(["emerging", "vegetative", "reproductive", "mature"])
 
     #---------------------------------------------------------------------------
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE  instance
-        :param parvalues: `ParameterProvider` object providing parameters as
-                key/value pairs
+        :param day: 模拟的开始日期
+        :param kiosk: 此 PCSE 实例的变量仓库
+        :param parvalues: `ParameterProvider` 对象，提供参数的键/值对
         """
 
         self.params = self.Parameters(parvalues)
@@ -319,38 +275,37 @@ class DVS_Phenology(SimulationObject):
 
         self._connect_signal(self._on_CROP_FINISH, signal=signals.crop_finish)
 
-        # Define initial states
+        # 定义初始状态量
         DVS, DOS, DOE, STAGE = self._get_initial_stage(day)
         self.states = self.StateVariables(kiosk, publish="DVS",
                                           TSUM=0., TSUME=0., DVS=DVS,
                                           DOS=DOS, DOE=DOE, DOA=None, DOM=None,
                                           DOH=None, STAGE=STAGE)
 
-        # initialize vernalisation for IDSL=2
+        # 对于 IDSL=2 初始化春化模块
         if self.params.IDSL >= 2:
             self.vernalisation = Vernalisation(day, kiosk, parvalues)
     
     #---------------------------------------------------------------------------
     def _get_initial_stage(self, day):
-        """"""
+        """定义作物初始发育阶段、返回 DVS, DOS, DOE, STAGE"""
         p = self.params
 
-        # Define initial stage type (emergence/sowing) and fill the
-        # respective day of sowing/emergence (DOS/DOE)
+        # 定义初始发育阶段类型（emergence/sowing），并设置相应的播种/出苗日期（DOS/DOE）
         if p.CROP_START_TYPE == "emergence":
-            STAGE = "vegetative"
-            DOE = day
-            DOS = None
-            DVS = p.DVSI
-
-            # send signal to indicate crop emergence
+            STAGE = "vegetative"  # 初始阶段为营养生长期
+            DOE = day             # 出苗日期等于当前日期
+            DOS = None            # 播种日期未知
+            DVS = p.DVSI          # 初始发育阶段
+            
+            # 发送出苗信号
             self._send_signal(signals.crop_emerged)
 
         elif p.CROP_START_TYPE == "sowing":
-            STAGE = "emerging"
-            DOS = day
-            DOE = None
-            DVS = -0.1
+            STAGE = "emerging"    # 初始阶段为出苗期
+            DOS = day             # 播种日期等于当前日期
+            DOE = None            # 出苗日期未知
+            DVS = -0.1            # 初始发育阶段值-0.1
 
         else:
             msg = "Unknown start type: %s" % p.CROP_START_TYPE
@@ -361,45 +316,44 @@ class DVS_Phenology(SimulationObject):
     #---------------------------------------------------------------------------
     @prepare_rates
     def calc_rates(self, day, drv):
-        """Calculates the rates for phenological development
-        """
+        """计算作物物候发育的速率变量"""
         p = self.params
         r = self.rates
         s = self.states
 
-        # Day length sensitivity
+        # 日长度敏感性（日照对发育的影响因子）
         DVRED = 1.
         if p.IDSL >= 1:
-            DAYLP = daylength(day, drv.LAT)
-            DVRED = limit(0., 1., (DAYLP - p.DLC)/(p.DLO - p.DLC))
+            DAYLP = daylength(day, drv.LAT) # 计算白昼长度
+            DVRED = limit(0., 1., (DAYLP - p.DLC)/(p.DLO - p.DLC))  # 根据临界日长修正
 
-        # Vernalisation
+        # 春化作用
         VERNFAC = 1.
         if p.IDSL >= 2:
-            if s.STAGE == 'vegetative':
-                self.vernalisation.calc_rates(day, drv)
-                VERNFAC = self.kiosk["VERNFAC"]
+            if s.STAGE == 'vegetative':  # 只在营养生长阶段考虑春化
+                self.vernalisation.calc_rates(day, drv)   # 调用春化率计算
+                VERNFAC = self.kiosk["VERNFAC"]           # 获取春化因子
 
-        # Development rates
+        # 生育发育速率
         if s.STAGE == "emerging":
-            r.DTSUME = limit(0., (p.TEFFMX - p.TBASEM), (drv.TEMP - p.TBASEM))
+            r.DTSUME = limit(0., (p.TEFFMX - p.TBASEM), (drv.TEMP - p.TBASEM)) # 出苗积温增量
             r.DTSUM = 0.
-            r.DVR = 0.1 * r.DTSUME/p.TSUMEM
+            r.DVR = 0.1 * r.DTSUME/p.TSUMEM                                    # 出苗发育速率
 
         elif s.STAGE == 'vegetative':
             r.DTSUME = 0.
-            r.DTSUM = p.DTSMTB(drv.TEMP) * VERNFAC * DVRED
-            r.DVR = r.DTSUM/p.TSUM1
+            r.DTSUM = p.DTSMTB(drv.TEMP) * VERNFAC * DVRED    # 积温增量，包含春化和日长影响
+            r.DVR = r.DTSUM/p.TSUM1                           # 营养生长发育速率
 
         elif s.STAGE == 'reproductive':
             r.DTSUME = 0.
-            r.DTSUM = p.DTSMTB(drv.TEMP)
-            r.DVR = r.DTSUM/p.TSUM2
+            r.DTSUM = p.DTSMTB(drv.TEMP)    # 生殖生长期的积温增量
+            r.DVR = r.DTSUM/p.TSUM2         # 生殖生长发育速率
         elif s.STAGE == 'mature':
             r.DTSUME = 0.
             r.DTSUM = 0.
             r.DVR = 0.
-        else:  # Problem: no stage defined
+        else:  # 问题：未定义发育阶段
             msg = "Unrecognized STAGE defined in phenology submodule: %s"
             raise exc.PCSEError(msg, self.states.STAGE)
         
@@ -409,26 +363,26 @@ class DVS_Phenology(SimulationObject):
     #---------------------------------------------------------------------------
     @prepare_states
     def integrate(self, day, delt=1.0):
-        """Updates the state variable and checks for phenologic stages
+        """更新状态变量并检查作物物候阶段
         """
 
         p = self.params
         r = self.rates
         s = self.states
 
-        # Integrate vernalisation module
+        # 积分春化模块
         if p.IDSL >= 2:
             if s.STAGE == 'vegetative':
                 self.vernalisation.integrate(day, delt)
             else:
                 self.vernalisation.touch()
 
-        # Integrate phenologic states
+        # 积分物候状态
         s.TSUME += r.DTSUME
         s.DVS += r.DVR
         s.TSUM += r.DTSUM
 
-        # Check if a new stage is reached
+        # 检查是否进入新阶段
         if s.STAGE == "emerging":
             if s.DVS >= 0.0:
                 self._next_stage(day)
@@ -443,7 +397,7 @@ class DVS_Phenology(SimulationObject):
                 s.DVS = p.DVSEND
         elif s.STAGE == 'mature':
             pass
-        else: # Problem no stage defined
+        else: # 问题：未定义阶段
             msg = "No STAGE defined in phenology submodule"
             raise exc.PCSEError(msg)
             
@@ -452,7 +406,7 @@ class DVS_Phenology(SimulationObject):
 
     #---------------------------------------------------------------------------
     def _next_stage(self, day):
-        """Moves states.STAGE to the next phenological stage"""
+        """将 states.STAGE 移动到下一个物候阶段"""
         s = self.states
         p = self.params
 
@@ -460,7 +414,7 @@ class DVS_Phenology(SimulationObject):
         if s.STAGE == "emerging":
             s.STAGE = "vegetative"
             s.DOE = day
-            # send signal to indicate crop emergence
+            # 发送作物出苗信号
             self._send_signal(signals.crop_emerged)
             
         elif s.STAGE == "vegetative":
@@ -478,7 +432,7 @@ class DVS_Phenology(SimulationObject):
             msg = "Cannot move to next phenology stage: maturity already reached!"
             raise exc.PCSEError(msg)
 
-        else: # Problem no stage defined
+        else: # 问题：未定义阶段
             msg = "No STAGE defined in phenology submodule."
             raise exc.PCSEError(msg)
         
@@ -487,9 +441,7 @@ class DVS_Phenology(SimulationObject):
 
     #---------------------------------------------------------------------------
     def _on_CROP_FINISH(self, day, finish_type=None):
-        """Handler for setting day of harvest (DOH). Although DOH is not
-        strictly related to phenology (but to management) this is the most
-        logical place to put it.
+        """处理设置收获日(DOH)的事件。虽然DOH并不严格与物候相关（而是管理相关），但这里是最合理的放置位置。
         """
         if finish_type in ['harvest', 'earliest']:
             self._for_finalize["DOH"] = day

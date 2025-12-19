@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen环境研究院, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 
 import sqlite3
 from collections import namedtuple
@@ -12,9 +12,9 @@ from ..models import Wofost72_WLP_CWB, Wofost72_PP
 
 
 def namedtuple_factory(cursor, row):
-    """Creates an SQLite row factor for named tuples.
+    """创建一个用于命名元组的SQLite行工厂。
 
-    see: https://docs.python.org/3/library/sqlite3.html#how-to-create-and-use-row-factories
+    参见: https://docs.python.org/3/library/sqlite3.html#how-to-create-and-use-row-factories
     """
     fields = [column[0] for column in cursor.description]
     cls = namedtuple("Row", fields)
@@ -22,24 +22,20 @@ def namedtuple_factory(cursor, row):
 
 
 def run_wofost(dsn, crop, grid, year, mode, clear_table=False):
-    """Provides a convenient interface for running PCSE/WOFOST from a
-    PCSE database.
+    """提供一个从PCSE数据库运行PCSE/WOFOST的便捷接口。
     
-    Starting run_wofost() will start a PCSE/WOFOST instance and let it
-    run until it terminates for the given grid, crop, year and mode.
-    Optionally it can delete everything from tables `sim_results_timeseries`
-    and `sim_results_summary`.
+    调用run_wofost()将启动一个PCSE/WOFOST实例，并让其以给定的grid、crop、year和mode运行直到终止。
+    可选地，它可以清空`sim_results_timeseries`和`sim_results_summary`表中的所有内容。
     
-    :param dsn: PCSE DB as SQLAlchemy data source name
-    :param crop: crop number
-    :param grid: grid number
-    :param year: year to start
-    :param mode: production mode ('pp' or 'wlp')
-    :param clear_table: If set to True delete everything from the tables
-        'sim_results_timeseries' and  'sim_results_summary' (defaults to False)
+    :param dsn: 作为SQLAlchemy数据源名称的PCSE数据库
+    :param crop: 作物编号
+    :param grid: 网格编号
+    :param year: 起始年份
+    :param mode: 生产模式（'pp'或'wlp'）
+    :param clear_table: 如果为True，则清空'tim_results_timeseries'和'sim_results_summary'表（默认为False）
     """
 
-    # Open database connection and empty output table
+    # 打开数据库连接并清空输出表
     DBconn = sqlite3.connect(dsn)
     DBconn.row_factory = namedtuple_factory
     cursor = DBconn.cursor()
@@ -48,19 +44,19 @@ def run_wofost(dsn, crop, grid, year, mode, clear_table=False):
         cursor.execute("delete from sim_results_summary")
         cursor.close()
 
-    # Get input data from database
+    # 从数据库获取输入数据
     sited = fetch_sitedata(DBconn, grid, year)
     cropd = fetch_cropdata(DBconn, grid, year, crop)
     soild = fetch_soildata(DBconn, grid)
     parameters = ParameterProvider(sitedata=sited, cropdata=cropd, soildata=soild)
 
-    # Get Agromanagement
+    # 获取农事管理数据
     agromanagement = AgroManagementDataProvider(DBconn, grid, crop, year)
 
-    # Get weather data
+    # 获取气象数据
     wdp = GridWeatherDataProvider(DBconn, grid_no=grid)
                              
-    # Initialize PCSE/WOFOST
+    # 初始化PCSE/WOFOST
     mode = mode.strip().lower()
     if mode == 'pp':
         wofsim = Wofost72_PP(parameters, wdp, agromanagement)

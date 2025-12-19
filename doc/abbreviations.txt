@@ -34,6 +34,7 @@
 
 .. |day-1| replace:: day\ :sup:`-1`\
 .. |cm day-1| replace:: cm day\ :sup:`-1`\
+.. |mm day-1| replace:: mm day\ :sup:`-1`\
 .. |cmC-1day-1| replace:: :math:`cm^{\circ}C^{-1} day^{-1}`
 .. |kg CH2O kg-1 d-1| replace:: kg CH\ :sub:`2`\O kg\ :sup:`-1`\ d\ :sup:`-1`\
 .. |kg CH2O ha-1| replace:: kg CH\ :sub:`2`\O ha\ :sup:`-1`\

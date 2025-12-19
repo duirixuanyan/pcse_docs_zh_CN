@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 瓦赫宁根环境研究院，瓦赫宁根大学与研究中心
+# Allard de Wit (allard.dewit@wur.nl)，2024年3月
 from math import exp
 
 import array
@@ -14,25 +14,22 @@ from ..util import limit, merge_dict, AfgenTrait
 
 
 def SWEAF(ET0, DEPNR):
-    """Calculates the Soil Water Easily Available Fraction (SWEAF).
+    """计算土壤易利用水分分数（SWEAF）。
 
-    :param ET0: The evapotranpiration from a reference crop.
-    :param DEPNR: The crop dependency number.
+    :param ET0: 参考作物的蒸散量。
+    :param DEPNR: 作物依赖性编号。
     
-    The fraction of easily available soil water between field capacity and
-    wilting point is a function of the potential evapotranspiration rate
-    (for a closed canopy) in cm/day, ET0, and the crop group number, DEPNR
-    (from 1 (=drought-sensitive) to 5 (=drought-resistent)). The function
-    SWEAF describes this relationship given in tabular form by Doorenbos &
-    Kassam (1979) and by Van Keulen & Wolf (1986; p.108, table 20)
-    http://edepot.wur.nl/168025.
+    易利用土壤水分分数（即田间持水量和永久萎蔫点之间的水分），是潜在蒸散速率
+    （全冠闭合时，cm/day，ET0）和作物组编号DEPNR（1=干旱敏感，5=耐旱）函数。
+    SWEAF 函数以表格形式描述了Doorenbos & Kassam (1979)以及Van Keulen & Wolf (1986, 第108页, 表20)
+    http://edepot.wur.nl/168025 所给出的这种关系。
     """
     A = 0.76
     B = 1.5
-    # curve for CGNR 5, and other curves at fixed distance below it
+    # CGNR 5 的曲线，其它曲线以固定距离向下平移
     sweaf = 1./(A+B*ET0) - (5.-DEPNR)*0.10
 
-    # Correction for lower curves (CGNR less than 3)
+    # 对低位曲线（CGNR 小于 3）进行修正
     if (DEPNR < 3.):
         sweaf += (ET0-0.6)/(DEPNR*(DEPNR+3.))
 
@@ -40,17 +37,15 @@ def SWEAF(ET0, DEPNR):
 
 
 class EvapotranspirationWrapper(SimulationObject):
-    """This selects the appropriate evapotranspiration module
-    depending on the use of a waterbalance with a layered or a non-layered
-    soil and whether the impact of CO2 should be taken into account
+    """根据是否采用分层或非分层土壤的水量平衡及是否考虑CO2的影响，选择合适的蒸散量模块
     """
     etmodule = Instance(SimulationObject)
 
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE instance
-        :param parvalues: parameter values
+        :param day: 模拟的起始日期
+        :param kiosk: 本PCSE实例的变量kiosk
+        :param parvalues: 参数值
         """
 
         if "soil_profile" in parvalues:
@@ -66,79 +61,68 @@ class EvapotranspirationWrapper(SimulationObject):
 
 
 class Evapotranspiration(SimulationObject):
-    """Calculation of potential evaporation (water and soil) rates and actual
-    crop transpiration rate.
-        
-    *Simulation parameters*:
-    
-    =======  ============================================= =======  ============
-     Name     Description                                   Type     Unit
-    =======  ============================================= =======  ============
-    CFET     Correction factor for potential transpiration   SCr       -
-             rate.
-    DEPNR    Dependency number for crop sensitivity to       SCr       -
-             soil moisture stress.
-    KDIFTB   Extinction coefficient for diffuse visible      TCr       -
-             as function of DVS.
-    IOX      Switch oxygen stress on (1) or off (0)          SCr       -
-    IAIRDU   Switch airducts on (1) or off (0)               SCr       -
-    CRAIRC   Critical air content for root aeration          SSo       -
-    SM0      Soil porosity                                   SSo       -
-    SMW      Volumetric soil moisture content at wilting     SSo       -
-             point
-    SMCFC    Volumetric soil moisture content at field       SSo       -
-             capacity
-    SM0      Soil porosity                                   SSo       -
-    =======  ============================================= =======  ============
-    
+    """计算潜在蒸发（包括水体和土壤）速率以及作物实际蒸腾速率。
 
-    *State variables*
-    
-    Note that these state variables are only assigned after finalize() has been
-    run.
+    *模拟参数*:
 
-    =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
-    =======  ================================================= ==== ============
-    IDWST     Nr of days with water stress.                      N    -
-    IDOST     Nr of days with oxygen stress.                     N    -
-    =======  ================================================= ==== ============
-    
-    
-    *Rate variables*
+    =======  ============================================= =======  ============
+     名称     描述                                           类型      单位
+    =======  ============================================= =======  ============
+    CFET     潜在蒸腾速率修正系数                            SCr       -
+    DEPNR    作物对土壤水分胁迫的敏感依赖编号                SCr       -
+    KDIFTB   随DVS变化的漫射可见光衰减系数                   TCr       -
+    IOX      是否考虑氧气胁迫（1为开启，0为关闭）            SCr       -
+    IAIRDU   是否考虑通气组织（1为开启，0为关闭）            SCr       -
+    CRAIRC   根系需氧临界含气量                              SSo       -
+    SM0      土壤孔隙度                                      SSo       -
+    SMW      萎蔫点体积含水量                                SSo       -
+    SMCFC    田间持水量体积含水量                            SSo       -
+    SM0      土壤孔隙度                                      SSo       -
+    =======  ============================================= =======  ============
+
+    *状态变量*
+
+    注意：这些状态变量只会在finalize()运行后才被赋值。
+
+    =======  ============================================ ==== ============
+     名称      描述                                        Pbl      单位
+    =======  ============================================ ==== ============
+    IDWST     发生水分胁迫的天数计数                        N       -
+    IDOST     发生氧气胁迫的天数计数                        N       -
+    =======  ============================================ ==== ============
+
+    *速率变量*
 
     =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
+     名称      描述                                            Pbl      单位
     =======  ================================================= ==== ============
-    EVWMX    Maximum evaporation rate from an open water        Y    |cm day-1|
-             surface.
-    EVSMX    Maximum evaporation rate from a wet soil surface.  Y    |cm day-1|
-    TRAMX    Maximum transpiration rate from the plant canopy   Y    |cm day-1|
-    TRA      Actual transpiration rate from the plant canopy    Y    |cm day-1|
-    IDOS     Indicates oxygen stress on this day (True|False)   N     -
-    IDWS     Indicates water stress on this day (True|False)    N     -
-    RFWS     Reduction factor for water stress                  N     -
-    RFOS     Reduction factor for oxygen stress                 N     -
-    RFTRA    Reduction factor for transpiration (wat & ox)      Y     -
+    EVWMX    水面最大蒸发速率                                  Y     |cm day-1|
+    EVSMX    湿润土壤表面最大蒸发速率                          Y     |cm day-1|
+    TRAMX    植物冠层最大蒸腾速率                              Y     |cm day-1|
+    TRA      植物冠层实际蒸腾速率                              Y     |cm day-1|
+    IDOS     当天是否发生氧气胁迫（True|False）                N      -
+    IDWS     当天是否发生水分胁迫（True|False）                N      -
+    RFWS     水分胁迫下的蒸腾调节因子                          N      -
+    RFOS     氧气胁迫下的蒸腾调节因子                          N      -
+    RFTRA    蒸腾调节因子（同时考虑水分与氧气）                Y      -
     =======  ================================================= ==== ============
-    
-    *Signals send or handled*
-    
-    None
-    
-    *External dependencies:*
-    
+
+    *发送或处理的信号*
+
+    无
+
+    *外部依赖*:
+
     =======  =================================== =================  ============
-     Name     Description                         Provided by         Unit
+     名称       描述                                 来源                 单位
     =======  =================================== =================  ============
-    DVS      Crop development stage              DVS_Phenology       -
-    LAI      Leaf area index                     Leaf_dynamics       -
-    SM       Volumetric soil moisture content    Waterbalance        -
+    DVS      作物发育阶段                          DVS_Phenology       -
+    LAI      叶面积指数                            Leaf_dynamics       -
+    SM       土壤体积含水量                        Waterbalance        -
     =======  =================================== =================  ============
     """
 
-    # helper variable for Counting total days with water and oxygen
-    # stress (IDWST, IDOST)
+    # 计数水分和氧气胁迫总天数的辅助变量（IDWST, IDOST）
     _IDWST = Int(0)
     _IDOST = Int(0)
 
@@ -170,10 +154,9 @@ class Evapotranspiration(SimulationObject):
 
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE  instance
-        :param parvalues: `ParameterProvider` object providing parameters as
-                key/value pairs
+        :param day: 仿真开始日期
+        :param kiosk: 本PCSE实例的变量kiosk
+        :param parvalues: `ParameterProvider`对象，以键值对形式提供参数
         """
 
         self.kiosk = kiosk
@@ -189,35 +172,35 @@ class Evapotranspiration(SimulationObject):
         
         KGLOB = 0.75 * p.KDIFTB(k.DVS)
   
-        # crop specific correction on potential transpiration rate
+        # 作物类型对潜在蒸腾速率的修正
         ET0_CROP = max(0., p.CFET * drv.ET0)
   
-        # maximum evaporation and transpiration rates
+        # 最大蒸发和蒸腾速率
         EKL = exp(-KGLOB * k.LAI)
         r.EVWMX = drv.E0 * EKL
         r.EVSMX = max(0., drv.ES0 * EKL)
         r.TRAMX = ET0_CROP * (1.-EKL)
                 
-        # Critical soil moisture
+        # 临界土壤含水量
         SWDEP = SWEAF(ET0_CROP, p.DEPNR)
         SMCR = (1.-SWDEP)*(p.SMFCF-p.SMW) + p.SMW
 
-        # Reduction factor for transpiration in case of water shortage (RFWS)
+        # 缺水胁迫下的蒸腾调节因子（RFWS）
         r.RFWS = limit(0., 1., (k.SM - p.SMW)/(SMCR - p.SMW))
 
-        # reduction in transpiration in case of oxygen shortage (RFOS)
-        # for non-rice crops, and possibly deficient land drainage
+        # 缺氧胁迫下的蒸腾调节因子（RFOS）
+        # 针对非水稻作物及排水较差的情况
         r.RFOS = 1.
         if p.IAIRDU == 0 and p.IOX == 1:
             RFOSMX = limit(0., 1., (p.SM0 - k.SM)/p.CRAIRC)
-            # maximum reduction reached after 4 days
+            # 最大抑制效应在4天后达到
             r.RFOS = RFOSMX + (1. - min(k.DSOS, 4)/4.)*(1.-RFOSMX)
 
-        # Transpiration rate multiplied with reduction factors for oxygen and water
+        # 同时考虑水分与氧气胁迫的总蒸腾调节因子
         r.RFTRA = r.RFOS * r.RFWS
         r.TRA = r.TRAMX * r.RFTRA
 
-        # Counting stress days
+        # 记录胁迫天数
         if r.RFWS < 1.:
             r.IDWS = True
             self._IDWST += 1
@@ -237,82 +220,71 @@ class Evapotranspiration(SimulationObject):
 
 
 class EvapotranspirationCO2(SimulationObject):
-    """Calculation of evaporation (water and soil) and transpiration rates
-    taking into account the CO2 effect on crop transpiration.
+    """计算蒸发（包括水体和土壤）与蒸腾速率，同时考虑大气CO2对作物蒸腾的影响。
 
-    *Simulation parameters* (To be provided in cropdata dictionary):
+    *模拟参数* （需要在cropdata字典中提供）：
 
     ======== ============================================= =======  ============
-     Name     Description                                   Type     Unit
+     名称       描述                                        类型      单位
     ======== ============================================= =======  ============
-    CFET     Correction factor for potential transpiration   S       -
-             rate.
-    DEPNR    Dependency number for crop sensitivity to       S       -
-             soil moisture stress.
-    KDIFTB   Extinction coefficient for diffuse visible      T       -
-             as function of DVS.
-    IOX      Switch oxygen stress on (1) or off (0)          S       -
-    IAIRDU   Switch airducts on (1) or off (0)               S       -
-    CRAIRC   Critical air content for root aeration          S       -
-    SM0      Soil porosity                                   S       -
-    SMW      Volumetric soil moisture content at wilting     S       -
-             point
-    SMCFC    Volumetric soil moisture content at field       S       -
-             capacity
-    SM0      Soil porosity                                   S       -
-    CO2      Atmospheric CO2 concentration                   S       ppm
-    CO2TRATB Reduction factor for TRAMX as function of
-             atmospheric CO2 concentration                   T       -
+    CFET     潜在蒸腾速率的修正系数                         S          -
+    DEPNR    作物对土壤水分胁迫敏感度的依赖编号             S          -
+    KDIFTB   散射可见光的消光系数，随DVS而变                 T          -
+    IOX      氧气胁迫开关，1为开，0为关                      S          -
+    IAIRDU   通气道开关，1为开，0为关                        S          -
+    CRAIRC   根部通气的临界空气含量                          S          -
+    SM0      土壤孔隙度                                      S          -
+    SMW      萎蔫点体积含水量                                S          -
+             （即土壤萎蔫点）
+    SMCFC    田间持水量体积含水量                            S          -
+    SM0      土壤孔隙度                                      S          -
+    CO2      大气CO2浓度                                    S          ppm
+    CO2TRATB TRAMX随大气CO2浓度变化的修正因子                T          -
     ======== ============================================= =======  ============
 
+    *状态变量*
 
-    *State variables*
+    注意：这些状态变量仅在执行finalize()后被赋值。
 
-    Note that these state variables are only assigned after finalize() has been
-    run.
+    =======  ======================================== ==== ============
+     名称      描述                                   公布    单位
+    =======  ======================================== ==== ============
+    IDWST     水分胁迫天数                              N      -
+    IDOST     氧气胁迫天数                              N      -
+    =======  ======================================== ==== ============
 
-    =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
-    =======  ================================================= ==== ============
-    IDWST     Nr of days with water stress.                      N    -
-    IDOST     Nr of days with oxygen stress.                     N    -
-    =======  ================================================= ==== ============
+    *速率变量*
 
+    =======  ======================================== ==== ============
+     名称      描述                                   公布    单位
+    =======  ======================================== ==== ============
+    EVWMX    开阔水面最大蒸发速率                       Y    |cm day-1|
+    EVSMX    湿润土壤表面最大蒸发速率                   Y    |cm day-1|
+    TRAMX    植被冠层最大蒸腾速率                       Y    |cm day-1|
+    TRA      植被冠层实际蒸腾速率                       Y    |cm day-1|
+    IDOS     表示当天是否水分胁迫（True|False）         N      -
+    IDWS     表示当天是否氧气胁迫（True|False）         N      -
+    RFWS     水分胁迫修正系数                           Y      -
+    RFOS     氧气胁迫修正系数                           Y      -
+    RFTRA    考虑水分和氧气胁迫的蒸腾修正系数           Y      -
+    =======  ======================================== ==== ============
 
-    *Rate variables*
+    *信号的发送与处理*
 
-    =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
-    =======  ================================================= ==== ============
-    EVWMX    Maximum evaporation rate from an open water        Y    |cm day-1|
-             surface.
-    EVSMX    Maximum evaporation rate from a wet soil surface.  Y    |cm day-1|
-    TRAMX    Maximum transpiration rate from the plant canopy   Y    |cm day-1|
-    TRA      Actual transpiration rate from the plant canopy    Y    |cm day-1|
-    IDOS     Indicates water stress on this day (True|False)    N    -
-    IDWS     Indicates oxygen stress on this day (True|False)   N    -
-    RFWS     Reducation factor for water stress                 Y     -
-    RFOS     Reducation factor for oxygen stress                Y     -
-    RFTRA    Reduction factor for transpiration (wat & ox)      Y     -
-    =======  ================================================= ==== ============
+    无
 
-    *Signals send or handled*
+    *外部依赖变量：*
 
-    None
-
-    *External dependencies:*
-
-    =======  =================================== =================  ============
-     Name     Description                         Provided by         Unit
-    =======  =================================== =================  ============
-    DVS      Crop development stage              DVS_Phenology       -
-    LAI      Leaf area index                     Leaf_dynamics       -
-    SM       Volumetric soil moisture content    Waterbalance        -
-    =======  =================================== =================  ============
+    =======  =================================== ================  ============
+     名称      描述                               来源               单位
+    =======  =================================== ================  ============
+    DVS      作物发育阶段                         DVS_Phenology       -
+    LAI      叶面积指数                           Leaf_dynamics       -
+    SM       土壤体积含水量                       Waterbalance        -
+    =======  =================================== ================  ============
     """
 
-    # helper variable for counting total days with water and oxygen
-    # stress (IDWST, IDOST)
+    # 用于统计水分和氧气胁迫总天数（IDWST, IDOST）的辅助变量
     _IDWST = Int(0)
     _IDOST = Int(0)
 
@@ -347,10 +319,10 @@ class EvapotranspirationCO2(SimulationObject):
 
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE instance
-        :param cropdata: dictionary with WOFOST cropdata key/value pairs
-        :param soildata: dictionary with WOFOST soildata key/value pairs
+        :param day: 模拟的起始日期
+        :param kiosk: 该PCSE实例的变量kiosk
+        :param cropdata: 包含WOFOST作物数据键/值对的字典
+        :param soildata: 包含WOFOST土壤数据键/值对的字典
         """
 
         self.kiosk = kiosk
@@ -364,40 +336,40 @@ class EvapotranspirationCO2(SimulationObject):
         r = self.rates
         k = self.kiosk
 
-        # reduction factor for CO2 on TRAMX
+        # CO2对TRAMX的削减因子
         RF_TRAMX_CO2 = p.CO2TRATB(p.CO2)
 
-        # crop specific correction on potential transpiration rate
+        # 针对作物修正的参考蒸散发速率
         ET0_CROP = max(0., p.CFET * drv.ET0)
 
-        # maximum evaporation and transpiration rates
+        # 最大蒸发和蒸腾速率
         KGLOB = 0.75*p.KDIFTB(k.DVS)
         EKL = exp(-KGLOB * k.LAI)
         r.EVWMX = drv.E0 * EKL
         r.EVSMX = max(0., drv.ES0 * EKL)
         r.TRAMX = ET0_CROP * (1.-EKL) * RF_TRAMX_CO2
 
-        # Critical soil moisture
+        # 临界土壤含水量
         SWDEP = SWEAF(ET0_CROP, p.DEPNR)
 
         SMCR = (1.-SWDEP)*(p.SMFCF-p.SMW) + p.SMW
 
-        # Reduction factor for transpiration in case of water shortage (RFWS)
+        # 缺水情况下蒸腾的削减因子（RFWS）
         r.RFWS = limit(0., 1., (k.SM-p.SMW)/(SMCR-p.SMW))
 
-        # reduction in transpiration in case of oxygen shortage (RFOS)
-        # for non-rice crops, and possibly deficient land drainage
+        # 缺氧情况下蒸腾的削减因子（RFOS）
+        # 针对非水稻作物，或可能排水不良的土地
         r.RFOS = 1.
         if p.IAIRDU == 0 and p.IOX == 1:
             RFOSMX = limit(0., 1., (p.SM0 - k.SM)/p.CRAIRC)
-            # maximum reduction reached after 4 days
+            # 4天后达到最大削减
             r.RFOS = RFOSMX + (1. - min(k.DSOS, 4)/4.)*(1.-RFOSMX)
 
-        # Transpiration rate multiplied with reduction factors for oxygen and water
+        # 蒸腾速率乘以缺氧与缺水的两种削减因子
         r.RFTRA = r.RFOS * r.RFWS
         r.TRA = r.TRAMX * r.RFTRA
 
-        # Counting stress days
+        # 计数有胁迫的天数
         if r.RFWS < 1.:
             r.IDWS = True
             self._IDWST += 1
@@ -409,7 +381,7 @@ class EvapotranspirationCO2(SimulationObject):
 
     @prepare_states
     def finalize(self, day):
-
+        # 最终统计水分胁迫和氧气胁迫的总天数
         self.states.IDWST = self._IDWST
         self.states.IDOST = self._IDOST
 
@@ -417,82 +389,70 @@ class EvapotranspirationCO2(SimulationObject):
 
 
 class EvapotranspirationCO2Layered(SimulationObject):
-    """Calculation of evaporation (water and soil) and transpiration rates
-    taking into account the CO2 effect on crop transpiration for a layered soil
+    """计算水和土壤蒸发及作物蒸腾速率，考虑分层土壤中二氧化碳对作物蒸腾的影响
 
-    *Simulation parameters* (To be provided in cropdata dictionary):
+    *模拟参数* （由cropdata字典提供）：
 
     ======== ============================================= =======  ============
-     Name     Description                                   Type     Unit
+     名称      描述                                         类型      单位
     ======== ============================================= =======  ============
-    CFET     Correction factor for potential transpiration   S       -
-             rate.
-    DEPNR    Dependency number for crop sensitivity to       S       -
-             soil moisture stress.
-    KDIFTB   Extinction coefficient for diffuse visible      T       -
-             as function of DVS.
-    IOX      Switch oxygen stress on (1) or off (0)          S       -
-    IAIRDU   Switch airducts on (1) or off (0)               S       -
-    CRAIRC   Critical air content for root aeration          S       -
-    SM0      Soil porosity                                   S       -
-    SMW      Volumetric soil moisture content at wilting     S       -
-             point
-    SMCFC    Volumetric soil moisture content at field       S       -
-             capacity
-    SM0      Soil porosity                                   S       -
-    CO2      Atmospheric CO2 concentration                   S       ppm
-    CO2TRATB Reduction factor for TRAMX as function of
-             atmospheric CO2 concentration                   T       -
+    CFET     潜在蒸腾率的修正系数。                           S        -
+    DEPNR    作物对土壤水分胁迫敏感性的依赖号。               S        -
+    KDIFTB   不同DVS下散射可见光的消光系数。                  T        -
+    IOX      是否开启氧气胁迫（开1，关0）                     S        -
+    IAIRDU   是否开启通气组织（开1，关0）                     S        -
+    CRAIRC   根系通气的临界空气含量                           S        -
+    SM0      土壤孔隙度                                       S        -
+    SMW      萎蔫点体积含水量。                               S        -
+    SMCFC    田间持水量的体积含水量。                         S        -
+    SM0      土壤孔隙度（重复项）                             S        -
+    CO2      大气二氧化碳浓度                                 S        ppm
+    CO2TRATB 随大气CO2浓度变动的TRAMX修正因子                 T        -
     ======== ============================================= =======  ============
 
+    *状态变量*
 
-    *State variables*
+    注意：这些状态变量仅在finalize()运行后被赋值。
 
-    Note that these state variables are only assigned after finalize() has been
-    run.
+    =======  ============================================= ==== ============
+     名称      描述                                        参与      单位
+    =======  ============================================= ==== ============
+    IDWST     水分胁迫天数                                   N      -
+    IDOST     氧气胁迫天数                                   N      -
+    =======  ============================================= ==== ============
 
-    =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
-    =======  ================================================= ==== ============
-    IDWST     Nr of days with water stress.                      N    -
-    IDOST     Nr of days with oxygen stress.                     N    -
-    =======  ================================================= ==== ============
+    *速率变量*
 
+    =======  ============================================= ==== ============
+     名称      描述                                        参与      单位
+    =======  ============================================= ==== ============
+    EVWMX    开阔水面最大蒸发速率                            Y     |cm day-1|
+    EVSMX    湿土表面最大蒸发速率                            Y     |cm day-1|
+    TRAMX    植被冠层最大蒸腾速率                            Y     |cm day-1|
+    TRA      植被冠层实际蒸腾速率                            Y     |cm day-1|
+    IDOS     当天是否发生水分胁迫（True|False）              N      -
+    IDWS     当天是否发生氧气胁迫（True|False）              N      -
+    RFWS     水分胁迫修正因子                                Y      -
+    RFOS     氧气胁迫修正因子                                Y      -
+    RFTRA    蒸腾综合修正因子（水分与氧气）                  Y      -
+    =======  ============================================= ==== ============
 
-    *Rate variables*
+    *发送或处理的信号*
 
-    =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
-    =======  ================================================= ==== ============
-    EVWMX    Maximum evaporation rate from an open water        Y    |cm day-1|
-             surface.
-    EVSMX    Maximum evaporation rate from a wet soil surface.  Y    |cm day-1|
-    TRAMX    Maximum transpiration rate from the plant canopy   Y    |cm day-1|
-    TRA      Actual transpiration rate from the plant canopy    Y    |cm day-1|
-    IDOS     Indicates water stress on this day (True|False)    N    -
-    IDWS     Indicates oxygen stress on this day (True|False)   N    -
-    RFWS     Reducation factor for water stress                 Y     -
-    RFOS     Reducation factor for oxygen stress                Y     -
-    RFTRA    Reduction factor for transpiration (wat & ox)      Y     -
-    =======  ================================================= ==== ============
+    无
 
-    *Signals send or handled*
+    *外部依赖：*
 
-    None
-
-    *External dependencies:*
-
-    =======  =================================== =================  ============
-     Name     Description                         Provided by         Unit
-    =======  =================================== =================  ============
-    DVS      Crop development stage              DVS_Phenology       -
-    LAI      Leaf area index                     Leaf_dynamics       -
-    SM       Volumetric soil moisture content    Waterbalance        -
-    =======  =================================== =================  ============
+    =======  ================================ ================  ============
+     名称      描述                                提供者           单位
+    =======  ================================ ================  ============
+    DVS      作物发育阶段                      DVS_Phenology         -
+    LAI      叶面积指数                        Leaf_dynamics         -
+    SM       土壤体积含水量                    Waterbalance          -
+    =======  ================================ ================  ============
     """
 
-    # helper variable for counting total days with water and oxygen
-    # stress (IDWST, IDOST)
+    # 辅助变量，用于累计水分及氧气胁迫天数（IDWST, IDOST）
     _IDWST = Int(0)
     _IDOST = Int(0)
     _DSOS = Int(0)
@@ -527,10 +487,10 @@ class EvapotranspirationCO2Layered(SimulationObject):
 
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE instance
-        :param cropdata: dictionary with WOFOST cropdata key/value pairs
-        :param soildata: dictionary with WOFOST soildata key/value pairs
+        :param day: 模拟开始日期
+        :param kiosk: 当前PCSE实例的变量kiosk
+        :param cropdata: WOFOST作物参数的键值对字典
+        :param soildata: WOFOST土壤参数的键值对字典
         """
 
         self.soil_profile = parvalues["soil_profile"]
@@ -545,20 +505,20 @@ class EvapotranspirationCO2Layered(SimulationObject):
         r = self.rates
         k = self.kiosk
 
-        # reduction factor for CO2 on TRAMX
+        # CO2对TRAMX的还原因子
         RF_TRAMX_CO2 = p.CO2TRATB(p.CO2)
 
-        # crop specific correction on potential transpiration rate
+        # 作物特定的潜在蒸腾速率修正
         ET0_CROP = max(0., p.CFET * drv.ET0)
 
-        # maximum evaporation and transpiration rates
+        # 最大蒸发和蒸腾速率
         KGLOB = 0.75*p.KDIFTB(k.DVS)
         EKL = exp(-KGLOB * k.LAI)
         r.EVWMX = drv.E0 * EKL
         r.EVSMX = max(0., drv.ES0 * EKL)
         r.TRAMX = ET0_CROP * (1.-EKL) * RF_TRAMX_CO2
 
-        # Critical soil moisture
+        # 临界土壤含水量
         SWDEP = SWEAF(ET0_CROP, p.DEPNR)
         depth = 0.0
 
@@ -570,11 +530,11 @@ class EvapotranspirationCO2Layered(SimulationObject):
         for i, SM, layer in zip(layercnt, k.SM, self.soil_profile):
             SMCR = (1.-SWDEP)*(layer.SMFCF - layer.SMW) + layer.SMW
 
-            # Reduction factor for transpiration in case of water shortage (RFWS)
+            # 水分胁迫下的蒸腾还原因子 (RFWS)
             RFWS[i] = limit(0., 1., (SM - layer.SMW)/(SMCR - layer.SMW))
 
-            # reduction in transpiration in case of oxygen shortage (RFOS)
-            # for non-rice crops, and possibly deficient land drainage
+            # 氧气胁迫下的蒸腾还原因子 (RFOS)
+            # 针对非水稻作物，以及排水不良的土壤
             RFOS[i] = 1.
             if p.IAIRDU == 0 and p.IOX == 1:
                 SMAIR = layer.SM0 - layer.CRAIRC
@@ -596,7 +556,7 @@ class EvapotranspirationCO2Layered(SimulationObject):
         r.RFOS = RFOS
         r.RFWS = RFWS
 
-        # Counting stress days
+        # 统计胁迫天数
         if any(r.RFWS < 1.):
             r.IDWS = True
             self._IDWST += 1
@@ -614,53 +574,46 @@ class EvapotranspirationCO2Layered(SimulationObject):
 
 
 class Simple_Evapotranspiration(SimulationObject):
-    """Calculation of evaporation (water and soil) and transpiration rates.
-    
-    simplified compared to the WOFOST model such that the parameters are not
-    needed to calculate the ET. Parameters such as KDIF, CFET, DEPNR have been
-    hardcoded and taken from a typical cereal crop. Also the oxygen stress has
-    been switched off.
-    
-    *Simulation parameters* (To be provided in soildata dictionary):
-    
-    =======  ============================================= =======  ============
-     Name     Description                                   Type     Unit
-    =======  ============================================= =======  ============
-    SMW      Volumetric soil moisture content at wilting     S       -
-             point
-    SMCFC    Volumetric soil moisture content at field       S       -
-             capacity
-    SM0      Soil porosity                                   S       -
-    =======  ============================================= =======  ============
-    
+    """计算水和土壤的蒸发以及作物冠层的蒸腾速率。
 
-    *State variables*
-    
-    None
-    
-    *Rate variables*
+    相较于WOFOST模型进行了简化，因此无需参数即可计算ET。参数如KDIF、CFET、DEPNR使用了典型禾本科作物的硬编码值。同时，已关闭氧气胁迫的影响。
+
+    *模拟参数* （需在soildata字典中提供）:
+
+    =======  ============================================= =======  ============
+     名称      描述                                          类型      单位
+    =======  ============================================= =======  ============
+    SMW      萎蔫点时土壤体积含水量                           S         -
+    SMCFC    田间持水量时土壤体积含水量                       S         -
+    SM0      土壤孔隙度                                       S         -
+    =======  ============================================= =======  ============
+
+    *状态变量*
+
+    无
+
+    *速率变量*
 
     =======  ================================================= ==== ============
-     Name     Description                                      Pbl      Unit
+     名称      描述                                            发布      单位
     =======  ================================================= ==== ============
-    EVWMX    Maximum evaporation rate from an open water        Y    |cm day-1|
-             surface.
-    EVSMX    Maximum evaporation rate from a wet soil surface.  Y    |cm day-1|
-    TRAMX    Maximum transpiration rate from the plant canopy   Y    |cm day-1|
-    TRA      Actual transpiration rate from the plant canopy    Y    |cm day-1|
+    EVWMX    开阔水面最大蒸发速率                                Y    |cm day-1|
+    EVSMX    湿润土壤表面最大蒸发速率                            Y    |cm day-1|
+    TRAMX    作物冠层最大蒸腾速率                                Y    |cm day-1|
+    TRA      作物冠层实际蒸腾速率                                Y    |cm day-1|
     =======  ================================================= ==== ============
-    
-    *Signals send or handled*
-    
-    None
-    
-    *External dependencies:*
-    
+
+    *发送或处理的信号*
+
+    无
+
+    *外部依赖:*
+
     =======  =================================== =================  ============
-     Name     Description                         Provided by         Unit
+     名称      描述                                  提供者            单位
     =======  =================================== =================  ============
-    LAI      Leaf area index                     Leaf_dynamics       -
-    SM       Volumetric soil moisture content    Waterbalance        -
+    LAI      叶面积指数                              Leaf_dynamics       -
+    SM       土壤体积含水量                          Waterbalance        -
     =======  =================================== =================  ============
     """
 
@@ -679,9 +632,9 @@ class Simple_Evapotranspiration(SimulationObject):
 
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE  instance
-        :param soildata: dictionary with WOFOST soildata key/value pairs
+        :param day: 模拟的起始日期
+        :param kiosk: 本PCSE实例的变量kiosk
+        :param soildata: 含有WOFOST土壤数据的键值对字典
         """
 
         self.kiosk = kiosk
@@ -697,32 +650,31 @@ class Simple_Evapotranspiration(SimulationObject):
         LAI = self.kiosk["LAI"]
         SM  = self.kiosk["SM"]
         
-        # value for KDIF taken for maize
+        # KDIF为玉米作物取值
         KDIF = 0.6
         KGLOB = 0.75*KDIF
   
-        # crop specific correction on potential transpiration rate
+        # 作物特定的潜在蒸腾速率校正
         ET0 = p.CFET * drv.ET0
   
-        # maximum evaporation and transpiration rates
+        # 最大蒸发与蒸腾速率
         EKL = exp(-KGLOB * LAI)
         r.EVWMX = drv.E0 * EKL
         r.EVSMX = max(0., drv.ES0 * EKL)
         r.TRAMX = max(0.000001, ET0 * (1.-EKL))
         
-        # Critical soil moisture
+        # 临界土壤湿度
         SWDEP = SWEAF(ET0, p.DEPNR)
         
         SMCR = (1.-SWDEP)*(p.SMFCF-p.SMW) + p.SMW
 
-        # Reduction factor for transpiration in case of water shortage (RFWS)
+        # 缺水时蒸腾速率的还原因子 (RFWS)
         RFWS = limit(0., 1., (SM-p.SMW)/(SMCR-p.SMW))
         
-        # Reduction factor for oxygen stress set to 1.
+        # 氧气胁迫还原因子设为1
         RFOS = 1.0
 
-        # Transpiration rate multiplied with reduction factors for oxygen and
-        # water
+        # 实际蒸腾速率，乘以氧气与缺水还原因子
         r.TRA = r.TRAMX * RFOS * RFWS
 
         return (r.TRA, r.TRAMX)

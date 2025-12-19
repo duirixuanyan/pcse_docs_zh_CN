@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
-""" Collection of tests for PCSE.
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
+""" PCSE的测试集合。
 """
 import unittest
 import warnings
@@ -17,11 +17,11 @@ from . import test_agromanager
 from . import test_lintul3
 
 def make_test_suite(dsn=None):
-    """Assemble test suite and return it
+    """组装测试套件并返回
     """
     allsuites = unittest.TestSuite([
                                     test_abioticdamage.suite(),
-                                    # test_assimilation.suite(),  # skip test because test inputs do not include TMIN
+                                    # test_assimilation.suite(),  # 跳过该测试，因为测试输入不包含TMIN
                                     test_partitioning.suite(),
                                     test_evapotranspiration.suite(),
                                     test_respiration.suite(),
@@ -33,7 +33,7 @@ def make_test_suite(dsn=None):
     return allsuites
 
 def test_all(dsn=None):
-    """Assemble test suite and run the test using the TextTestRunner
+    """组装测试套件并通过TextTestRunner运行测试
     """
     allsuites = make_test_suite(dsn)
     with warnings.catch_warnings():

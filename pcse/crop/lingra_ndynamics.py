@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2021 Wageningen Environmental Research
-# Allard de Wit (allard.dewit@wur.nl), July 2021
-# Approach based on LINGRA N made by Joost Wolf
+# 版权所有 (c) 2021 Wageningen 环境研究所
+# Allard de Wit (allard.dewit@wur.nl)，2021年7月
+# LINGRA N 方法基于 Joost Wolf 的工作
 from collections import namedtuple
 
 import pcse
@@ -16,66 +16,59 @@ MaxNutrientConcentrations = namedtuple("MaxNutrientConcentrations", ["NMAXLV", "
 
 
 class N_Demand_Uptake(SimulationObject):
-    """Calculates the crop N demand and its uptake from the soil.
+    """计算作物氮需求量及其从土壤中的吸收量。
 
-    Crop N demand is calculated as the difference between the
-    actual N concentration (kg N per kg biomass) in the
-    vegetative plant organs (leaves, stems and roots) and the maximum
-    N concentration for each organ. N uptake is then estimated
-    as the minimum of supply from the soil and demand from the crop.
+    作物氮需求量的计算方法为：植株营养器官（叶、茎和根）中氮的实际浓度（kg N/kg生物量）与各器官最大氮浓度的差值。氮的吸收量估算为土壤供应与作物需求之间的最小值。
 
-    **Simulation parameters**
+    **模拟参数**
 
-    ============  ============================================= =======  ======================
-     Name          Description                                   Type     Unit
-    ============  ============================================= =======  ======================
-    NMAXLV_TB      Maximum N concentration in leaves as          TCr     kg N kg-1 dry biomass
-                   function of DVS
-    NMAXRT_FR      Maximum N concentration in roots as fraction  SCr     -
-                   of maximum N concentration in leaves
-    ============  ============================================= ======= =======================
+    ============  ======================================== =======  =====================
+      名称         描述                                      类型       单位
+    ============  ======================================== =======  =====================
+    NMAXLV_TB      叶片最大氮浓度，DVS的函数                 TCr      kg N kg-1 干生物量
+    NMAXRT_FR      根的最大氮浓度，相对于叶片最大值的分数    SCr      -
+    ============  ======================================== =======  =====================
 
 
-    **Rate variables**
+    **速率变量**
 
-    ===========  ================================================= ==== ================
-     Name         Description                                      Pbl      Unit
-    ===========  ================================================= ==== ================
-    RNuptakeLV     Rate of N uptake in leaves                        Y   |kg N ha-1 d-1|
-    RNuptakeRT     Rate of N uptake in roots                         Y   |kg N ha-1 d-1|
+    ===========  ============================================= ==== ================
+      名称          描述                                        Pbl      单位
+    ===========  ============================================= ==== ================
+    RNuptakeLV     叶中氮的吸收速率                              Y   |kg N ha-1 d-1|
+    RNuptakeRT     根中氮的吸收速率                              Y   |kg N ha-1 d-1|
 
-    RNuptake       Total rate of N uptake                            Y   |kg N ha-1 d-1|
-    NdemandLV      Ndemand of leaves based on current growth rate    N   |kg N ha-1|
-                   and deficienties from previous time steps
-    NdemandRT      N demand of roots, idem as leaves                 N   |kg N ha-1|
+    RNuptake       氮的总吸收速率                                Y   |kg N ha-1 d-1|
+    NdemandLV      叶的氮需求量，基于当前生长速率及前期的亏缺    N   |kg N ha-1|
+    NdemandRT      根的氮需求量，同叶                            N   |kg N ha-1|
 
-    Ndemand        Total N demand (leaves + roots)                   N   |kg N ha-1|
-    ===========  ================================================= ==== ================
+    Ndemand        总氮需求量（叶+根）                           N   |kg N ha-1|
+    ===========  ============================================= ==== ================
 
-    **Signals send or handled**
+    **发送或处理的信号**
 
-    None
+    无
 
-    **External dependencies**
+    **外部依赖**
 
-    ================  =================================== ====================  ===========
-     Name              Description                         Provided by            Unit
-    ================  =================================== ====================  ===========
-    DVS               Crop development stage              DVS_Phenology              -
-    NAVAIL            Total available N from soil         NPK_Soil_Dynamics      |kg ha-1|
-    ================  =================================== ====================  ===========
+    ================  ================================ ====================  ===========
+      名称             描述                                提供模块                单位
+    ================  ================================ ====================  ===========
+    DVS               作物发育阶段                      DVS_Phenology              -
+    NAVAIL            土壤中可用氮总量                  NPK_Soil_Dynamics      |kg ha-1|
+    ================  ================================ ====================  ===========
 
     """
 
     class Parameters(ParamTemplate):
-        NMAXLV_TB = AfgenTrait()  # maximum N concentration in leaves as function of dvs
-        NMAXRT_FR = Float(-99.)  # maximum N concentration in roots as fraction of maximum N concentration in leaves
+        NMAXLV_TB = AfgenTrait()  # 叶片最大氮浓度，按DVS的函数
+        NMAXRT_FR = Float(-99.)  # 根的最大氮浓度，相对于叶片最大氮浓度
         NUPTAKE_MAX = Float(-99)
 
     class RateVariables(RatesTemplate):
-        RNuptakeLV = Float(-99.)  # N uptake rate [kg ha-1 d -1]
+        RNuptakeLV = Float(-99.)  # 氮吸收速率 [kg ha-1 d -1]
         RNuptakeRT = Float(-99.)
-        RNuptake = Float(-99.)  # Total N uptake rate [kg ha-1 d -1]
+        RNuptake = Float(-99.)  # 总氮吸收速率 [kg ha-1 d -1]
 
         NdemandLV = Float(-99.)
         NdemandRT = Float(-99.)
@@ -83,9 +76,9 @@ class N_Demand_Uptake(SimulationObject):
 
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: start date of the simulation
-        :param kiosk: variable kiosk of this PCSE instance
-        :param parvalues: a ParameterProvider with parameter key/value pairs
+        :param day: 模拟开始日期
+        :param kiosk: 该PCSE实例的变量kiosk
+        :param parvalues: 包含参数键/值对的ParameterProvider
         """
 
         self.params = self.Parameters(parvalues)
@@ -103,28 +96,27 @@ class N_Demand_Uptake(SimulationObject):
         delt = 1.0
         mc = self._compute_N_max_concentrations()
 
-        # Total NPK demand of leaves, stems, roots and storage organs
-        # Demand consists of a demand carried over from previous timesteps plus a demand from new growth
-        # Note that we are pre-integrating here, so a multiplication with time-step delt is required
+        # 叶片、茎、根和贮藏器官的总NPK需求量
+        # 需求由前一时刻遗留的需求及新生长所需的需求组成
+        # 注意此处为预积分，因此需要乘以时间步长delt
 
-        # N demand [kg ha-1]
+        # 氮的需求量 [kg ha-1]
         r.NdemandLV = max(mc.NMAXLV * k.WeightLVgreen - k.NamountLV, 0.) + max(k.LVgrowth * mc.NMAXLV, 0) * delt
         r.NdemandRT = max(mc.NMAXRT * k.WeightRT - k.NamountRT, 0.) + max(k.dWeightRT * mc.NMAXRT, 0) * delt
         r.Ndemand = r.NdemandLV + r.NdemandRT
 
-        # No nutrients are absorbed
-        # when severe water shortage occurs i.e. RFTRA <= 0.01
+        # 当发生严重干旱（即RFTRA <= 0.01）时，不吸收营养物质
         NutrientLIMIT = 1.0 if k.RFTRA > 0.01 else 0.
 
-        # N uptake rate
-        # if no demand then uptake rate = 0.
+        # 氮的吸收速率
+        # 如果没有需求，则吸收速率为0
         if r.Ndemand == 0.:
             r.RNuptake = r.RNuptakeLV = r.RNuptakeRT = 0.
         else:
-            # N uptake rate from soil, with a maximum equal to NUPTAKE_MAX
+            # 从土壤吸收的氮，其最大值不超过NUPTAKE_MAX
             RNuptake = (max(0., min(r.Ndemand, k.NAVAIL)) * NutrientLIMIT)
             r.RNuptake = min(RNuptake, p.NUPTAKE_MAX)
-            # Distribution over roots/leaves
+            # 在根/叶之间分配
             r.RNuptakeLV = (r.NdemandLV / r.Ndemand) * r.RNuptake
             r.RNuptakeRT = (r.NdemandRT / r.Ndemand) * r.RNuptake
 
@@ -133,19 +125,18 @@ class N_Demand_Uptake(SimulationObject):
         pass
 
     def _compute_N_max_concentrations(self):
-        """Computes the maximum N concentrations in leaves, stems, roots and storage organs.
+        """计算叶片、茎、根和贮藏器官中的最大氮浓度。
 
-        Note that max concentrations are first derived from the dilution curve for leaves.
-        Maximum concentrations for stems and roots are computed as a fraction of the
-        concentration for leaves. Maximum concentration for storage organs is directly taken from
-        the parameters NMAXSO.
+        注意，最大浓度首先通过叶片的稀释曲线得到。
+        茎和根的最大浓度是叶片最大浓度的一个分数。
+        贮藏器官的最大浓度直接取自参数 NMAXSO。
         """
 
         p = self.params
         k = self.kiosk
         NMAXLV = p.NMAXLV_TB(k.DVS)
         max_NPK_conc = MaxNutrientConcentrations(
-            # Maximum NPK concentrations in leaves [kg N kg-1 DM]
+            # 叶片中的最大NPK浓度 [kg N kg-1 DM]
             NMAXLV=NMAXLV,
             NMAXRT=p.NMAXRT_FR * NMAXLV,
         )
@@ -154,80 +145,62 @@ class N_Demand_Uptake(SimulationObject):
 
 
 class N_Stress(SimulationObject):
-    """Implementation of N stress calculation through nitrogen nutrition index.
+    """通过氮素营养指数实现氮胁迫的计算。
 
-    Stress factors are calculated based on the mass concentrations of N in
-    the vegetative biomass of the plant. For each pool of nutrients, four
-    concentrations are calculated based on the biomass for leaves and stems:
-    - the actual concentration based on the actual amount of nutrients
-      divided by the vegetative biomass.
-    - The maximum concentration, being the maximum that the plant can absorb
-      into its leaves and stems.
-    - The critical concentration, being the concentration that is needed to
-      maintain growth rates that are not limited by N (regulated by NCRIT_FR).
-      For N, the critical concentration can be lower than the maximum
-      concentration. This concentration is sometimes called 'optimal
-      concentration'.
-    - The residual concentration which is the amount that is locked
-      into the plant structural biomass and cannot be mobilized anymore.
+    胁迫因子是根据植株营养器官生物量中的氮质量浓度计算的。对于每一种营养物质，会根据叶片和茎的生物量计算出四种浓度：
+    - 实际浓度（实际营养元素总量/营养器官生物量）
+    - 最大浓度（植株可以吸收进叶片和茎中的最大浓度）
+    - 临界浓度（能维持生长速率不受氮限制的浓度，由 NCRIT_FR 决定，
+      对N来说，临界浓度可以比最大浓度低，此浓度有时也称为“最优浓度”。）
+    - 残留浓度（锁定在植物结构生物量中，不能再被动用的量）
 
-    The stress index (SI) is determined as a simple ratio between those
-    concentrations according to:
+    胁迫指数（SI）通过下述浓度的简单比值确定：
 
     :math:`SI = (C_{a) - C_{r})/(C_{c} - C_{r})`
 
-    with subscript `a`, `r` and `c` being the actual, residual and critical
-    concentration for the nutrient. This results in the nitrogen nutrition index
-    (NNI). Finally, the reduction factor for assimilation (RFNUTR) is calculated using the
-    reduction factor for light use efficiency (NLUE).
+    其中下标 `a`、`r` 和 `c` 分别代表营养元素的实际、残留和临界浓度。这一计算得到氮素营养指数（NNI）。
+    最终，同化的还原因子（RFNUTR）通过光合有效系数的还原因子（NLUE）计算得到。
 
-    **Simulation parameters**
+    **模拟参数**
 
     ============  ============================================= =======  ======================
-     Name          Description                                   Type     Unit
+     Name          说明                                         类型      单位
     ============  ============================================= =======  ======================
-    NMAXLV_TB      Maximum N concentration in leaves as          TCr     kg N kg-1 dry biomass
-                   function of DVS
-    NMAXRT_FR      Maximum N concentration in roots as fraction  SCr     -
-                   of maximum N concentration in leaves
+    NMAXLV_TB      叶片最大氮浓度，随DVS变化                     TCr     kg N kg-1 干物质
+    NMAXRT_FR      根最大氮浓度占叶片最大N浓度的比例             SCr     -
+    NCRIT_FR       营养器官整体（叶+茎）最大N浓度的临界倍数      SCr     -
+    NRESIDLV       叶片残留N分数                                 SCr     kg N kg-1 干物质
+    NLUE           氮胁迫对光合有效率的影响                      SCr     -
+    ============  ============================================= =======  ======================
 
-    NCRIT_FR       Critical N concentration as fraction of       SCr     -
-                   maximum N concentration for vegetative
-                   plant organs as a whole (leaves + stems)
-    NRESIDLV       Residual N fraction in leaves                 SCr     kg N kg-1 dry biomass
-    NLUE           Impact of N stress on Light use efficiency    SCr     -
-    ============  ============================================= ======= =======================
+    **速率变量**
 
-    **Rate variables**
-
-    The rate variables here are not real rate variables in the sense that they are derived
-    state variables and do not represent a rate. However, as they are directly used
-    in the rate variable calculation it is logical to put them here.
+    这里的速率变量实际上是由状态变量推导得到，并不直接代表速率。不过它们直接用于速率变量计算，因此放在这里。
 
     =======  ================================================= ==== ==============
-     Name     Description                                      Pbl      Unit
+     名称     说明                                             发布     单位
     =======  ================================================= ==== ==============
-    NNI       Nitrogen nutrition index                          Y     -
-    RFNUTR    Reduction factor for light use efficiency         Y     -
+    NNI      氮营养指数                                        Y     -
+    RFNUTR   光合有效率还原因子                                Y     -
     =======  ================================================= ==== ==============
 
 
-    **External dependencies:**
+    **外部依赖：**
 
-    ==============  =================================== =====================  ==============
-     Name            Description                         Provided by            Unit
-    ==============  =================================== =====================  ==============
-    DVS              Crop development stage              DVS_Phenology            -
-    WST              Dry weight of living stems          WOFOST_Stem_Dynamics   |kg ha-1|
-    WeightLVgreen    Dry weight of living leaves         WOFOST_Leaf_Dynamics   |kg ha-1|
-    NamountLV        Amount of N in leaves               N_Crop_Dynamics        |kg ha-1|
-    ==============  =================================== =====================  ==============
+    ==============  =============================== =====================  ==============
+     名称            说明                               提供者               单位
+    ==============  =============================== =====================  ==============
+    DVS              作物发育进程                    DVS_Phenology            -
+    WST              活茎干重                        WOFOST_Stem_Dynamics   |kg ha-1|
+    WeightLVgreen    活叶干重                        WOFOST_Leaf_Dynamics   |kg ha-1|
+    NamountLV        叶片中的N总量                   N_Crop_Dynamics        |kg ha-1|
+    ==============  =============================== =====================  ==============
     """
 
     class Parameters(ParamTemplate):
-        NMAXLV_TB = AfgenTrait()  # maximum N concentration in leaves as function of dvs
-        NCRIT_FR = Float(-99.)  # optimal N concentration as fraction of maximum N concentration
-        NRESIDLV = Float(-99.)  # residual N fraction in leaves [kg N kg-1 dry biomass]
+        NMAXLV_TB = AfgenTrait()  # 最大叶片氮浓度，作为dvs的函数
+        NCRIT_FR = Float(-99.)  # 最优氮浓度为最大氮浓度的分数
+        NRESIDLV = Float(-99.)  # 叶片残留氮分数 [kg N kg-1 干物质]
         NLUE = Float()
 
     class RateVariables(RatesTemplate):
@@ -236,9 +209,9 @@ class N_Stress(SimulationObject):
 
     def initialize(self, day, kiosk, parvalues):
         """
-        :param day: current date
-        :param kiosk: variable kiosk of this PCSE instance
-        :param parvalues: ParameterProvider with parameter key/value pairs
+        :param day: 当前日期
+        :param kiosk: 此PCSE实例的变量kiosk
+        :param parvalues: 含有参数键/值对的ParameterProvider
         """
 
         self.kiosk = kiosk
@@ -252,17 +225,17 @@ class N_Stress(SimulationObject):
         r = self.rates
         k = self.kiosk
 
-        # Maximum N concentrations in leaves (kg N kg-1 DM)
+        # 叶片最大氮浓度 (kg N kg-1 干物质)
         NMAXLV = p.NMAXLV_TB(k.DVS)
 
-        # Total vegetative living above-ground biomass (kg DM ha-1)
+        # 地上部分营养器官总活性干重 (kg 干物质 ha-1)
         VBM = k.WeightLVgreen
 
-        # Critical (Optimal) N amount in vegetative above-ground living biomass
-        # and its N concentration
+        # 地上营养器官中临界(最优)氮量
+        # 及其氮浓度
         NcriticalLV = p.NCRIT_FR * NMAXLV * VBM
 
-        # if above-ground living biomass = 0 then optimum = 0
+        # 如果地上部分活体生物量=0, 则最优=0
         if VBM > 0.:
             NcriticalVBM = NcriticalLV / VBM
             NconcentrationVBM = (k.NamountLV) / VBM
@@ -272,115 +245,115 @@ class N_Stress(SimulationObject):
             NconcentrationVBM = 0.
             NresidualVBM = 0.
 
+        # 氮胁迫指数（NNI）计算
         if (NcriticalVBM - NresidualVBM) > 0.:
             r.NNI = limit(0.001, 1.0, (NconcentrationVBM - NresidualVBM) / (NcriticalVBM - NresidualVBM))
         else:
             r.NNI = 0.001
 
+        # 氮素还原因子计算
         r.RFNUTR = limit(0., 1.0, 1. - p.NLUE * (1.0 - r.NNI) ** 2)
 
         return r.NNI
 
 
 class N_Crop_Dynamics(SimulationObject):
-    """Implementation of overall N crop dynamics.
+    """整体作物氮素动态的实现。
 
-    NPK_Crop_Dynamics implements the overall logic of N book-keeping within the
-    crop.
+    NPK_Crop_Dynamics 实现了作物内部氮素收支的整体逻辑。
 
-    **Simulation parameters**
+    **模拟参数**
 
-    =============  ================================================ =======  ======================
-     Name           Description                                      Type     Unit
-    =============  ================================================ =======  ======================
-    NMAXLV_TB      Maximum N concentration in leaves as            TCr     kg N kg-1 dry biomass
-                   function of dvs
-    NMAXRT_FR      Maximum N concentration in roots as fraction    SCr     -
-    NRESIDLV       Residual N fraction in leaves                   SCr     kg N kg-1 dry biomass
-    NRESIDRT       Residual N fraction in roots                    SCr     kg N kg-1 dry biomass
-    =============  ================================================ =======  ======================
+    =============  ============================================== =======  ======================
+     名称            说明                                           类型      单位
+    =============  ============================================== =======  ======================
+    NMAXLV_TB      叶片最大氮浓度，随dvs变化                       TCr     kg N kg-1 干物质
+    NMAXRT_FR      根系最大氮浓度（以比例表示）                    SCr     -
+    NRESIDLV       叶片中残留氮比例                                SCr     kg N kg-1 干物质
+    NRESIDRT       根系中残留氮比例                                SCr     kg N kg-1 干物质
+    =============  ============================================== =======  ======================
 
-    **State variables**
+    **状态变量**
 
-    ==========  ================================================= ==== ============
-     Name        Description                                      Pbl      Unit
-    ==========  ================================================= ==== ============
-    NamountLV    Actual N amount in living leaves                   Y   |kg N ha-1|
-    NamountRT    Actual N amount in living roots                    Y   |kg N ha-1|
-    Nuptake_T    total absorbed N amount                            N   |kg N ha-1|
-    Nlosses_T    Total N amount lost due to senescence              N   |kg N ha-1|
-    ==========  ================================================= ==== ============
+    ==========  ============================================ ==== ============
+     名称         说明                                       Pbl       单位
+    ==========  ============================================ ==== ============
+    NamountLV    绿色叶片实际氮含量                          Y    |kg N ha-1|
+    NamountRT    活根实际氮含量                              Y    |kg N ha-1|
+    Nuptake_T    吸收氮素总量                                N    |kg N ha-1|
+    Nlosses_T    衰老造成的总氮损失量                        N    |kg N ha-1|
+    ==========  ============================================ ==== ============
 
-    **Rate variables**
+    **速率变量**
 
-    ===========  ================================================= ==== ============
-     Name         Description                                      Pbl      Unit
-    ===========  ================================================= ==== ============
-    RNamountLV     Weight increase (N) in leaves                    N   |kg ha-1 d-1|
-    RNamountRT     Weight increase (N) in roots                     N   |kg ha-1 d-1|
-    RNdeathLV      Rate of N loss in leaves                         N   |kg ha-1 d-1|
-    RNdeathRT      Rate of N loss in roots                          N   |kg ha-1 d-1|
-    RNloss         N loss due to senescence                         N   |kg ha-1 d-1|
-    ===========  ================================================= ==== ============
+    ===========  ================================================== ==== ============
+     名称           说明                                             Pbl    单位
+    ===========  ================================================== ==== ============
+    RNamountLV     叶片氮素净增加量                                  N   |kg ha-1 d-1|
+    RNamountRT     根系氮素净增加量                                  N   |kg ha-1 d-1|
+    RNdeathLV      叶片氮损失速率                                    N   |kg ha-1 d-1|
+    RNdeathRT      根系氮损失速率                                    N   |kg ha-1 d-1|
+    RNloss         衰老导致的氮损失速率                              N   |kg ha-1 d-1|
+    ===========  ================================================== ==== ============
 
-    **Signals send or handled**
+    **发送或处理的信号**
 
-    None
+    无
 
-    **External dependencies**
+    **外部依赖**
 
-    =======  =================================== ====================  ============
-     Name     Description                         Provided by            Unit
-    =======  =================================== ====================  ============
-    LVdeath     Death rate of leaves                WOFOST_Leaf_Dynamics  |kg ha-1 d-|
-    =======  =================================== ====================  ============
+    =======  =============================== ====================  ============
+     名称         说明                             提供者              单位
+    =======  =============================== ====================  ============
+    LVdeath     叶片死亡速率                 WOFOST_Leaf_Dynamics  |kg ha-1 d-1|
+    =======  =============================== ====================  ============
     """
 
     WeightLV_remaining = Float()
     _flag_MOWING = Bool(False)
 
     demand_uptake = Instance(SimulationObject)
-    NamountLVI = Float(-99.)  # initial soil N amount in leaves
-    NamountRTI = Float(-99.)  # initial soil N amount in roots
+    NamountLVI = Float(-99.)  # 初始叶片氮素含量
+    NamountRTI = Float(-99.)  # 初始根系氮素含量
 
     class Parameters(ParamTemplate):
         NMAXLV_TB = AfgenTrait()
         NMAXRT_FR = Float(-99.)
-        NRESIDLV = Float(-99.)  # residual N fraction in leaves [kg N kg-1 dry biomass]
-        NRESIDRT = Float(-99.)  # residual N fraction in roots [kg N kg-1 dry biomass]
+        NRESIDLV = Float(-99.)  # 叶片残留氮比例 [kg N kg-1 干物质]
+        NRESIDRT = Float(-99.)  # 根系残留氮比例 [kg N kg-1 干物质]
 
     class StateVariables(StatesTemplate):
-        NamountLV = Float(-99.)  # N amount in leaves [kg N ha-1]
-        NamountRT = Float(-99.)  # N amount in roots [kg N ]
-        Nuptake_T = Float(-99.)  # total absorbed N amount [kg N ]
+        NamountLV = Float(-99.)  # 叶片氮素含量 [kg N ha-1]
+        NamountRT = Float(-99.)  # 根系氮素含量 [kg N]
+        Nuptake_T = Float(-99.)  # 吸收氮素总量 [kg N]
         Nlosses_T = Float(-99.)
 
     class RateVariables(RatesTemplate):
-        RNamountLV = Float(-99.)  # Net rates of NPK in different plant organs
+        RNamountLV = Float(-99.)  # 不同器官氮PK净速率
         RNamountRT = Float(-99.)
-        RNdeathLV = Float(-99.)  # N loss rate leaves [kg ha-1 d-1]
-        RNharvestLV = Float()  # N loss due to harvesting [kg ha-1 d-1]
-        RNdeathRT = Float(-99.)  # N loss rate roots  [kg ha-1 d-1]
+        RNdeathLV = Float(-99.)  # 叶片氮损失速率 [kg ha-1 d-1]
+        RNharvestLV = Float()    # 收获造成的氮损失 [kg ha-1 d-1]
+        RNdeathRT = Float(-99.)  # 根系氮损失速率 [kg ha-1 d-1]
         RNloss = Float(-99.)
 
     def initialize(self, day, kiosk, parvalues):
         """
-        :param kiosk: variable kiosk of this PCSE instance
-        :param parvalues: dictionary with parameters as key/value pairs
+        :param kiosk: 该PCSE实例的变量kiosk
+        :param parvalues: 以参数名/值对形式给出的参数字典
         """
 
         self.params = self.Parameters(parvalues)
         self.rates = self.RateVariables(kiosk)
         self.kiosk = kiosk
 
-        # Initialize components of the npk_crop_dynamics
+        # 初始化npk作物动态相关组件
         self.demand_uptake = N_Demand_Uptake(day, kiosk, parvalues)
 
-        # INITIAL STATES
+        # 初始状态
         params = self.params
         k = kiosk
 
-        # Initial amounts
+        # 初始氮素含量
         self.NamountLVI = NamountLV = k.WeightLVgreen * params.NMAXLV_TB(k.DVS)
         self.NamountRTI = NamountRT = k.WeightRT * params.NMAXLV_TB(k.DVS) * params.NMAXRT_FR
 
@@ -398,17 +371,17 @@ class N_Crop_Dynamics(SimulationObject):
         self.demand_uptake.calc_rates(day, drv)
 
         if self._flag_MOWING is True:
-            # Compute loss of N due to harvesting
-            rates.RNharvestLV = k.dWeightHARV/k.WeightLVgreen * s.NamountLV
+            # 由于收割导致的氮损失
+            rates.RNharvestLV = k.dWeightHARV / k.WeightLVgreen * s.NamountLV
             rates.RNdeathLV = 0.0
         else:
-            # Compute loss of N due to death of plant material
+            # 由于植株死亡导致的氮损失
             rates.RNdeathLV = params.NRESIDLV * k.LVdeath
             rates.RNharvestLV = 0.0
         rates.RNdeathRT = 0.0
         rates.RNloss = rates.RNdeathLV + rates.RNdeathRT + rates.RNharvestLV
 
-        # N rates in leaves and root computed as uptake - death - harvesting.
+        # 叶片和根系的氮速率为吸收-死亡-收割
         rates.RNamountLV = k.RNuptakeLV - rates.RNdeathLV - rates.RNharvestLV
         rates.RNamountRT = k.RNuptakeRT - rates.RNdeathRT
 
@@ -421,15 +394,15 @@ class N_Crop_Dynamics(SimulationObject):
         states = self.states
         k = self.kiosk
 
-        # N amount in leaves, stems, root and storage organs
+        # 叶片、茎秆、根和储藏器官中的氮素含量
         states.NamountLV += rates.RNamountLV
         states.NamountRT += rates.RNamountRT
 
         self.demand_uptake.integrate(day, delt)
 
-        # total N uptake from soil
+        # 植株从土壤吸收的总氮量
         states.Nuptake_T += k.RNuptake
-        # total N losses from dying material
+        # 死亡物质造成的总氮损失
         states.Nlosses_T += rates.RNloss
 
     def _check_N_balance(self, day):
@@ -448,7 +421,7 @@ class N_Crop_Dynamics(SimulationObject):
             raise exc.NutrientBalanceError(msg)
 
     def _on_MOWING(self, biomass_remaining):
-        """Handler for grass mowing events
+        """处理割草事件的函数
         """
         self.WeightLV_remaining = biomass_remaining
         self._flag_MOWING = True

@@ -1,56 +1,39 @@
 .. include:: abbreviations.txt
 
 ###############
-Reference Guide
+参考指南
 ###############
 
-An overview of PCSE
+PCSE 概述
 ===================
 
-The Python Crop Simulation Environment builds on the heritage
-provided by the earlier approaches developed in Wageningen,
-notably the Fortran Simulation Environment. The `FSE manual <http://edepot.wur.nl/35555>`_
-(van Kraalingen, 1995) provides a very good overview on the principles of Euler integration
-and its application to crop simulation models. Therefore, we will not discuss this in detail
-here.
+Python 作物模拟环境（PCSE）是在瓦赫宁根早期方法基础上开发的，特别是 Fortran Simulation Environment。`FSE manual <http://edepot.wur.nl/35555>`_
+(van Kraalingen, 1995) 对 Euler 积分原理及其在作物模拟模型中的应用进行了非常好的概述。因此，这里不再详细讨论。
 
-Nevertheless, PCSE also tries to improve on these approaches
-by separating the simulation logic into a number of
-distinct components that play a role in the implementation of (crop)
-simulation models:
+尽管如此，PCSE 也尝试在这些方法的基础上做出改进，
+通过将仿真逻辑分离为若干
+在 (作物) 模型实现中发挥作用的独立组件：
 
- 1. The dynamic part of the simulation is taken care of by a
-    dedicated simulation `Engine` which handles the initialization,
-    the ordering of rate/state updates for the soil and plant
-    modules as well as keeping track of time, retrieving weather data and
-    calling the agromanager module.
- 2. Solving the differential equations for soil/plant system and updating
-    the model state is deferred to SimulationObjects that
-    implement (bio)physical processes such as phenological development
-    or |CO2| assimilation.
- 3. An AgroManager module is included which takes care of
-    signalling agricultural management actions such as sowing, harvesting,
-    irrigation, etc.
- 4. Communication between PCSE components is implemented by either exporting
-    variables into a shared state object or by implementing signals that can be
-    broadcasted and received by any PCSE object.
- 5. Several tools are available for providing weather data and
-    reading parameter values from files or databases.
+ 1. 仿真的动态部分由专用的模拟 `Engine` 负责，它处理初始化、
+    土壤和植物模块的速率/状态更新顺序，
+    并负责跟踪时间、获取气象数据以及
+    调用 agromanager 模块。
+ 2. 土壤/植物系统微分方程的求解及模型状态的更新由
+    实现 (生物) 物理过程（如物候发育或 |CO2| 同化）的 SimulationObjects 负责。
+ 3. 包含了 AgroManager 模块，负责
+    发出农业管理操作（如播种、收获、
+    灌溉等）的信号。
+ 4. PCSE 组件之间的通信可以通过将变量导出到共享状态对象，
+    或通过实现信号机制进行，任何 PCSE 对象均可广播和接收这些信号。
+ 5. 提供了多种工具用于提供气象数据以及
+    从文件或数据库读取参数值。
 
-Next, an overview of the different components in PCSE will be provided.
+接下来将对 PCSE 中各组件进行概述。
 
 The Engine
 ==========
 
-The PCSE Engine provides the environment where the simulation takes place.
-The engine takes care of reading the model configuration, initializing model
-components, driving the simulation
-forward by calling the SimulationObjects, calling the agromanagement
-unit, keeping track of time, providing the weather data needed and
-storing the model variables during the simulation for later output.
-The Engine itself is generic and can be used for any model that is defined
-in PCSE. The overall structure of the engine can be found in the figure below
-which shows the different elements that are called by the Engine.
+PCSE 引擎提供了进行仿真的环境。该引擎负责读取模型配置，初始化模型组件，通过调用 SimulationObjects 推动仿真进程，调用农业管理单元，跟踪时间，提供所需的气象数据，并在仿真期间存储模型变量以便后续输出。引擎本身是通用的，可以用于在 PCSE 中定义的任何模型。引擎调用的不同元素可以在下图中看到，这展示了引擎所调用的各个组成部分。
 
 .. figure:: figures/PCSE_Engine_structure.png
    :align: center
@@ -60,214 +43,133 @@ which shows the different elements that are called by the Engine.
 
 .. _ContinuousSimulation:
 
-Continuous simulation in PCSE
+PCSE中的连续仿真
 -----------------------------
 
-To implement continuous simulation, the engine uses the same approach as
-FSE: Euler integration with a fixed time step of one day.  The following
-figure shows the principle of continuous simulation
-and the execution order of various steps.
+为了实现连续仿真，引擎采用与 FSE 相同的方法：使用固定一天的时间步长进行 Euler 积分。下图展示了连续仿真的原理和各个步骤的执行顺序。
 
 .. figure:: figures/continuous_simulation.png
    :align: center
    :width: 500 px
 
-   Order of calculations for continuous simulation using Euler integration
-   (after Van Kraalingen, 1995).
+   连续仿真中各项计算的顺序，采用 Euler 积分方法
+   （引自 Van Kraalingen, 1995）。
 
-The steps in the process cycle that are shown in the figure above are
-implemented in the simulation `Engine` which is completely separated
-from the model logic itself. Moreover, it demonstrates that before
-the simulation can start the engine has to be initialized which involves
-several steps:
+上图中过程循环所示的步骤在仿真 `Engine` 中实现，仿真 `Engine` 完全与模型逻辑本身分离。此外，还可以看出，在仿真开始之前，引擎需要完成初始化，该过程包括几个步骤：
 
-1. The model configuration must be loaded;
-2. The AgroManager module must be initialized and called to determine
-   the first and last of the simulation sequence;
-3. The timer must be initialized with the first and last day of the
-   simulation sequence;
-4. The soil component specified in the model configuration must be
-   initialized.
-5. The weather variables must be retrieved for the starting day;
-6. The AgroManager must be called to trigger any management events that
-   are scheduled for the starting day.
-7. The initial rates of change based on the initial states and driving
-   variables must be calculated;
-8. Finally, output can be collected to save the initial states and rates of
-   the simulation.
+1. 加载模型配置；
+2. 初始化 AgroManager 模块，并调用以确定仿真序列的开始和结束；
+3. 用仿真序列的起始和结束日初始化计时器；
+4. 初始化模型配置中指定的土壤组件；
+5. 获取起始日当天的气象变量；
+6. 调用 AgroManager 以触发当日预定的管理事件；
+7. 根据初始状态和驱动变量计算初始变化率；
+8. 最后，可以收集输出，用于保存仿真的初始状态和变化率。
 
-The next cycle in the simulation will now start with an update of the timer to
-the next time step (e.g. day). Next, the rates of change of
-the previous day will be integrated onto the state variables and the driving
-variables for the current day will be retrieved. Finally, the rates of change
-will be recalculated based on the new driving variables and updated model
-states and so forth.
+之后仿真的下一个循环将以将计时器更新到下一个时间步（如一天）开始。接着，将前一日的变化率积分到状态变量上，并获取当前日的驱动变量。最后，根据新的驱动变量和更新后的模型状态重新计算变化率，如此循环往复。
 
-The simulation loop will terminate when some finish condition has been reached.
-Usually, the `AgroManager` module will encounter the end of the agricultural
-campaign and will broadcast a terminate signal that terminates the entire simulation.
+当满足某一结束条件时，仿真循环将终止。通常， `AgroManager` 模块会遇到农事活动的结束，并发送一个终止信号，从而终止整个仿真。
 
-Input needed by the Engine
+引擎所需的输入
 --------------------------
 
-To start the Engine four inputs are needed:
+启动引擎需要四个输入：
 
-1. A weather data provider that provides the Engine with the daily values
-   of weather variables. See the section on `Weather data providers`_ for an
-   overview of the different options for providing weather data.
-2. A set of parameters that is needed to parameterize the SimulationObjects
-   that simulate the soil and crop processes. Model parameters can be retrieved
-   from different sources like files or databases. PCSE uses three sets of model
-   parameters: crop parameters, soil parameters and site parameters. The latter
-   present an ancillary set of parameters that are not related to the soil or
-   the crop. The atmospheric CO2 concentration is a typical example of a site
-   parameter. Despite having three sets of parameters, all parameters are
-   encapsulated using a `ParameterProvider`
-   that provides a uniform interface to access the different parameter sets.
-   See the section on `Data providers for parameter values`_ for an overview.
-3. Agromanagement information that is needed to schedule agromanagement
-   actions that are taking place during the simulation. See the sections
-   on `The AgroManager`_ and `Data providers for agromanagement`_ for a
-   detailed overview.
-4. A configuration file that tells the Engine the details of the simulation
-   such as the components to use for the simulation of the crop, the soil and
-   the agromanagement. Moreover, the results that should be stored as final and
-   intermediate outputs and some other details.
+1. 一个天气数据提供者，为引擎提供每日的气象变量值。相关的天气数据提供方法见 `Weather data providers`_ 章节概述。
+2. 一组参数，用于对模拟土壤和作物过程的 SimulationObjects 进行参数化。模型参数可以来自不同来源，如文件或数据库。PCSE 使用三组模型参数：作物参数、土壤参数和场地参数。最后一类为与土壤或作物无关的辅助参数，大气 CO2 浓度就是场地参数的一个典型例子。尽管分为三组参数，所有参数都使用 `ParameterProvider`
+   封装，从而为不同参数集提供统一的访问接口。更多内容请参见 `Data providers for parameter values`_ 章节。
+3. 作物管理信息，用于安排在仿真过程中执行的农业管理操作。详细内容参见 `The AgroManager`_ 及 `Data providers for agromanagement`_ 相关章节。
+4. 一个配置文件，用于指定仿真的详细信息，比如用于作物、土壤和农业管理仿真的组件，以及应存储为最终和中间输出的结果及其他相关细节。
 
 
-Engine configuration files
+引擎配置文件
 --------------------------
 
-The engine needs a configuration file that specifies which components should
-be used for simulation and additional information. This is most easily
-explained by an example such as the configuration file for the WOFOST 7.2 model
-for potential crop production::
+引擎需要一个配置文件，用于指定在仿真中应使用哪些组件及其他补充信息。通过示例来说明最为直观，比如用于潜在作物生产的 WOFOST 7.2 模型的配置文件::
 
     # -*- coding: utf-8 -*-
-    # Copyright (c) 2004-2021 Wageningen Environmental Research
-    # Allard de Wit (allard.dewit@wur.nl), August 2021
-    """PCSE configuration file for WOFOST 7.2 Potential Production simulation
+    # 版权所有 (c) 2004-2021 Wageningen Environmental Research
+    # Allard de Wit (allard.dewit@wur.nl), 2021年8月
+    """WOFOST 7.2 潜在产量仿真的 PCSE 配置文件
 
-    This configuration file defines the soil and crop components that
-    should be used for potential production simulation.
+    本配置文件定义了用于潜在产量仿真的土壤和作物组件。
     """
 
     from pcse.soil.classic_waterbalance import WaterbalancePP
     from pcse.crop.wofost72 import Wofost72
     from pcse.agromanager import AgroManager
 
-    # Module to be used for water balance
+    # 用于水分平衡的模块
     SOIL = WaterbalancePP
 
-    # Module to be used for the crop simulation itself
+    # 用于作物模拟本身的模块
     CROP = Wofost72
 
-    # Module to use for AgroManagement actions
+    # 用于农事管理操作的模块
     AGROMANAGEMENT = AgroManager
 
-    # variables to save at OUTPUT signals
-    # Set to an empty list if you do not want any OUTPUT
+    # 需要在OUTPUT信号处保存的变量
+    # 如果不需要任何输出，请设为空列表
     OUTPUT_VARS = ["DVS","LAI","TAGP", "TWSO", "TWLV", "TWST",
                    "TWRT", "TRA", "RD", "SM", "WWLOW"]
-    # interval for OUTPUT signals, either "daily"|"dekadal"|"monthly"|"weekly"
-    # For daily output you change the number of days between successive
-    # outputs using OUTPUT_INTERVAL_DAYS. For dekadal and monthly
-    # output this is ignored.
+    # OUTPUT信号输出的间隔，可以为"daily"|"dekadal"|"monthly"|"weekly"
+    # 如果选择daily输出，可以通过OUTPUT_INTERVAL_DAYS设置连续输出的天数间隔。
+    # 对于dekadal和monthly输出，则忽略OUTPUT_INTERVAL_DAYS的设置。
     OUTPUT_INTERVAL = "daily"
     OUTPUT_INTERVAL_DAYS = 1
-    # Weekday: Monday is 0 and Sunday is 6
+    # 星期设置：星期一为0，星期日为6
     OUTPUT_WEEKDAY = 0
 
-    # Summary variables to save at CROP_FINISH signals
-    # Set to an empty list if you do not want any SUMMARY_OUTPUT
+    # 在CROP_FINISH信号处保存的汇总变量
+    # 如果不需要任何汇总输出，请设为空列表
     SUMMARY_OUTPUT_VARS = ["DVS","LAIMAX","TAGP", "TWSO", "TWLV", "TWST",
                            "TWRT", "CTRAT", "RD", "DOS", "DOE", "DOA",
                            "DOM", "DOH", "DOV", "CEVST"]
 
-    # Summary variables to save at TERMINATE signals
-    # Set to an empty list if you do not want any TERMINAL_OUTPUT
+    # 在TERMINATE信号处保存的汇总变量
+    # 如果不需要任何终止输出，请设为空列表
     TERMINAL_OUTPUT_VARS = []
 
-As you can see, the configuration file is written in plain python code.
-First of all, it defines the placeholders *SOIL*, *CROP* and
-*AGROMANAGEMENT* that define the components that should be used for
-the simulation of these processes. These placeholders simply point to
-the modules that were imported at the start of the configuration file.
+如你所见，配置文件采用纯 python 代码编写。
+首先，它定义了 *SOIL*、*CROP* 和 *AGROMANAGEMENT* 这些占位符，用于指定在模拟这些过程时应使用的组件。这些占位符实际上就是指向在配置文件开头导入的模块。
 
 .. note::
-    Modules in configuration files must be imported using fully qualified
-    names and relative imports cannot be used.
+    配置文件中的模块必须使用完整限定名进行导入，不能使用相对导入。
 
-The second part is for defining the
-variables (*OUTPUT_VARS*) that should be stored during the model run
-(during OUTPUT signals) and the details of the regular output interval.
-Next, summary output *SUMMARY_OUTPUT_VARS* can be defined that will be generated at the end
-of each crop cycle. Finally, output can be collected at the end of the
-entire simulation (*TERMINAL_OUTPUT_VARS*).
+其次，需要定义在模型运行期间（OUTPUT 信号期间）要保存的变量（*OUTPUT_VARS*），以及常规输出间隔的详细信息。
+接着，可以定义每个作物周期结束时生成的汇总输出 *SUMMARY_OUTPUT_VARS*。最后，在整个模拟结束时，可以收集输出（*TERMINAL_OUTPUT_VARS*）。
 
 .. note::
-    Model configuration files for models that are included in the PCSE package
-    reside in the 'conf/' folder inside the package. When the Engine is started
-    with the name of a configuration file, it searches this folder to locate the file.
-    This implies that if you want the start the Engine with your own (modified)
-    configuration file, you *must* specify it as an absolute path
-    otherwise the Engine will not find it.
+    PCSE 包中已包含模型的配置文件位于包内的 'conf/' 文件夹。当 Engine 启动并指定配置文件名称时，会在该文件夹中查找对应文件。
+    这意味着，如果你想要使用自己的（修改过的）配置文件启动 Engine，你 *必须* 指定配置文件的绝对路径，否则 Engine 无法找到该文件。
 
-The relationship between models and the engine
-----------------------------------------------
+模型与引擎的关系
+--------------------
 
-Models are treated together with the Engine, because models are simply
-pre-configured Engines. Any model can be started by starting the Engine
-with the appropriate configuration file. The only difference is that
-models can have methods that deal with specific characteristics of a model.
-This kind of functionality cannot be implemented in the Engine because
-the model details are not known beforehand.
+模型与引擎一起处理，因为模型实际上就是经过预配置的 Engine。任何模型都可以通过使用相应的配置文件启动 Engine 来运行。唯一的区别在于，模型可以包含处理模型特定特性的专用方法。
+此类功能无法在 Engine 中实现，因为事先并不知道模型的具体细节。
 
 
-SimulationObjects
-=================
+SimulationObjects（模拟对象）
+===========================
 
-PCSE uses SimulationObjects to group parts of the crop simulation model
-that form a logical entity into separate program code sections. In this
-way the crop simulation model is grouped into sections that implement certain
-biophysical processes such as phenology, assimilation, respiration, etc.
-Simulation objects can be grouped to form components that perform the simulation
-of an entire crop or a soil profile.
+PCSE 使用 SimulationObjects 将作物模拟模型中构成逻辑实体的部分分组为单独的程序代码片段。通过这种方式，作物模拟模型被划分为实现特定生物物理过程（如物候、同化、呼吸等）的若干部分。Simulation objects 还可以组合起来，形成可模拟整个作物或土壤剖面的组件。
 
-This approach has several advantages:
+这种方法有以下几个优点：
 
-#. Model code with a certain purpose is grouped together, making it easier
-   to read, understand and maintain.
-#. A SimulationObject contains only parameters, rate and state variables
-   that are needed. In contrast, with monolythic code it is often unclear (at
-   first glance at least) what biophysical process they belong to.
-#. Isolation of process implementations creates less dependencies, but more
-   importantly, dependencies are evident from the code which makes it easier
-   to modify individual SimulationObjects.
-#. SimulationObjects can be tested individually by comparing output vs the
-   expected output (e.g. unit testing).
-#. SimulationObjects can be exchanged for other objects with the same purpose
-   but a different biophysical approach. For example, the WOFOST assimilation
-   approach could be easily replaced by a more simple Light Use Efficiency or
-   Water Use Efficiency approach, by replacing the SimulationObject that
-   handles the |CO2| assimilation.
+#. 用于特定目的的模型代码被组织在一起，更易于阅读、理解和维护。
+#. 一个 SimulationObject 只包含所需的参数、速率和状态变量。相比之下，单一结构代码通常很难（至少第一眼）判断这些变量属于哪个生物物理过程。
+#. 将过程实现隔离可以减少依赖关系，更重要的是，依赖关系在代码中变得清晰，便于修改各个 SimulationObject。
+#. 可以通过比较输出与预期结果（例如单元测试），对 SimulationObject 进行单独测试。
+#. SimulationObjects 可以与实现相同目的但采用不同生物物理方法的其他对象互换。例如，只需替换负责 |CO2| 同化的 SimulationObject，就能将 WOFOST 同化方法简单替换为光能利用效率或水分利用效率等更简单的方法。
 
 
-Characteristics of SimulationObjects
+SimulationObject 的特点
 ------------------------------------
 
-Each SimulationObject is defined in the same way and has a couple of standard
-sections and methods which facilitates understanding and readability.
-Each SimulationObject has parameters to define the mathematical relationships,
-it has state variables to define the state of the system and it has rate
-variables that describe the rate of change from one time step to the next.
-Moreover, a SimulationObject may contain other SimulationObjects that
-together form a logical structure. Finally, the SimulationObject must implement
-separate code sections for initialization, rate calculation and integration
-of the rates of change. A finalization step which is called at the end of the simulation
-can be added optionally.
+每个 SimulationObject 都以相同的方式定义，并包含一些标准部分和方法，以便于理解和阅读。每个 SimulationObject 都有参数，用于定义数学关系；有状态变量，用于定义系统的状态；还有速率变量，用于描述每个时间步之间状态的变化速率。此外，一个 SimulationObject 还可以包含其他 SimulationObject ，以共同组成一个逻辑结构。最后，SimulationObject 必须实现初始化、速率计算和变化率积分的独立代码部分。可选地，还可以添加一个在模拟结束时调用的收尾步骤。
 
-The skeleton of a SimulationObject looks like this:
+一个 SimulationObject 的框架如下：
 
 .. code-block:: python
 
@@ -275,192 +177,87 @@ The skeleton of a SimulationObject looks like this:
 
         class Parameters(ParamTemplate):
             PAR1 = Float()
-            # more parameters defined here
+            # 此处定义更多参数
 
         class StateVariables(StatesTemplate):
             STATE1 = Float()
-            # more state variables defined here
+            # 此处定义更多状态变量
 
         class RateVariables(RatesTemplate):
             RATE1 = Float()
-            # more rate variables defined here
+            # 此处定义更多速率变量
 
         def initialize(self, day, kiosk, parametervalues):
-            """Initializes the SimulationObject with given parametervalues."""
+            """用给定的参数值初始化 SimulationObject。"""
             self.params = self.Parameters(parametervalues)
             self.rates = self.RateVariables(kiosk)
             self.states = self.StateVariables(kiosk, STATE1=0., publish=["STATE1"])
 
         @prepare_rates
         def calc_rates(self, day, drv):
-            """Calculate the rates of change given the current states and driving
-            variables (drv)."""
+            """根据当前状态和驱动变量（drv）计算变化速率。"""
 
-            # simple example of rate calculation using rainfall (drv.RAIN)
+            # 用降雨量（drv.RAIN）作为速率计算的简单示例
             self.rates.RATE1 = self.params.PAR1 * drv.RAIN
 
         @prepare_states
         def integrate(self, day, delt):
-            """Integrate the rates of change on the current state variables
-            multiplied by the time-step
-            """
+            """对当前状态变量上的变化速率积分，并乘以时间步长。"""
             self.states.STATE1 += self.rates.RATE1 * delt
 
         @prepare_states
         def finalize(self, day):
-            """do some final calculations when the simulation is finishing."""
+            """在模拟完成时进行一些最终计算。"""
 
 
-The strict separation of program logic was copied from the Fortran Simulation
-Environment (FSE, `Rappoldt and Van Kraalingen 1996 <http://edepot.wur.nl/4411>`_
-and `Van Kraalingen 1995 <http://edepot.wur.nl/35555>`_) and
-is critical to ensure that the simulation results are correct.
-The different calculations types (integration, driving variables and
-rate calculations) should be strictly separated. In other words, first all
-states should be updated, subsequently all driving variables should be calculated,
-after which all rates of change should be calculated. If this rule is not
-applied rigorously, some rates may pertain to states at
-the current time whereas others will pertain to states from the previous time
-step. Compared to the FSE system and the
-`FORTRAN implementation of WOFOST <https://github.com/ajwdewit/wofost>`_,
-the `initialize()`, `calc_rates()`, `integrate()` and `finalize()` sections
-match with the *ITASK* numbers 1, 2, 3, 4.
+程序逻辑的严格分离借鉴自 Fortran Simulation Environment (FSE, `Rappoldt and Van Kraalingen 1996 <http://edepot.wur.nl/4411>`_ 和 `Van Kraalingen 1995 <http://edepot.wur.nl/35555>`_)，这一点对于保证模拟结果的正确性至关重要。不同类型的计算（积分、驱动变量和速率计算）必须严格分开。换句话说，首先应更新所有状态变量，随后计算所有驱动变量，之后再计算所有变化率。如果不严格遵循这一规则，可能会导致部分速率基于当前时刻的状态，另一些则基于前一时刻的状态。与 FSE 系统和 `FORTRAN implementation of WOFOST <https://github.com/ajwdewit/wofost>`_ 相比， `initialize()`、 `calc_rates()`、 `integrate()` 和 `finalize()` 四个部分分别对应 *ITASK* 编号 1、2、3、4。
 
-A complicating factor that arises when using modular code is how to arrange
-the communication between SimulationObjects. For example, the `evapotranspiration`
-SimulationObject will need information about the leaf area index from the
-`leaf_dynamics` SimulationObject to calculate the crop transpiration
-values. In PCSE the communication between
-SimulationObjects is taken care of by the so-called `VariableKiosk`. The
-metaphore kiosk is used because the SimulationObjects publish
-their rate and/or state variables (or a subset) into the kiosk, other
-SimulationObjects can subsequently request the variable value from the kiosk
-without any knowledge about the SimulationObject that published it.
-Therefore, the VariableKiosk is shared by all SimulationObjects and must
-be provided when SimulationObjects initialize.
+在使用模块化代码时，一个复杂的问题是如何组织 SimulationObject 间的通信。例如， `evapotranspiration` SimulationObject 需要从 `leaf_dynamics` SimulationObject 获取叶面积指数的信息，以计算作物蒸腾值。在 PCSE 中，不同 SimulationObject 的通信由所谓的 `VariableKiosk` 负责。之所以使用 kiosk 这个比喻，是因为 SimulationObject 会将它们的速率和/或状态变量（或其中一部分）发布到 kiosk，其他 SimulationObject 随后可以从 kiosk 请求变量值，而不需要了解是哪个 SimulationObject 发布了该变量。因此，VariableKiosk 由所有 SimulationObject 共享，并且在 SimulationObject 初始化时必须提供。
 
-See the section on `Exchanging data between model components`_
-for a detailed description of the variable kiosk and other ways to communicate
-between model components.
+有关 variable kiosk 及模型组件之间其他通信方式的详细说明，请参阅 `Exchanging data between model components`_ 一节。
 
-Simulation Parameters
----------------------
+模拟参数
+--------
 
-Usually SimulationObjects have one or more parameters which should be defined as a subclass
-of the `ParamTemplate` class.  Although parameters can be specified as part
-of the SimulationObject definition directly, subclassing them from `ParamTemplate` has a few
-advantages. First of all, parameters must be initialized and a missing parameter will lead to
-an exception being raised with a clear message. Secondly, parameters are initialized as read-only
-attributes which cannot be changed during the simulation. So occasionally overwriting a
-parameter value is impossible this way.
+通常，SimulationObject 具有一个或多个参数，这些参数应当定义为 `ParamTemplate` 类的子类。虽然参数也可以直接作为 SimulationObject 定义的一部分指定，但从 `ParamTemplate` 派生子类有几个优点。首先，参数必须被初始化，若缺失某个参数，会抛出带有明确信息的异常。其次，参数被初始化为只读属性，在模拟过程中不能更改。因此，这种方式下参数值不会被偶然覆盖。
 
-The model parameters are initialized by the calling the Parameters class definition
-and providing a dictionary with key/value pairs to define the parameters.
+模型参数通过调用 Parameters 类定义并提供包含键值对的字典来初始化参数。
 
-State/Rate variables
---------------------
+状态/速率变量
+------------
 
-The definitions for state and rate variables share many properties. Definitions of rate and
-state variables should be defined as attributes of a class that inherit from
-`RatesTemplate` and `StatesTemplate` respectively. Names of rate and state variables that
-are defined this way **must** be unique across all model components and a duplicate variable
-name somewhere across the model composition will lead to an exception.
+状态变量和速率变量的定义有许多共同特性。速率和状态变量应当分别定义为继承自 `RatesTemplate` 和 `StatesTemplate` 的类属性。以这种方式定义的速率变量和状态变量名称在所有模型组件中 **必须** 唯一，若在模型组合中出现重复变量名称，会导致异常。
 
-Both class instances need the VariableKiosk as its first input parameter which is needed
-to register the variables defined. Moreover, variables can be published with the `publish`
-keyword as is done in the example above for *STATE1*. Publishing a variable means that it
-will be available in the VariableKiosk and can be retrieved by other components based on the
-name of the variables. The main difference between a rates and
-a states class is that the states class requires you to provide the initial value of the
-state as a keyword parameter in the call. Failing to provide the initial value will lead
-to an exception being raised.
+这两个类的实例都需要将 VariableKiosk 作为第一个输入参数，用于注册所定义的变量。此外，变量可以通过 `publish` 关键字进行发布，如上述示例中 *STATE1* 的做法。发布变量意味着该变量会在 VariableKiosk 中可用，其他组件可以根据变量名称来获取它。速率类和状态类的主要区别在于，状态类要求你在调用时通过关键字参数提供状态的初始值。如果未提供初始值，将会抛出异常。
 
-Instances of objects containing rate and state variables are read-only by default. In order
-to change the value of a rate or state, the instance must be unlocked. For this purpose
-the decorators `@prepare_rates` and `@prepare_states` are being placed in front of the calls
-to `calc_rates()` and `integrate()` which take care of unlocking and locking the states
-and rates instances. Using this approach rate variables can only be changed during
-the call where the rates are calculated, states variables are read-only at that stage.
-Similarly, state variables can only be changed during the state update while the rates
-of change are locked. This mechanism ensures that rate/state updates are carried out
-in the correct order.
+包含速率变量和状态变量的对象实例默认是只读的。为了更改速率或状态的值，实例必须被解锁。为此，需要在 `calc_rates()` 和 `integrate()` 方法前分别加上装饰器 `@prepare_rates` 和 `@prepare_states`，它们负责解锁与锁定 states 和 rates 实例。通过这种方式，速率变量只能在计算速率的调用期间更改，此时状态变量为只读。类似地，状态变量只能在状态更新期间更改，而变化率会被锁定。该机制保证了速率/状态的更新顺序正确。
 
-Finally, instances of RatesTemplate have one additional method, called `zerofy()` while
-instances of StatesTemplate have one additional method called `touch()`.
-Calling `zerofy()` is normally done by the Engine and explicitly sets all rates of change
-to zero. Calling `touch()` on a states object is only useful when the states variables
-do not need to be updated, but you do want to be sure that any published state variables
-will remain available in the VariableKiosk.
+最后，RatesTemplate 的实例还拥有一个额外方法，名为 `zerofy()`，而 StatesTemplate 的实例则有一个名为 `touch()` 的额外方法。调用 `zerofy()` 通常由引擎完成，明确将所有变化率设为零。对 states 对象调用 `touch()` 仅在状态变量无需更新但希望确保已发布的状态变量仍然在 VariableKiosk 可用时才有用。
 
 
-The AgroManager
-===============
+AgroManager（农事管理器）
+=========================
 
-Agromanagement is an intricate part of PCSE which is needed for
-simulating the processes that are happening
-on agriculture fields. In order for crops to grow, farmers must first plow the
-fields and sow the crop. Next, they have to do proper management including
-irrigation, weeding, nutrient application, pest control and finally harvesting.
-All these actions have to be scheduled at specific dates, connected to certain
-crop stages or in dependence of soil and weather conditions. Moreover specific
-parameters such as the amount of irrigation or nutrients must be provided as well.
+农事管理是 PCSE 的一个重要组成部分，主要用于模拟农田中发生的各种农事过程。为了让作物生长，农民首先需要耕地和播种。随后，他们要合理安排管理措施，包括灌溉、除草、养分施用、病虫害防治以及最终的收获。所有这些操作都需要在特定日期安排执行，或者与特定的作物生育阶段、土壤和气象条件相关。此外，还必须提供例如灌溉量或养分量等具体参数。
 
-In previous versions of WOFOST, the options for agromanagement were limited to
-sowing and harvesting. On the one had this was because agromanagement was often assumed
-to be optimal and thus there was little need for detailed agromanagement.
-On the other hand, implementing agromanagement is relatively complex because
-agromanagement consists of events that are happening once rather than
-continuously. As such, it does not fit well in the traditional simulation
-cycle, see :ref:`ContinuousSimulation`.
+在早期版本的 WOFOST 中，农事管理的选项仅限于播种和收获。一方面，这是因为农事管理通常被假定为“最优”执行，因此不需要详细的农事操作。另一方面，实现农事管理本身也相对复杂，因为农事管理主要由一次性事件组成，而非持续发生的事件。因此，农事管理并不适合传统的模拟循环，参见 :ref:`ContinuousSimulation`。
 
-Also from a technical point of view implementing such events through the traditional
-function calls for rate calculation and state updates is not attractive. For
-example, for indicating a nutrient application event several additional parameters
-would have to be passed: e.g. the type of nutrient, the amount and its efficiency.
-This has several drawbacks, first of all, only a limited number of SimulationObjects
-will actually do something with this information while for all other objects, the
-information is of no use. Second, nutrient application will usually happen only once
-or twice in the growing cycle. So for a 200-day growing cycle there will be
-198 days where the parameters do not carry any information. Nevertheless, they
-would still be present in the function call, thereby decreasing the computational
-efficiency and the readability of the code. Therefore, PCSE uses a very different
-approach for agromanagement events which is based on signals (see :ref:`Broadcasting signals`).
+从技术实现角度来看，通过传统的速率计算和状态更新函数来实现这些事件并不理想。例如，如果要表示一次养分施用事件，就需要传递多个额外参数，例如养分种类、施用量和利用效率。这有几个缺点：首先，只有少数 SimulationObject 会使用这些信息，而大多数对象对此没有需求。其次，养分施用通常在作物生长期只会发生一两次。例如，在一个为期 200 天的生长周期里，有 198 天这些参数都毫无意义。然而，它们依然需要出现在函数调用中，从而降低了计算效率和代码可读性。因此，PCSE 对农事管理事件采用了完全不同的实现方法，该方法基于信号机制（参见 :ref:`Broadcasting signals`）。
 
 .. _refguide_agromanagement:
 
-Defining agromanagement in PCSE
--------------------------------
+PCSE中农事管理的定义
+--------------------
 
-Defining the agromanagement in PCSE is not very complicated and first starts with
-defining a sequence of campaigns. Campaigns
-start on a prescribed calendar date and finalize when the next campaign starts.
-Each campaign is characterized by zero or one crop calendar, zero or more timed events and
-zero or more state events. The crop calendar specifies the timing of the crop (sowing,
-harvesting) while the timed and state events can be used to specify management actions
-that are either dependent on time (a specific date) or a certain model state variable
-such as crop development stage. Crop calendars and event definitions are only valid
-for the campaign in which they are defined.
+在PCSE中定义农事管理不是很复杂，首先需要定义一个由多个“campaign”组成的序列。每个campaign从一个指定的日历日期（calendar date）开始，并在下一个campaign开始时结束。每个campaign包含零个或一个作物历（crop calendar）、零个或多个定时事件（timed events）以及零个或多个状态事件（state events）。作物历用于指定作物的时间安排（如播种、收获），定时事件和状态事件则用于指定基于时间（具体日期）或基于某一模型状态变量（如作物发育阶段）的管理措施。作物历和事件定义仅在其所属的campaign内有效。
 
-The data format used for defining the agromanagement in PCSE is called YAML. YAML is a
-versatile format optimized for readability by humans while still having the power of XML.
-However, the agromanagement definition in PCSE is by no means tied to YAML and can be
-read from a database as well.
+在PCSE中定义农事管理的数据格式为YAML。YAML是一种优化人类可读性的通用格式，同时也具有类似XML的强大功能。然而，PCSE中的农事管理定义并不一定局限于YAML，也可以从数据库等方式读取。
 
-The structure of the data needed as input for the AgroManager is most easily understood
-with an example (below). The example definition consists of three campaigns, the first
-starting on 1999-08-01, the second starting on 2000-09-01 and the last campaign starting
-on 2001-03-01. The first campaign consists of a crop calendar for winter-wheat starting
-with sowing at the given crop_start_date. During the campaign there are timed events for
-irrigation at 2000-05-25 and 2000-06-30. Moreover, there are state events for  fertilizer
-application (event_signal: apply_n) given by development stage (DVS) at DVS 0.3, 0.6 and 1.12.
+为AgroManager准备输入数据的结构可以通过下面的示例来直观理解。以下示例定义了三个campaign，第一个从1999-08-01开始，第二个从2000-09-01开始，最后一个campaign从2001-03-01开始。第一个campaign包括了一个冬小麦的作物历（winter-wheat），作物在指定的crop_start_date（1999-09-15）进行播种。在这一campaign期间，有两个灌溉的定时事件分别发生在2000-05-25和2000-06-30。此外，还有三个基于发育阶段（DVS 0.3、0.6和1.12）的施肥状态事件（event_signal: apply_n）。
 
-The second campaign has no crop calendar, timed events or state events. This means that
-this is a period of bare soil with only the water balance running. The third campaign is
-for fodder maize sown at 2001-04-15 with two series of timed events (one for irrigation and
-one for N application) and no state events. The end date of the simulation in this case
-will be 2001-11-01 (2001-04-15 + 200 days).
+第二个campaign没有作物历、定时事件和状态事件。这代表这是一个裸地阶段，仅进行水分平衡模拟。第三个campaign是用于青贮玉米（fodder maize），在2001-04-15播种，包含两个定时事件系列（一组为灌溉，另一组为氮肥施用），没有状态事件。此时模拟的结束日期为2001-11-01（2001-04-15 + 200天）。
 
-An example of an agromanagement definition file::
+一个农事管理定义文件的示例::
 
     AgroManagement:
     - 1999-08-01:
@@ -519,84 +316,57 @@ An example of an agromanagement definition file::
             - 2001-07-05: {N_amount : 70, N_recovery=0.7}
         StateEvents:
 
-Crop calendars
+作物历
 --------------
 
-The crop calendar definition will be passed on to a `CropCalendar` object which is 
-responsible for storing, checking, starting and ending the crop cycle during a PCSE simulation.
-At each time step the instance of `CropCalendar` is called
-and at the dates defined by its parameters it initiates the appropriate actions:
+作物历的定义将传递给 `CropCalendar` 对象，该对象负责在 PCSE 模拟期间存储、检查、开始和结束作物生长周期。
+在每一个时间步，都将调用 `CropCalendar` 的实例，并且按照其参数中定义的日期启动相应的操作：
 
-- sowing/emergence: A `crop_start` signal is dispatched including the parameters needed to
-  start the new crop simulation object (crop_name, variety_name, crop_start_type and crop_end_type)
-- maturity/harvest: the crop cycle is ended by dispatching a `crop_finish` signal with the
-  appropriate parameters.
+- 播种/出苗：会发送 `crop_start` 信号，并包含启动新作物模拟对象所需的参数（crop_name、variety_name、crop_start_type 和 crop_end_type）
+- 成熟/收获：作物周期通过发送 `crop_finish` 信号及相应参数来结束。
 
-For a detailed description of a crop calendar see the code documentation on the CropCalendar in the
-section on :ref:`Agromanagement <AgromanagementCode>`.
+如需了解作物历的详细描述，可参见代码文档中关于 `CropCalendar` 的章节 :ref:`Agromanagement <AgromanagementCode>`。
 
-Timed events
+定时事件
 ------------
 
-Timed events are management actions that are occurring on specific dates. As simulations in PCSE run
-on daily time steps it is easy to schedule actions on dates. Timed events are characterized by
-an event signal, a name and comment that can be used to describe the event and finally an
-events table that lists the dates for the events and the parameters that should be passed onward.
+定时事件是在特定日期发生的管理操作。由于 PCSE 的模拟以日为时间步，因此可以轻松地按日期安排这些操作。
+定时事件以事件信号、名称和注释为特征，这些信息可用于描述事件，最后还包括一个事件表，
+该表列出事件发生的日期以及需要传递的参数。
 
-Note that when multiple events are connected to the same date, the order in which they trigger is
-undetermined.
+请注意，当有多个事件连接到同一日期时，它们触发的顺序是不确定的。
 
-For a detailed description of a timed events see the code documentation on the TimedEventsDispatcher
-in the section on :ref:`Agromanagement <AgromanagementCode>`.
+如需了解定时事件的详细描述，可参见代码文档中关于 `TimedEventsDispatcher` 的章节 :ref:`Agromanagement <AgromanagementCode>`。
 
 
-State events
+状态事件
 ------------
 
-State events are management actions that are tied to certain model states. Examples are actions such
-as nutrient application that should be executed at certain crop stages, or irrigation application
-that should occur only when the soil is dry. PCSE has a flexible definition of state events and an event
-can be connected to any variable that is defined within PCSE.
+状态事件是与特定模型状态相关的管理操作。例如，某些营养物施用操作需要在作物达到特定生育阶段时执行，或仅在土壤干燥时进行灌溉。PCSE 对于状态事件有灵活的定义，一个事件可以关联到 PCSE 中定义的任意变量。
 
-Each state event is defined by an `event_signal`, an `event_state` (e.g. the model
-state that triggers the event) and a `zero condition`. Moreover, an optional name and an
-optional comment can be provided. Finally the events_table specifies at which model state values
-the event occurs. The `events_table` is a list which provides for each state the parameters that
-should be dispatched with the given event_signal.
+每个状态事件由 `event_signal`、 `event_state`（例如，触发该事件的模型状态）和 `zero condition` 进行定义。此外，还可以提供可选的名称和注释。最后，events_table 指定在模型状态值达到何时触发该事件。 `events_table` 是一个列表，为每个状态提供对应使用该 event_signal 需要传递的参数。
 
-Managing state events is more complicated than timed events because PCSE cannot determine beforehand at
-which time step these events will trigger.
-For finding the time step at which a state event occurs PCSE uses the concept of `zero-crossing`.
-This means that a state event is triggered when (`model_state` - `event_state`) equals or
-crosses zero. The `zero_condition` defines how this crossing should take place. The value of
-`zero_condition` can be:
+管理状态事件相较于定时事件更为复杂，因为 PCSE 无法预先确定这些事件将在何时被触发。
+为了确定状态事件发生的时间步，PCSE 使用了 `zero-crossing` 的概念。
+这意味着当 (`model_state` - `event_state`) 等于零或越过零时，状态事件将被触发。 `zero_condition` 用于定义如何进行该越过。 `zero_condition` 的取值可以是：
 
-* `rising`: the event is triggered when (`model_state` - `event_state`) goes from a negative value towards
-  zero or a positive value.
-* `falling`: the event is triggered when (`model_state` - `event_state`) goes from a positive value towards
-  zero or a negative value.
-* `either`: the event is triggered when (`model_state` - `event_state`) crosses or reaches zero from any
-  direction.
+* `rising`: 当 (`model_state` - `event_state`) 从负值向零或正值变化时，事件被触发。
+* `falling`: 当 (`model_state` - `event_state`) 从正值向零或负值变化时，事件被触发。
+* `either`: 当 (`model_state` - `event_state`) 从任意方向接近或越过零时，事件被触发。
 
-Note that when multiple events are connected to the same state value, the order in which they trigger is
-undetermined.
+请注意，当多个事件关联到相同状态值时，它们被触发的顺序是不确定的。
 
-For a detailed description of a state events see the code documentation on the StateEventsDispatcher
-in the section on :ref:`Agromanagement <AgromanagementCode>`.
+关于状态事件的详细描述，请参阅代码文档中 StateEventsDispatcher 的章节 :ref:`Agromanagement <AgromanagementCode>`。
 
 
-Finding the start and end date of a simulation
-----------------------------------------------
+确定模拟的开始和结束日期
+------------------------------
 
-The agromanager has the task to find the start and end date of the simulation based on the
-agromanagement definition that has been provided to the Engine.
-Getting the start date from the agromanagement definition is straightforward as this is
-represented by the start date of the first campaign. However,
-getting the end date is more complicated because there are several possibilities.
-The first option is to explicitly define the end date of the simulation by adding a
-'trailing empty campaign' to the agromanagement definition.
-An example of an agromanagement definition with a 'trailing empty campaigns' (YAML format) is
-given below. This example will run the simulation until 2001-01-01::
+agromanager 的任务是根据提供给 Engine 的 agromanagement 定义来确定模拟的开始和结束日期。
+从 agromanagement 定义中获取开始日期非常直接，因为这就是第一个 campaign 的开始日期。
+然而，获取结束日期则复杂一些，因为有几种可能的方式。
+第一种方式是通过在 agromanagement 定义中添加一个“尾部空 campaign”来显式定义模拟的结束日期。
+下面给出了一个包含“尾部空 campaign”的 agromanagement 定义示例（YAML 格式）。该示例会让模拟运行至 2001-01-01::
 
     Version: 1.0.0
     AgroManagement:
@@ -614,10 +384,7 @@ given below. This example will run the simulation until 2001-01-01::
     - 2001-01-01:
 
 
-The second option is that there is no trailing empty campaign and in that case the end date of the simulation
-is retrieved from the crop calendar and/or the timed events that are scheduled. In the example below, the
-end date will be 2000-08-05 as this is the harvest date and there are no timed events scheduled after this
-date::
+第二种方式是没有尾部的空 campaign，在这种情况下，模拟的结束日期将从作物历和/或已安排的定时事件中获取。在下方的示例中，结束日期将会是 2000-08-05，因为这是收获日期，并且在该日期之后没有安排任何定时事件::
 
     Version: 1.0.0
     AgroManagement:
@@ -640,13 +407,9 @@ date::
             - 2000-07-18: {amount: 3, efficiency: 0.7}
         StateEvents:
 
-In the case that there is no harvest date provided and the crop runs till maturity, the end date from
-the crop calendar will be estimated as the `crop_start_date` plus the `max_duration`.
+如果没有提供收获日期，并且作物持续到成熟，作物历中的结束日期将被估算为 `crop_start_date` 加上 `max_duration`。
 
-Note that in an agromanagement definition where the last campaign contains a definition for state events,
-a trailing empty campaign *must* be provided because otherwise the end date cannot be determined. The
-following campaign definition is valid (though silly) but there is no way to determine the end date
-of the simulation. Therefore, this definition will lead to an error::
+请注意，在 agromanagement 定义中，如果最后一个 campaign 包含了 state events 的定义，则*必须*提供一个尾部空 campaign，否则无法确定模拟的结束日期。下面的 campaign 定义虽然合法（但很奇怪），但由于无法确定模拟的结束日期，因此会导致出错::
 
     Version: 1.0
     AgroManagement:
@@ -662,92 +425,41 @@ of the simulation. Therefore, this definition will lead to an error::
             events_table:
             - 0.25: {amount: 2, efficiency: 0.7}
 
-Exchanging data between model components
+模型组件间数据交换
 ========================================
 
-A complicating factor when dealing with modular code is how to exchange model states or other
-data between the different components. PCSE implements two basic methods for exchanging variables:
+在处理模块化代码时，一个复杂因素是如何在不同组件之间交换模型状态或其他数据。PCSE 实现了两种基本的方法来交换变量：
 
-1. The VariableKiosk which is primarily used to exchange state/rate variables between model components and
-   where updates of the state/rate variables are needed at each cycle in the simulation process.
-2. The use of signals that can be broadcasted and received by any PCSE object and which is primarily used to
-   broadcast information as a response to events that are happening during the model simulation.
+1. VariableKiosk，主要用于在模型组件之间交换状态/速率变量，在模拟过程中每一周期都需要更新状态/速率变量。
+2. 利用信号，可以被任何 PCSE 对象广播和接收，主要用于在模型仿真过程中响应事件时广播信息。
 
-The VariableKiosk
+VariableKiosk 变量寄存器
 -----------------
 
-The VariableKiosk is an essential component in PCSE and it is created when the Engine starts.
-Nearly all objects in PCSE receive a reference to the VariableKiosk and it has many functions
-which may not be clear or appreciated at first glance.
+VariableKiosk 是 PCSE 中的一个重要组成部分，并且它会在 Engine 启动时被创建。PCSE 中几乎所有对象都会接收 VariableKiosk 的引用，并且它包含许多功能，这些功能乍一看可能不是很明显或被忽视。
 
-First of all,
-the VariableKiosk registers *all* state and rate variables which are defined as attributes of
-a StateVariables or RateVariables class. By doing so, it also ensures that names are
-unique; there cannot be two state/rate variables with the same name within the component hierarchy
-of a single Engine. This uniqueness is enforced to avoid name conflicts between components that
-would affect the publishing of variables or the retrieval of variables. For example,
-`engine.get_variable("LAI")` will retrieve the leaf area index of the crop. However, if there
-would be two variables named "LAI" it would be unclear which one is retrieved. It would not
-even be guaranteed that it is the same variable between function calls or model runs.
+首先，
+VariableKiosk 会注册 *所有* 作为 StateVariables 或 RateVariables 类的属性所定义的状态和速率变量。这样做时，它还确保了变量名称的唯一性；在单一 Engine 的组件层级结构内，不能有两个同名的状态/速率变量。这样强制唯一性是为了避免组件间变量发布或检索时出现名称冲突。例如，
+`engine.get_variable("LAI")` 会获取作物的叶面积指数。然而，如果存在两个名为 "LAI" 的变量，就无法分辨到底取得的是哪一个。甚至不能保证在不同的函数调用或模型运行之间取得的是同一个变量。
 
-Second, the VariableKiosk takes care of exchanging state and rate variables between model
-components. Variables that are published by the RateVariables and StateVariables object will become
-available in the VariableKiosk the moment when the variable gets a value assigned.
-Within the PCSE internals, published variables have a trigger connected to them that copies their
-value into the VariableKiosk. The VariableKiosk should therefore not be regarded as a shared
-state object but rather as a cache that contains copies of variable name/value pairs.
-Moreover, the updating of variables in the kiosk is protected. Only the
-SimulationObject that registers and publishes a variable can change its value in the Kiosk.
-All other SimulationObjects can query its value, but cannot alter it. Therefore it is
-impossible for two processes to manipulate the same variable through the VariableKiosk.
+其次，VariableKiosk 负责在模型组件间交换状态和速率变量。由 RateVariables 和 StateVariables 对象所发布的变量，在变量被赋值时立即可用于 VariableKiosk。在 PCSE 内部，被发布的变量会有一个触发器与其关联，将其值复制到 VariableKiosk。因此，VariableKiosk 不应被视为共享状态对象，而应该被视为包含变量名/值对副本的缓存。
+此外，对 Kiosk 中变量的更新是受到保护的。只有注册并发布变量的 SimulationObject 能够更改其在 Kiosk 中的值。
+所有其他 SimulationObject 只能查询其值而无法更改。因此，两个进程不可能通过 VariableKiosk 同时操作同一个变量。
 
-A potential danger with having copies of variables in the kiosk is that copies do not
-reflect the actual value anymore, for example due to a missing state update. In such case
-the value of the state is "lagging" in the kiosk which is a potential simulation error.
-To avoid such problems, the kiosk regularly 'flushes' its content. After a flush, the
-variables remain registered in the kiosk, but their values become undefined. The flushing
-of variables is taken care of by the engine and is done separately for rate and state
-variables. After the update of all states, all rate variables are flushed; when the rate
-calculation step is finished, all state variables in the kiosk are flushed. On the one hand,
-this procedure helps to enforce that calculations are done in the right order. On the
-other hand it also implies that in order to keep a state variable available in the kiosk
-its value *must* be updated with the corresponding rate, even if that rate is zero!
+在 kiosk 中保存变量副本的一个潜在危险是，这些副本可能不再反映实际值，例如由于状态未及时更新。在这种情况下，状态的值在 kiosk 中“滞后”，这可能导致模拟错误。为避免此类问题，kiosk 会定期“刷新”其内容。刷新后，变量仍然在 kiosk 中注册，但它们的值变为未定义。变量的刷新由引擎负责，并且会分别针对速率变量和状态变量进行。在所有状态变量更新完后，所有速率变量将被刷新；当速率计算步骤结束后，kiosk 中的所有状态变量将被刷新。一方面，这一过程有助于确保计算按正确的顺序进行。另一方面，这也意味着为了让一个状态变量在 kiosk 中保持可用，即使该速率为零，其值也 *必须* 通过对应速率进行更新！
 
-The last important function embodied by the VariableKiosk is as the sender ID of signals
-that are broadcasted by objects in PCSE. Each signal that is broadcasted has a sender
-ID and zero or more receivers. Each instance of a PCSE simulation object is configured
-to listen only to signals that have their own VariableKiosk as sender ID.  Since the
-VariableKiosk is unique to each instance of an Engine, this ensures that two engines
-that are active in the same PCSE session, will not 'listen' to each others signals but
-only to their own signals. This principle becomes critical when running ensembles of
-models (e.g Engines) where the broadcasting of signals of the various ensemble members
-should not interfere between members.
+VariableKiosk 的最后一个重要功能，是作为 PCSE 对象广播信号时的发送者 ID。每个被广播的信号都有一个发送者 ID 和零个或多个接收者。每个 PCSE 仿真对象的实例都被配置为只监听发送者 ID 是自身 VariableKiosk 的那些信号。由于 VariableKiosk 对于每个 Engine 的实例是唯一的，这确保了在同一个 PCSE 会话中同时运行的两个引擎不会“监听”彼此的信号，而只会接收自己的信号。这一原则在运行模型集合（如多个 Engine）时尤为关键，因为不同集合成员之间广播的信号应该互不干扰。
 
-In practice, a user of PCSE hardly needs to deal with the VariableKiosk; variables can
-be published by indicating them with the `publish=[<var1>,<var2>,...]` keyword when
-initializing rate/state variables, while retrieving values from the VariableKiosk works
-through the normal dictionary look up. For more details on the VariableKiosk see the
-description in the :ref:`BaseClasses` section.
+在实际使用中，PCSE 用户几乎无需直接处理 VariableKiosk；变量可以通过在初始化速率/状态变量时使用 `publish=[<var1>,<var2>,...]` 关键字进行发布，从 VariableKiosk 获取变量值则可以像普通字典查找一样操作。更多有关 VariableKiosk 的细节，参见 :ref:`BaseClasses` 部分的描述。
 
 .. _Broadcasting signals:
 
 Broadcasting signals
 --------------------
 
-The second mechanism in PCSE for passing around information is by broadcasting signals
-as a result of events. This is very similar to the way a user interface toolkit
-works and where event handlers are connected to certain events like mouse clicks
-or buttons being pressed. Instead, events in PCSE are related to management actions
-from the AgroManager, output signals from the timer module, the termination of the
-simulation, etc.
+PCSE 中用于传递信息的第二种机制是通过广播信号以响应事件。这非常类似于用户界面工具包的工作方式，在用户界面工具包中，事件处理程序会被连接到某些事件上，比如鼠标点击或者按钮被按下。而在 PCSE 中，事件则与 AgroManager 的管理操作、timer 模块的输出信号、仿真的终止等相关。
 
-Signals in PCSE are defined in the `signals` module which can be easily imported by
-any module that needs access to signals. Signals are simply defined as strings but
-any hashable object type would do. Most of the work for dealing with signals is in
-setting up a receiver. A receiver is usually a method on a SimulationObject that 
-will be called when the signal is broadcasted. This method will then be connected
-to the signal during the initialization of the object. This is easy to describe
-with an example::
+PCSE 中的信号在 `signals` 模块中定义，任何需要访问信号的模块都可以很方便地导入该模块。信号仅仅被定义为字符串，但任何可哈希的对象类型都可以。处理信号的大部分工作都在于设置接收器。接收器通常是 SimulationObject 上的一个方法，在信号被广播时将会被调用。该方法会在对象初始化时与信号连接。这很容易通过一个例子来描述::
 
     mysignal = "My first signal"
 
@@ -762,10 +474,7 @@ with an example::
         def send_mysignal(self):
             self._send_signal(signal=mysignal, arg2="A", arg1=2.5)
 
-In the example above, the `initialize()` section connects the `handle_mysignal()` method to
-signals of type `mysignal` having two arguments `arg1` and `arg2`. When the object is
-initialized and the `send_mysignal()` is called the handler will print out the values
-of its two arguments::
+在上面的示例中， `initialize()` 部分将 `handle_mysignal()` 方法与类型为 `mysignal` 的信号进行连接，该信号包含两个参数 `arg1` 和 `arg2`。当对象初始化后，调用 `send_mysignal()` 时，处理函数会打印出这两个参数的值::
 
     >>> from pcse.base import VariableKiosk
     >>> from datetime import date
@@ -776,73 +485,56 @@ of its two arguments::
     Value of arg1, arg2: 2.5, A
     >>>
 
-Note that the methods for receiving signals `_connect_signal()` and sending signals `_send_signal()` are
-available because of subclassing `SimulationObject`. Both methods are highly flexible regarding the arguments and
-keyword arguments that can be passed on with the signal. For more details have a look at the documentation
-in the :ref:`Signals <Signals>` module and the documentation of the `PyDispatcher <http://pydispatcher.sourceforge.net/>`_
-package which is used to provide this functionality.
+请注意，用于接收信号的方法 `_connect_signal()` 和发送信号的方法 `_send_signal()` 之所以可用，是因为继承了 `SimulationObject`。这两个方法在可与信号一起传递的位置参数和关键字参数方面非常灵活。有关更多详细信息，请参见 :ref:`Signals <Signals>` 模块的文档，以及提供此功能的 `PyDispatcher <http://pydispatcher.sourceforge.net/>`_ 包的文档。
 
 
 
 
-Weather data in PCSE
+PCSE中的气象数据
 ====================
 
-Required weather variables
+气象必需变量
 --------------------------
 
-To run the crop simulation, the engine needs meteorological variables that
-drive the processes that are being simulated. PCSE requires the following daily
-meteorological variables:
+为了运行作物模拟，引擎需要用于驱动被模拟过程的气象变量。PCSE 需要以下每日气象变量：
 
 ========= ========================================================= ===============
-Name        Description                                               Unit
+名称        描述                                                     单位
 ========= ========================================================= ===============
-TMAX      Daily maximum temperature                                  |C|
-TMIN      Daily minimum temperature                                  |C|
-VAP       Mean daily vapour pressure                                 |hPa|
-WIND      Mean daily wind speed at 2 m above ground level            |msec-1|
-RAIN      Precipitation (rainfall or water equivalent in case of
-          snow or hail).                                             |cmday-1|
-IRRAD     Daily global radiation                                     |Jm-2day-1|
-SNOWDEPTH Depth of snow cover (optional)                             |cm|
+TMAX      日最高温度                                                 |C|
+TMIN      日最低温度                                                 |C|
+VAP       日平均水汽压                                               |hPa|
+WIND      2米高度处的日平均风速                                       |msec-1|
+RAIN      降水量（降雨，或有雪/冰雹时为水当量）                        |cmday-1|
+IRRAD     日全球辐射量                                               |Jm-2day-1|
+SNOWDEPTH 积雪深度（可选）                                           |cm|
 ========= ========================================================= ===============
 
-The snow depth is an optional meteorological variable and is only used for
-estimating the impact of frost damage on the crop (if enabled). Snow depth can
-also be simulated by the `SnowMAUS` module if observations are not available
-on a daily basis. Furthermore there are some meteorological variables which
-are derived from the previous ones:
+积雪深度为气象可选变量，仅在需要估算作物霜冻伤害影响时（如果启用此功能）使用。如果无法每天获得观测数据， `SnowMAUS`模块也可以模拟积雪深度。此外还有一些基于上述变量推导得到的气象变量：
 
 ====== ========================================================= ===============
-Name   Description                                                 Unit
+名称   描述                                                       单位
 ====== ========================================================= ===============
-E0     Penman potential evaporation for a free water surface      |cmday-1|
-ES0    Penman potential evaporation for a bare soil surface       |cmday-1|
-ET0    Penman or Penman-Monteith potential evaporation
-       for a reference crop canopy                                |cmday-1|
-TEMP   Mean daily temperature (TMIN + TMAX)/2                     |C|
-DTEMP  Mean daytime temperature (TEMP + TMAX)/2                   |C|
-TMINRA The 7-day running average of TMIN                          |C|
+E0     Penman公式下自由水面潜在蒸发量                               |cmday-1|
+ES0    Penman公式下裸土潜在蒸发量                                   |cmday-1|
+ET0    Penman或Penman-Monteith公式下参考作物冠层的潜在蒸发量         |cmday-1|
+TEMP   日均温（(TMIN + TMAX)/2）                                   |C|
+DTEMP  日间平均温度（(TEMP + TMAX)/2）                              |C|
+TMINRA TMIN的7日滑动平均值                                          |C|
 ====== ========================================================= ===============
 
 
-How weather data is used in PCSE
+PCSE中气象数据的使用方式
 --------------------------------
 
-To provide the simulation Engine with weather data PCSE uses the concept of a
-`WeatherDataProvider` which can retrieve its weather data from various
-sources but provides a single interface to the Engine for retrieving the data.
-This principle can be most easily explained with an example based on
-weather data files provided in the Getting Started section
-:download:`downloads/quickstart_part3.zip`. In this example we will read the weather
-data from an Excel file `nl1.xlsx` using the ExcelWeatherDataProvider::
+为了向仿真引擎提供气象数据，PCSE 引入了 `WeatherDataProvider` 的概念。它可以从多种来源获取气象数据，但为引擎提供统一的数据访问接口。这个原理可以通过一个基于“快速入门”部分中提供的气象数据文件的示例来进行解释
+:download:`downloads/quickstart_part3.zip`。在本例中，我们将使用 ExcelWeatherDataProvider 从 Excel 文件 `nl1.xlsx` 中读取气象数据::
 
     >>> import pcse
     >>> from pcse.input import ExcelWeatherDataProvider
     >>> wdp = ExcelWeatherDataProvider('nl1.xlsx')
 
-We can simply `print()` the weather data provider to get an overview of its contents::
+我们可以直接使用 `print()` 打印气象数据提供者，以获得其内容的概览::
 
     >>> print(wdp)
     Weather data provided by: ExcelWeatherDataProvider
@@ -860,14 +552,13 @@ We can simply `print()` the weather data provider to get an overview of its cont
     Data available for 2004-01-02 - 2008-12-31
     Number of missing days: 32
 
-Moreover, we can call the weather dataproviders with a date object to retrieve a
-`WeatherDataContainer` for that date::
+此外，我们还可以用日期对象调用气象数据提供器，以获取该日期对应的 `WeatherDataContainer` 对象::
 
     >>> from datetime import date
     >>> day = date(2006,7,3)
     >>> wdc = wdp(day)
 
-Again, we can print the WeatherDataContainer to reveal its contents::
+同样，我们可以打印 WeatherDataContainer 来显示其内容::
 
     >>> print(wdc)
     Weather data for 2006-07-03 (DAY)
@@ -884,13 +575,13 @@ Again, we can print the WeatherDataContainer to reveal its contents::
     Longitude (LON):     5.67 degr.
     Elevation (ELEV):    7.0 m.
 
-While individual weather elements can be accessed through the standard dotted python notation::
+对于单个气象元素，可以通过标准的点号 Python 语法访问::
 
     >>> print(wdc.TMAX)
     29.6
 
-Finally, for convenience the WeatherDataProvider can also be called with a string representing a date.
-This string can in the format YYYYMMDD or YYYYDDD::
+最后，为了方便起见，WeatherDataProvider 还可以通过表示日期的字符串调用。
+该字符串可以是 YYYYMMDD 或 YYYYDDD 格式::
 
     >>> print wdp("20060703")
     Weather data for 2006-07-03 (DAY)
@@ -907,7 +598,7 @@ This string can in the format YYYYMMDD or YYYYDDD::
     Longitude (LON):     5.67 degr.
     Elevation (ELEV):    7.0 m.
 
-or in the format YYYYDDD::
+也可以使用 YYYYDDD 格式::
 
     >>> print wdp("2006183")
     Weather data for 2006-07-03 (DAY)
@@ -925,37 +616,21 @@ or in the format YYYYDDD::
     Elevation (ELEV):    7.0 m.
 
 
-Data providers in PCSE
-======================
+PCSE 中的数据提供者
+===================
 
-PCSE needs to receive inputs on weather, parameter values and agromanagement in order to carry out the
-simulation. To obtain the required inputs several data providers have been written that read
-these inputs from a variety of sources. Nevertheless, care has been taken to avoid dependencies on a particular
-database and file format. As a consequence there is no direct coupling between PCSE and a particular file format
-or database. This ensures that a variety of data sources can be used, ranging from simple files, relational
-databases and internet resources.
+为了进行模拟，PCSE 需要接收气象、参数值和农艺管理等输入数据。为获取这些所需输入，已经编写了多个数据提供者，可以从多种不同的数据源读取这些输入。此外，特别注意避免对某一特定数据库和文件格式的依赖。因此，PCSE 与特定的文件格式或数据库之间没有直接关联。这确保了可以使用多种数据来源，包括简单文件、关系型数据库以及互联网资源。
 
 .. _Weather data providers:
 
-Weather data providers
-----------------------
+气象数据提供者
+--------------
 
-PCSE provides several weather data providers out of the box. First of all, it includes file-based weather data providers
-that use an input file on disk to retrieve data. The :ref:`CABOWeatherDataProvider <CABOWeatherDataProvider>` and
-the :ref:`ExcelWeatherDataProvider <ExcelWeatherDataProvider>` use the structure as defined by the
-`CABO Weather System`_. The ExcelWeatherDataProvider has the advantage that data can be stored in an Excel file
-which is easier to handle than the ASCII files of the CABOWeatherDataProvider. Furthermore, a weather data provider
-is available that uses a simple CSV data format, :ref:`CSVWeatherDataProvider <CSVWeatherDataProvider>`.
+PCSE 默认提供了多种气象数据提供者。首先，PCSE 包含基于文件的气象数据提供者，通过磁盘上的输入文件获取数据。:ref:`CABOWeatherDataProvider <CABOWeatherDataProvider>` 以及 :ref:`ExcelWeatherDataProvider <ExcelWeatherDataProvider>` 使用 `CABO Weather System`_ 定义的数据结构。ExcelWeatherDataProvider 的优势是数据可以存储在 Excel 文件中，这比 CABOWeatherDataProvider 的 ASCII 文件更易处理。此外，还有一种支持简单 CSV 数据格式的气象数据提供者 :ref:`CSVWeatherDataProvider <CSVWeatherDataProvider>`。
 
-Furthermore, the `OpenMeteo`_ company provides a free API (with limitations) to retrieve time-series of weather data
-for any given place on Earth. Historical data is based on ERA5, while forecasts are provided from several different
-providers including ECMWF. PCSE now includes the :ref:`OpenMeteoWeatherDataProvider <OpenMeteoWeatherDataProvider>`
-that can pull weather information from their API.
+此外， `OpenMeteo`_ 公司提供了一个免费的 API（有一定限制），可以检索地球上任意地点的气象时间序列数据。历史数据基于 ERA5，天气预报数据来自包括 ECMWF 在内的多个不同提供者。PCSE 现在内置了 :ref:`OpenMeteoWeatherDataProvider <OpenMeteoWeatherDataProvider>`，可以通过该 API 获取气象信息。
 
-Finally, there is the global weather data provided by the agroclimatology from the
-`NASA Power database`_ at a resolution of 0.25x0.25 degree. PCSE provides the
-:ref:`NASAPowerWeatherDataProvider <NASAPowerWeatherDataProvider>` which retrieves
-the NASA Power data from the internet for a given latitude and longitude.
+最后，农业气候学中还提供了由 `NASA Power database`_ 发布的全球气象数据，分辨率为 0.25x0.25 度。PCSE 提供了 :ref:`NASAPowerWeatherDataProvider <NASAPowerWeatherDataProvider>`，能够根据给定的经纬度，从互联网获取 NASA Power 的数据。
 
 
 
@@ -966,28 +641,25 @@ the NASA Power data from the internet for a given latitude and longitude.
 
 .. _Data providers for parameter values:
 
-Crop parameter values
+作物参数值
 ---------------------
 
-PCSE has a specific data provider for crop parameters: the :ref:`YAMLCropDataprovider <YAMLCropDataprovider>`.
-The difference with the generic data providers is that
-this data provider can read and store the parameter sets for multiple
-crops while the generic data providers only can hold a single set.
-This crop data providers is therefore suitable
-for running crop rotations with different crop types as the data provider
-can switch the active crop.
+PCSE 针对作物参数有一个专门的数据提供者::ref:`YAMLCropDataprovider <YAMLCropDataprovider>`。
+与通用数据提供者不同的是，
+该数据提供者可以读取和存储多种作物的参数集，而通用数据提供者只能存放单一作物参数集。
+因此，这个作物数据提供者特别适合于运行有多种作物轮作的情景，因为它能够切换当前激活的作物。
 
-The most basic use is to call YAMLCropDataProvider with no parameters. It will
-than pull the crop parameters from the github repository at
-https://github.com/ajwdewit/WOFOST_crop_parameters::
+最基本的用法是，不带参数调用 YAMLCropDataProvider。它会
+从 github 仓库 https://github.com/ajwdewit/WOFOST_crop_parameters
+获取作物参数::
 
     >>> from pcse.input import YAMLCropDataProvider
     >>> p = YAMLCropDataProvider()
     >>> print(p)
     YAMLCropDataProvider - crop and variety not set: no activate crop parameter set!
 
-All crops and varieties have been loaded from the github repository, however no active
-crop has been set. Therefore, we can activate a particular crop and variety:
+此时，所有作物和品种的参数都已从 github 仓库加载，但尚未设置激活的作物。
+因此，我们可以激活某个特定作物及其品种：
 
     >>> p.set_active_crop('wheat', 'Winter_wheat_101')
     >>> print(p)
@@ -999,9 +671,9 @@ crop has been set. Therefore, we can activate a particular crop and variety:
      ...
      'TSUM2': 1194, 'TSUM1': 543, 'TSUMEM': 120}
 
-In practice it is usually **not necessary to activate a crop parameter set manually** because the AgroManager
-can handle this. Defining an agromanagement definition with the proper `crop_name` and `variety_name` will
-automatically activate the crop/variety during the model simulation::
+实际操作时，通常 **无需手动激活作物参数集**，因为 AgroManager 可以自动完成此操作。
+只需在农业管理定义中设置合适的 `crop_name` 和 `variety_name`，在模型模拟过程中
+将自动激活对应的作物和品种::
 
     AgroManagement:
     - 1999-08-01:
@@ -1016,59 +688,33 @@ automatically activate the crop/variety during the model simulation::
         TimedEvents:
         StateEvents:
 
-Additionally, it is possible to load YAML parameter files from your local file system::
+此外，还可以从本地文件系统加载 YAML 参数文件::
 
     >>> p = YAMLCropDataProvider(fpath=r"D:\UserData\sources\WOFOST_crop_parameters")
     >>> print(p)
     YAMLCropDataProvider - crop and variety not set: no activate crop parameter set!
 
-Finally, it is possible to pull data from your fork of my github repository by specifying
-the URL to that repository::
+最后，也可以通过指定 github 仓库的 URL，从你自己 fork 的仓库拉取数据::
 
     >>> p = YAMLCropDataProvider(repository="https://raw.githubusercontent.com/<your_account>/WOFOST_crop_parameters/master/")
 
-Note that this URL should point to the location where the raw files can be found. In case of github, these URLs
-start with `https://raw.githubusercontent`, for other systems (e.g. gitlab) check the manual.
+注意，该 URL 应当指向原始文件所在的位置。对于 github，这些 URL 一般以 `https://raw.githubusercontent` 开头，对于其他系统（如 gitlab），请参考其手册。
 
-To increase performance of loading parameters, the YAMLCropDataProvider will create a
-cache file that can be restored much quicker compared to loading the YAML files.
-When reading YAML files from the local file system, care is taken to ensure that the
-cache file is re-created when updates to the local YAML are made. However, it should
-be stressed that this is *not* possible when parameters are retrieved from a URL
-and there is a risk that parameters are loaded from an outdated cache file. In that
-case use `force_reload=True` to force loading the parameters from the URL.
+为了提升参数加载的性能，YAMLCropDataProvider 会创建一个缓存文件，相较于每次加载 YAML 文件，使用缓存可以极大缩短读取时间。当从本地文件系统读取 YAML 文件时，模块会确保在本地 YAML 文件更新后重新创建缓存文件。需要强调的是，*当参数是通过 URL 获取时，这种机制无法实现* ，有可能会从过时的缓存文件读取参数。在这种情况下，请使用 `force_reload=True` 参数来确保强制从 URL 加载最新参数。
 
-
-Generic data providers
+通用数据提供者
 ----------------------
 
-PCSE provides several modules for retrieving parameter values for use in simulation models.
-The general concept that is used by all data providers for parameters is that they return a
-python dictionary object with the parameter names and values as key/value pairs. This concept
-is independent of the source where the parameters come from, either a file, a relational database or
-an internet source.
+PCSE 为模拟模型中的参数值读取，提供了若干模块。所有参数数据提供者的基本理念都是返回一个 python 字典对象，将参数名和参数值作为键值对。该理念不依赖于参数来源，可以是本地文件、关系型数据库或互联网数据源。
 
-PCSE provides two file-based data providers for reading parameters. The first one is the
-:ref:`CABOFileReader <CABOFileReader>` which reads parameter file in the CABO format that was
-used to write parameter files for models in FORTRAN or FST. A more versatile reader is the
-:ref:`PCSEFileReader <PCSEFileReader>` which uses the python language itself as its syntax.
-This also implies that all the python syntax features can be used in PCSE parameter files.
+PCSE 提供了两种基于文件的参数数据读取方式。第一种是 :ref:`CABOFileReader <CABOFileReader>` ，用于读取 CABO 格式参数文件，这类文件通常用于 FORTRAN 或 FST 模型。另一种更为灵活的读取器是 :ref:`PCSEFileReader <PCSEFileReader>` ，采用 python 语言自身作为语法。这也意味着 PCSE 参数文件可以使用所有 python 语法特性。
 
-Encapsulating models parameters
+模型参数的封装
 -------------------------------
 
-As described earlier, PCSE needs parameters to define the soil, the crop and and additional
-ancillary class of parameters called 'site'. Nevertheless, the different modules in PCSE have
-different needs, some need access to crop parameters only, but some need to combine parameter
-values from different sets. For example, the root dynamics module computes
-the maximum root depth as the minimum of the crop maximum root depth (a crop parameter)
-and the soil maximum root depth (a soil parameter).
+如前文所述，PCSE 需要参数来定义土壤、作物以及一个额外的辅助类参数集合，称为 'site'。不过，PCSE 中的不同模块需求各异，有的只需要访问作物参数，有的则需要组合不同参数集中的值。例如，根系动力学模块会将最大根系深度计算为作物最大根系深度（作物参数）和土壤最大根系深度（土壤参数）两者中的较小值。
 
-The facilitate accessing different parameters from different parameter sets, all parameters
-are combined using a `ParameterProvider` object which provides unified access to all
-available parameters. Moreover, parameters from different sources can be easily combined
-in the ParameterProvider given that each parameter set uses the basic key/value pair principles
-for accessing names and values::
+为了方便访问来自不同参数集的各种参数，所有参数都通过 `ParameterProvider` 对象组合，从而实现对所有可用参数的统一访问。此外，由于每个参数集合都采用基本的键/值对原则来访问名称和值，因此可以很方便地在 ParameterProvider 中组合来自不同来源的参数::
 
     >>> import os
     >>> import sqlalchemy as sa
@@ -1103,46 +749,28 @@ for accessing names and values::
 
 .. _Data providers for agromanagement:
 
-Data providers for agromanagement
----------------------------------
+农事管理数据提供者
+------------------
 
-Similar to weather and parameter values, there are several data providers for agromanagement.
-The structure of the inputs for agromanagement is more complex compared to parameter values or weather
-variables.
+与气象和参数值类似，PCSE 也有多个用于农事管理（agromanagement）的数据提供者。农事管理的输入结构相比参数值或气象变量更加复杂。
 
-The most comprehensive way to define agromanagement in PCSE is to use the YAML structure that was
-described in the section above on  :ref:`defining agromanagement <refguide_agromanagement>`. For reading
-this datastructure the :ref:`YAMLAgroManagementReader <YAMLAgroManagementReader>` module is available
-which can be provided directly as input into the Engine.
+在 PCSE 中，定义农事管理最全面的方式是使用 YAML 结构，这在上文  :ref:`defining agromanagement <refguide_agromanagement>` 部分中已进行了描述。为了读取这种数据结构，可以使用 :ref:`YAMLAgroManagementReader <YAMLAgroManagementReader>` 模块，并可直接将其作为输入传递给 Engine。
 
-For reading Agromanagement input from a CGMS database see the sections on the database tools CGMS.
-Note that the support for defining agromanagement in CGMS databases is limited to crop calendars only.
-The CGMS database has no support for defining state and timed events yet.
+如果希望从 CGMS 数据库读取农事管理输入，请参见有关数据库工具 CGMS 的相关章节。需要注意的是，在 CGMS 数据库中对农事管理的支持仅限于作物历（crop calendars）。CGMS 数据库目前尚不支持定义状态或定时事件。
 
-
-Global PCSE settings
+PCSE 全局设置
 ====================
 
-PCSE has a number of settings that define some global PCSE behaviour. An example of a global setting is
-the PCSE_USER_HOME variable which is used to define the home folder of the user.
-The settings are stored in two files: 1) `default_settings.py` which can be found in the PCSE installation
-folder under `settings/` and should not be changed. 2) `user_settings.py` which can be found in the `.pcse`
-folder in the user home directory. Under Windows this is typically `c:\\users\\<username>\\.pcse` while
-under Linux systems this is typically '/home/<username>/.pcse'.
+PCSE 有许多设置定义了一些全局性的行为。例如，全局变量 PCSE_USER_HOME 用于定义用户的主文件夹位置。
+这些设置保存在两个文件中：1）可以在 PCSE 安装目录的 `settings/` 文件夹下找到 `default_settings.py` ，此文件不应被更改。2） `user_settings.py`，位于用户主目录下的 `.pcse` 文件夹中。在 Windows 系统下，这通常为 `c:\\users\\<username>\\.pcse`，而在 Linux 系统下通常为 '/home/<username>/.pcse'。
 
-Changing the PCSE global settings can be done by editing the file `user_settings.py`, uncommenting the
-entries that should be changed and changing its value. Note that dependencies in the configuration file
-should be respected as the default settings and user settings are parsed separately.
+要修改 PCSE 的全局设置，可以通过编辑 `user_settings.py` 文件，将需要修改的项目取消注释并修改其值。请注意，配置文件中的依赖关系需要遵循，因为默认设置和用户设置是分别解析的。
 
-Adding PCSE global settings can be done by adding new entries to the `user_settings.py` file. Note that
-settings should be defined as ALL_CAPS. Variable names in the settings file that start with '_' will be
-ignored, while any other variable names will generate a warning and be neglected.
+如需增加新的 PCSE 全局设置，只需在 `user_settings.py` 文件中添加新的条目。请注意，设置项应全部使用大写字母（ALL_CAPS）命名。设置文件中以 '_' 开头的变量名会被忽略，其它变量名则会生成警告并被忽略。
 
-If the user settings file is corrupted and PCSE fails to start, then the best option is to delete the
-`user_settings.py` file from the `.pcse` folder in the user home directory. The next time PCSE starts,
-the `user_settings.py` will be regenerated from the default settings with all settings commented out.
+如果用户设置文件损坏，导致 PCSE 启动失败，建议删除用户主目录下 `.pcse` 文件夹中的 `user_settings.py` 文件。下次启动 PCSE 时， `user_settings.py` 会根据默认设置重新生成，并将所有设置注释掉。
 
-Within PCSE all settings can be easily accessed by importing the settings module::
+在 PCSE 内，用户可以通过导入 settings 模块方便地访问所有设置：：
 
     >>> import pcse.settings
     >>> pcse.settings.PCSE_USER_HOME

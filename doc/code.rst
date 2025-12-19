@@ -1,53 +1,57 @@
 .. include:: abbreviations.txt
 
 ##################
-Code documentation
+代码文档说明
 ##################
 
-How to read
+阅读方法
 ===========
 
-The API documentation provides a description of the interface and internals of 
-all SimulationObjects, AncillaryObjects and utility routines available in the
-PCSE source distribution. All SimulationObjects and AncillaryObjects are
-described using the same structure:
-    
-    1. A short description of the object
-    2. The positional parameters and keywords specified in the interface.
-    3. A table specifying the simulation parameters needed for the simulation
-    4. A table specifying the state variables of the SimulationObject
-    5. A table specifying the rate variables of the SimulationObject
-    6. Signals sent or received by the SimulationObject
-    7. External dependencies on state/rate variables of other SimulationObjects.
-    8. The exceptions that are raised under which conditions.
-    
-One or more of these sections may be excluded when they are not relevant
-for the SimulationObject that is described.
+API 文档为 PCSE 源代码分发包中的所有 SimulationObject、AncillaryObject 以及实用程序例程的接口与内部结构提供了说明。所有 SimulationObject 和 AncillaryObject 的描述结构一致，主要包括以下内容：
 
-The table specifying the simulation parameters has the following columns:
+    1. 对对象的简要描述
+    2. 接口中参数的名称（位置参数与关键字参数）
+    3. 该对象所需仿真参数的表格
+    4. SimulationObject 的状态变量表
+    5. SimulationObject 的速率变量表
+    6. SimulationObject 发送或接收的信号
+    7. 对其他 SimulationObject 状态或速率变量的外部依赖
+    8. 在何种情况下抛出哪些异常
 
-    1. The name of the parameter.
-    2. A description of the parameter.
-    3. The type of the parameter. This is provided as a three-character code
-       with the following interpretation. The first character indicates of the
-       parameter is a scalar **(S)** or table **(T)** parameter. The second and
-       third
-    4. The physical unit of the parameter.
+当某些部分对所描述的对象不适用时，可以省略对应部分。
 
-The tables specifying state/rate variables have the following columns:
+仿真参数表包含以下列：
 
-    1. The name of the variable.
-    2. A description of the variable.
-    3. Whether the variable is published in the kiosk or not: Y|N
-    4. The physical unit of the variable.
-    
-Finally, all public methods of all objects are described as well.
+    1. 参数名称
+    2. 参数描述
+    3. 参数类型。以三字符代码表示，含义如下：第一个字符表示参数是标量 **(S)** 还是表格 **(T)**，第二和第三个字符用于补充说明
+    4. 参数的物理单位
 
-Engine and models
+状态/速率变量表包含以下列：
+
+    1. 变量名称
+    2. 变量描述
+    3. 该变量是否会在 kiosk 中发布：Y|N
+    4. 变量的物理单位
+
+最后，所有对象的公开方法也将进行说明。
+
+引擎与模型
 =================
+
+引擎
+---------------------
 
 .. automodule:: pcse.engine
     :members:
+
+    .. :private-members:
+    .. :special-members:
+    .. :undoc-members:
+    .. :member-order: bysource
+
+模型
+---------------------
 
 .. automodule:: pcse.models
     :members:
@@ -55,12 +59,10 @@ Engine and models
 
 .. _AgromanagementCode:
 
-Agromanagement modules
+农事管理模块
 ======================
 
-The routines below implement the agromanagement system in PCSE including crop calendars, rotations,
-state and timed events. For reading agromanagement data from a file or a database structure see the sections
-on the :ref:`reading file input <FileInput>` and the :ref:`database tools <DBtools>`.
+以下例程实现了 PCSE 的 agromanagement 系统，包括 crop calendars、rotations、state 和 timed events。关于如何从文件或数据库结构读取 agromanagement 数据，请参见 :ref:`reading file input <Input>` 和 :ref:`database tools <DBtools>` 章节。
 
 .. autoclass:: pcse.agromanager.AgroManager
     :members:
@@ -75,28 +77,23 @@ on the :ref:`reading file input <FileInput>` and the :ref:`database tools <DBtoo
     :members:
 
 
-The Timer
+计时器
 =========
 
 .. autoclass:: pcse.timer.Timer
     :members:
 
-Soil process modules
+土壤过程模块
 ====================
 
-Water balance modules
+土壤水分平衡模块
 ---------------------
 
-The PCSE distribution provides several waterbalance modules:
-    1. WaterbalancePP which is used for simulation under non-water-limited
-       production
-    2. WaterbalanceFD which is used for simulation of water-limited production
-       under conditions of freely draining soils
-    3. The `SnowMAUS` for simulation the build-up and melting of the snow cover.
-    4. A multi-layer waterbalance implementing simulations for potential
-       conditions, water-limited free drainage conditions. Currently the model
-       does not support the impact of shallow ground water tables but this will
-       implemented in the future.
+PCSE 提供了多个土壤水分平衡模块：
+    1. WaterbalancePP：用于非水分胁迫（即水分不受限）条件下的模拟。
+    2. WaterbalanceFD：在自由排水土壤条件下，用于水分受限条件下的模拟。
+    3. SnowMAUS：用于模拟积雪的形成与融化过程。
+    4. 分层水分平衡模型：实现了潜在条件、自由排水下水分受限条件下的分层水分动态模拟。目前该模型尚不支持浅层地下水对土壤水分的影响，这一功能将在未来实现。
 
 .. autoclass:: pcse.soil.WaterbalancePP
 
@@ -110,26 +107,22 @@ The PCSE distribution provides several waterbalance modules:
 
 .. autoclass:: pcse.soil.SnowMAUS
 
-Nitrogen and Carbon modules
+氮和碳模块
 ---------------------------
 
-PCSE contains two modules for nitrogen and carbon in the soil:
-    1. The simple N_Soil_Dynamics module which only simulates N availability as a pool of available N
-       without any dynamic processes like leach, volatilization, etc.
-    2. The SNOMIN module (Soil Nitrogen module for Mineral and Inorganic Nitrogen) which is a layered soil
-       carbon/nitrogen balance that also requires the layered soil water balance. It includes the full
-       N dynamics in the soil as well as the impact of organic matter and organic amendments (manure) on the
-       availability of nitrogen in the soil.
+PCSE 提供了两个用于土壤中氮和碳的模块：
+    1. 简单的 N_Soil_Dynamics 模块，仅将氮作为一个可用氮库进行模拟，不考虑淋洗、挥发等动态过程。
+    2. SNOMIN 模块（土壤矿质与无机氮模块），基于分层土壤碳氮平衡，需要配合分层土壤水分平衡模块使用。它包括了土壤中完整的氮动态过程，同时考虑有机质和有机肥（如粪肥）对土壤氮供应的影响。
 
 .. autoclass:: pcse.soil.N_Soil_Dynamics
 
 .. autoclass:: pcse.soil.SNOMIN
 
 
-Crop simulation processes for WOFOST
-====================================
+WOFOST 作物模拟过程
+=======================
 
-Phenology
+物候
 ---------
 
 .. autoclass:: pcse.crop.phenology.DVS_Phenology
@@ -138,13 +131,13 @@ Phenology
 .. autoclass:: pcse.crop.phenology.Vernalisation
 
 
-Partitioning
+干物质分配
 ------------
 
 .. autoclass:: pcse.crop.partitioning.DVS_Partitioning
 
 
-|CO2| Assimilation
+|CO2| 同化过程
 ------------------
 
 .. autoclass:: pcse.crop.assimilation.WOFOST72_Assimilation
@@ -154,11 +147,11 @@ Partitioning
 .. autoclass:: pcse.crop.assimilation.WOFOST81_Assimilation
 
 
-Maintenance respiration
+维持呼吸作用
 -----------------------
 .. autoclass:: pcse.crop.respiration.WOFOST_Maintenance_Respiration
 
-Evapotranspiration
+蒸散作用
 ------------------
 .. autoclass:: pcse.crop.evapotranspiration.Evapotranspiration
 
@@ -169,7 +162,7 @@ Evapotranspiration
 .. autofunction:: pcse.crop.evapotranspiration.SWEAF
 
     
-Leaf dynamics
+叶片动态
 -------------
 .. autoclass:: pcse.crop.leaf_dynamics.WOFOST_Leaf_Dynamics
 
@@ -177,19 +170,19 @@ Leaf dynamics
 
 .. autoclass:: pcse.crop.leaf_dynamics.CSDM_Leaf_Dynamics
 
-Root dynamics
+根系动态
 -------------
 .. autoclass:: pcse.crop.root_dynamics.WOFOST_Root_Dynamics
 
-Stem dynamics
+茎秆动态
 -------------
 .. autoclass:: pcse.crop.stem_dynamics.WOFOST_Stem_Dynamics
 
-Storage organ dynamics
+贮藏器官动态
 ----------------------
 .. autoclass:: pcse.crop.storage_organ_dynamics.WOFOST_Storage_Organ_Dynamics
 
-Crop N dynamics
+作物氮素动态
 ---------------
 
 .. autoclass:: pcse.crop.n_dynamics.N_Crop_Dynamics
@@ -197,31 +190,31 @@ Crop N dynamics
 .. autoclass:: pcse.crop.nutrients.N_Stress
 
 
-Abiotic damage
+非生物胁迫损伤
 --------------
 .. autoclass:: pcse.crop.abioticdamage.FROSTOL
 
 .. autoclass:: pcse.crop.abioticdamage.CrownTemperature
 
 
-Crop simulation processes for LINGRA
+LINGRA牧草生长过程模拟
 ====================================
 
 .. automodule:: pcse.crop.lingra
 
-Overall grassland model
+总体草地模型
 -----------------------
 
 .. autoclass:: pcse.crop.lingra.LINGRA
 
-Source/Sink limited growth
+源/库限制生长
 --------------------------
 
 .. autoclass:: pcse.crop.lingra.SourceLimitedGrowth
 
 .. autoclass:: pcse.crop.lingra.SinkLimitedGrowth
 
-Nitrogen dynamics
+氮素动态
 -----------------
 
 .. autoclass:: pcse.crop.lingra_ndynamics.N_Demand_Uptake
@@ -230,7 +223,7 @@ Nitrogen dynamics
 
 .. autoclass:: pcse.crop.lingra_ndynamics.N_Crop_Dynamics
 
-Crop simulation processes for LINTUL
+LINTUL作物模拟过程
 ====================================
 
 .. autoclass:: pcse.crop.lintul3.Lintul3
@@ -243,21 +236,19 @@ Crop simulation processes for LINTUL
 
 .. _BaseClasses:
 
-Base classes
+基类
 ============
 
-The base classes define much of the functionality which is used "under the
-hood" in PCSE. Except for the `VariableKiosk` and the `WeatherDataContainer`
-all classes are not to be called directly but should be subclassed instead.
+这些基类定义了PCSE内部主要的功能实现。除了 `VariableKiosk` 和 `WeatherDataContainer` 以外，其余所有类都不建议直接调用，应通过继承方式使用。
 
 
-VariableKiosk
+VariableKiosk（变量信息亭）
 -------------
 .. autoclass:: pcse.base.VariableKiosk
     :members:
 
 
-Base classes for parameters, rates and states
+参数、速率和状态的基类
 ---------------------------------------------
 
 .. autoclass:: pcse.base.StatesTemplate
@@ -269,7 +260,7 @@ Base classes for parameters, rates and states
 .. autoclass:: pcse.base.ParamTemplate
     :members:
 
-Base and utility classes for weather data
+气象数据的基础类和工具类
 -----------------------------------------
 
 .. autoclass:: pcse.base.WeatherDataProvider
@@ -278,32 +269,30 @@ Base and utility classes for weather data
 .. autoclass:: pcse.base.WeatherDataContainer
     :members:
 
-Configuration loading
+配置加载
 ---------------------
 .. autoclass:: pcse.base.ConfigurationLoader
     :members:
 
 .. _Signals:
 
-Signals defined
+信号定义
 ===============
 .. automodule:: pcse.signals
     :members:
     
 
-Ancillary code
+辅助代码
 ==============
 
-The ancillary code section deals with tools for reading weather data and parameter
-values from files or databases.
+本节介绍用于从文件或数据库中读取气象数据和参数值的工具。
 
 
 .. _Input:
-Data providers
+数据提供器
 --------------
 
-The module `pcse.input` contains all classes for reading weather files,
-parameter files and agromanagement files.
+`pcse.input` 模块包含了所有用于读取气象文件、参数文件和农事管理文件的类。
 
 .. _NASAPowerWeatherDataProvider:
 .. autoclass:: pcse.input.NASAPowerWeatherDataProvider
@@ -345,14 +334,10 @@ parameter files and agromanagement files.
 .. autoclass:: pcse.input.WOFOST81SiteDataProvider_SNOMIN
 
 
-Simple or dummy data providers
-------------------------------
+简单或虚拟数据提供器
+--------------------
 
-This class of data providers can be used to provide parameter values in cases
-where separate files or a database is not needed or not practical. An example
-is the set of soil parameters for simulation of potential production conditions
-where the value of the parameters does not matter but nevertheless some values
-must be provided to the model.
+这类数据提供器适用于在不需要或不便用单独文件或数据库时提供参数值。例如，在模拟潜在生产条件时，土壤参数的具体数值无关紧要，但模型仍然必须获得一些参数值。
 
 .. _DummySoilDataProvider:
 .. autoclass:: pcse.util.DummySoilDataProvider
@@ -360,50 +345,40 @@ must be provided to the model.
 
 .. _DBtools:
 
-The database tools
+数据库工具
 ------------------
 
 .. note::
-    The dataproviders for CGMS database were removed from PCSE starting with version 6.0.10 because they were forcing
-    a dependency on PCSE (SQLAlchemy) which was generating problems with other packages. Moreover SQLAlchemy is not
-    required for running PCSE and the DB tools were not broadly used anyway.
+    从 PCSE 6.0.10 版本开始，CGMS 数据库的数据提供器已被移除，因为它们强制 PCSE 依赖 SQLAlchemy ，而这会导致与其他软件包的兼容性问题。此外， SQLAlchemy 并不是运行 PCSE 所必需的，而且这些数据库工具本身的使用也比较有限。
 
-The database tools contain functions and classes for retrieving agromanagement,
-parameter values and weather variables from database structures implemented for
-different versions of the European `Crop Growth Monitoring System <CGMS>`_.
+数据库工具包含从欧洲 `Crop Growth Monitoring System <CGMS>`_ 各版本实现的数据库结构中，提取农事管理、参数值和气象变量的函数和类。
 
-Note that the data providers only provide functionality for *reading* data,
-there are no tools here *writing* simulation results to a CGMS database. This was
-done on purpose as writing data can be a complex matter and it is our
-experience that this can be done more easily with dedicated database loader
-tools such as `SQLLoader`_ for ORACLE or the ``load data infile`` syntax of MySQL.
+注意，数据提供器只具备 *读取* 数据的功能，这里没有 *写入* 模拟结果到 CGMS 数据库的工具。这样做是有意安排的，因为写入数据通常比较复杂，而我们的经验是使用专门的数据库导入工具更加高效，比如 ORACLE 的 `SQLLoader`_ 或 MySQL 的 ``load data infile`` 语法。
 
+.. _SQLLoader: 
 
-.. _SQLLoader: http://www.oracle.com/technetwork/database/enterprise-edition/sql-loader-overview-095816.html
+http://www.oracle.com/technetwork/database/enterprise-edition/sql-loader-overview-095816.html
 
-.. _CGMS: https://ec.europa.eu/jrc/en/mars
+.. _CGMS: 
+
+https://ec.europa.eu/jrc/en/mars
 
 .. _CGMS8tools:
 
 
 
-Convenience routines
+便捷例程
 --------------------
 
-These routines are there for conveniently starting a WOFOST simulation
-for the demonstration and tutorials. They can serve as an example to
-build your own script but have no further relevance.
+这些例程用于方便地启动 WOFOST 模拟，便于演示和教程使用。它们可以作为编写自己脚本的示例，但没有其他重要作用。
 
 .. autofunction:: pcse.start_wofost.start_wofost
 
 
-Miscelaneous utilities
+杂项工具
 ----------------------
 
-Many miscelaneous function for a variety of purposes such as the Arbitrary Function
-Generator (AfGen) for linear interpolation and functions for calculating
-Penman Penman/Monteith reference evapotranspiration,
-the Angstrom equation and astronomical calculations such as day length.
+包含许多功能各异的杂项函数，例如用于线性插值的 Arbitrary Function Generator (*AfGen*)，以及用于计算 Penman、Penman/Monteith 参考蒸散量、 Angstrom 方程、还有如日长等天文计算的函数。
 
 .. autofunction:: pcse.util.reference_ET
 .. autofunction:: pcse.util.penman_monteith

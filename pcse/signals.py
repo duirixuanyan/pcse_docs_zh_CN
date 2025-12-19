@@ -1,20 +1,15 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
 # Allard de Wit (allard.dewit@wur.nl), March 2024
-"""This module defines and describes the signals used by PCSE
+"""本模块定义和描述 PCSE 中使用的信号
 
-Signals are used by PCSE to notify components of events such as sowing,
-harvest and termination. Events can be send by any SimulationObject through
-its `SimulationObject._send_signal()` method. Similarly, any SimulationObject
-can receive signals by registering a handler through the
-`SimulationObject._connect_signal()` method.
-Variables can be passed to the handler of the signal through
-positional or keyword arguments. However, it is highly discouraged to use
-positional arguments when sending signals in order to avoid conflicts between
-positional and keyword arguments.
+PCSE 使用信号通知各组件事件的发生，如播种、收获和终止。
+可以通过任意 SimulationObject 的 `SimulationObject._send_signal()` 方法发送事件信号。
+同理，任意 SimulationObject 也可以通过 `SimulationObject._connect_signal()` 方法注册处理器以接收信号。
+可以通过位置参数或关键字参数将变量传递给信号的处理器。
+但强烈不建议在发送信号时使用位置参数，以避免位置参数和关键字参数之间的冲突。
 
-An example can help to clarify how signals are used in PCSE but check also the
-documentation of the PyDispatcher_ package for more information::
+下面的例子有助于说明 PCSE 中信号的使用方法，更多信息也可参见 PyDispatcher_ 的文档::
 
     import sys, os
     import math
@@ -45,150 +40,135 @@ documentation of the PyDispatcher_ package for more information::
             self._send_signal(signal=mysignal, arg2=math.pi, extra_arg="extra")
     
             
-    # Create an instance of MySimObj
+    # 创建 MySimObj 实例
     day = dt.date(2000,1,1)
     k = VariableKiosk()
     mysimobj = MySimObj(day, k)
     
-    # This sends exactly the right amount of keyword arguments
+    # 精确发送所需数量的关键字参数
     mysimobj.send_signal_with_exact_arguments()
     
-    # this sends an additional keyword argument 'extra_arg' which is ignored.
+    # 发送了一个额外的关键字参数 'extra_arg'，会被忽略
     mysimobj.send_signal_with_more_arguments()
     
-    # this sends the signal with a missing 'arg1' keyword argument which the handler
-    # expects and thus causes an error, raising a TypeError
+    # 发送信号时缺少 'arg1' 关键字参数，而处理器期望该参数，将导致错误，抛出 TypeError
     try:
         mysimobj.send_signal_with_missing_arguments()
     except TypeError, exc:
         print "TypeError occurred: %s" % exc
 
-Saving this code as a file `test_signals.py` and importing it gives the
-following output::
+将上述代码保存为 `test_signals.py` 并导入后输出如下::
 
     >>> import test_signals
     Value of arg1,2: None, 3.14159265359
     Value of arg1,2: None, 3.14159265359
     TypeError occurred: handle_mysignal() takes exactly 3 non-keyword arguments (1 given)
 
-Currently the following signals are used within PCSE with the following
-keywords.
+目前 PCSE 内部使用如下信号及其关键字参数：
 
 **CROP_START**
 
- Indicates that a new crop cycle will start::
+ 表示新作物生长周期的开始::
  
      self._send_signal(signal=signals.crop_start, day=<date>,
                        crop_name=<string>, variety_name=<string>,
                        crop_start_type=<string>, crop_end_type=<string>)
 
- keyword arguments with `signals.crop_start`:
+ `signals.crop_start` 的关键字参数:
     
-    * day: Current date
-    * crop_name: a string identifying the crop
-    * variety_name: a string identifying the crop variety
-    * crop_start_type: either 'sowing' or 'emergence'
-    * crop_end_type: either 'maturity', 'harvest' or 'earliest'
+    * day: 当前日期
+    * crop_name: 指定作物的字符串
+    * variety_name: 指定作物品种的字符串
+    * crop_start_type: 'sowing' 或 'emergence'
+    * crop_end_type: 'maturity'、'harvest' 或 'earliest'
 
 **CROP_FINISH**
 
- Indicates that the current crop cycle is finished::
+ 表示当前作物生长周期结束::
  
      self._send_signal(signal=signals.crop_finish, day=<date>,
                        finish_type=<string>, crop_delete=<True|False>)
 
-keyword arguments with `signals.crop_finish`:
+`signals.crop_finish` 的关键字参数:
 
-    * day: Current date
-    * finish_type: string describing the reason for finishing the simulation, e.g.
-      maturity, harvest, all leaves died, maximum duration reached, etc.
-    * crop_delete: Set to True when the CropSimulation object must be deleted
-      from the system, for example for the implementation of crop rotations.
-      Defaults to False.
+    * day: 当前日期
+    * finish_type: 描述仿真结束原因的字符串，如 maturity、harvest、所有叶片死亡、达到最大持续时间等
+    * crop_delete: 如果 CropSimulation 对象需要从系统中删除（比如作物轮作实现），设为 True，默认 False
 
 **TERMINATE**
  
- Indicates that the entire system should terminate (crop & soil water balance) and
- that terminal output should be collected::
+ 表示整个系统应终止（作物 & 土壤水分平衡），并收集终端输出::
 
     self._send_signal(signal=signals.terminate)
 
- No keyword arguments are defined for this signal
+ 此信号无关键字参数
 
 **OUTPUT**
 
- Indicates that the model state should be saved for later use::
+ 表示模型状态需要被保存以供以后使用::
 
     self._send_signal(signal=signals.output)
  
- No keyword arguments are defined for this signal
-
+ 此信号无关键字参数
 
 **SUMMARY_OUTPUT**
 
- Indicates that the model state should be saved for later use,
- SUMMARY_OUTPUT is only generated when a CROP_FINISH signal is
- received indicating that the crop simulation must finish::
+ 表示模型状态需要被保存以供以后使用，
+ SUMMARY_OUTPUT 仅在收到 CROP_FINISH 信号并指示作物仿真需要结束时生成::
 
     self._send_signal(signal=signals.output)
 
- No keyword arguments are defined for this signal
-
+ 此信号无关键字参数
 
 **APPLY_N**
 
-Is used for application of N fertilizer::
+用于施加氮肥事件::
 
     self._send_signal(signal=signals.apply_n, N_amount=<float>, N_recovery<float>)
 
-Keyword arguments with `signals.apply_n`:
+`signals.apply_n` 的关键字参数:
 
-    * N_amount: Amount of fertilizer in kg/ha applied on this day.
-    * N_recovery: Recovery fraction for the given type of fertilizer
-
+    * N_amount: 当天施加的氮肥量（kg/ha）
+    * N_recovery: 所用肥料类型的回收率
 
 **APPLY_N_SNOMIN**
 
-Is used for application of N fertilizer with the SNOMIN module::
+用于 SNOMIN 模块中施加氮肥::
 
     self._send_signal(signal=signals.apply_n_snomin,amount=<float>, application_depth=<float>,
                       cnratio=<float>, initial_age=<float>, f_NH4N=<float>, f_NO3N=<float>,
                       f_orgmat=<float>)
 
-Keyword arguments with `signals.apply_n_snomin`:
+`signals.apply_n_snomin` 的关键字参数:
 
-    * amount: Amount of material in amendment (kg material ha-1)
-    * application_depth: Depth over which the amendment is applied in the soil (cm)
-    * cnratio: C:N ratio of organic matter in material (kg C kg-1 N)
-    * initial_age: Initial apparent age of organic matter in material (year)
-    * f_NH4N: Fraction of NH4+-N in material (kg NH4+-N kg-1 material)
-    * f_NO3N: Fraction of NO3--N in material (kg NO3--N kg-1 material)
-    * f_orgmat: Fraction of organic matter in amendment (kg OM kg-1 material)
-
+    * amount: 改良剂中材料的总量（kg material ha-1）
+    * application_depth: 改良剂施入土壤的深度（cm）
+    * cnratio: 材料中有机物的碳氮比（kg C kg-1 N）
+    * initial_age: 材料中有机物的初始表观年龄（年）
+    * f_NH4N: 材料中 NH4+-N 的分数（kg NH4+-N kg-1 material）
+    * f_NO3N: 材料中 NO3--N 的分数（kg NO3--N kg-1 material）
+    * f_orgmat: 改良剂中有机物的分数（kg OM kg-1 material）
 
 **IRRIGATE**
 
-Is used for sending irrigation events::
+用于发送灌溉事件::
 
     self._send_signal(signal=signals.irrigate, amount=<float>, efficiency=<float>)
 
-Keyword arguments with `signals.irrigate`:
+`signals.irrigate` 的关键字参数:
 
-    * amount: Amount of irrigation in cm water applied on this day.
-    * efficiency: efficiency of irrigation, meaning that the total amount of water that
-      is added to the soil reservoir equals amount * efficiency
-
+    * amount: 当天施加的灌溉水量（cm 单位）
+    * efficiency: 灌溉效率，即加入土壤库总水量为 amount * efficiency
 
 **MOWING**
 
-Is used for sending mowing events used by the LINGRA/LINGRA-N models::
+用于 LINGRA/LINGRA-N 模型发送割草事件::
 
     self._send_signal(signal=signals.mowing, biomass_remaining=<float>)
 
-Keyword arguments with `signals.mowing`:
+`signals.mowing` 的关键字参数:
 
-    * biomass_remaining: The amount of biomass remaining after mowing in kg/ha.
-
+    * biomass_remaining: 割草后剩余生物量（kg/ha）
 
 .. _PyDispatcher: http://pydispatcher.sourceforge.net/
 """

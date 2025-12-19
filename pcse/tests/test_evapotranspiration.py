@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
-# Allard de Wit (allard.dewit@wur.nl), March 2024
+# 版权所有 (c) 2004-2024 Wageningen Environmental Research, Wageningen-UR
+# Allard de Wit (allard.dewit@wur.nl), 2024年3月
 import unittest
 from datetime import date
 
@@ -14,12 +14,12 @@ class Test_PotentialEvapotranspiration(unittest.TestCase):
     test_vars = ["EVWMX","EVSMX","TRAMX","TRA"]
     def setUp(self):
         self.test_data = pot_evtra_testdata
-        # settings for kiosk
+        # kiosk设置
         self.kiosk = VariableKiosk()
         self.kiosk.register_variable(0, "DVS", type="S", publish=True)
         self.kiosk.register_variable(0, "LAI", type="S", publish=True)
         self.kiosk.register_variable(0, "SM", type="S", publish=True)
-        # Initialize ET module
+        # 初始化ET模块
         cropdata = {"CFET":1.00, "KDIFTB":[0., 0.6, 2.0, 0.6], "DEPNR":4.5,
                     "IOX":0, "IAIRDU":0, "CRAIRC":-99.}
         soildata = {"SM0":0.4, "SMFCF":0.3, "SMW":0.1}
@@ -29,7 +29,7 @@ class Test_PotentialEvapotranspiration(unittest.TestCase):
         self.evtra = Evapotranspiration(dummyday, self.kiosk, parvalues)
     
     def runTest(self):
-        day = date(2000,1,1) # dummy date value
+        day = date(2000,1,1) # 虚拟日期值
         SM = 0.3
         for drvref in self.test_data:
             self.kiosk.set_variable(0, "LAI", drvref.LAI)
@@ -43,18 +43,18 @@ class Test_PotentialEvapotranspiration(unittest.TestCase):
 
 
 class Test_WaterLimitedEvapotranspiration1(unittest.TestCase):
-    """Testing Wat-lim evapotranspiration with DEPNR=4.5
+    """用 DEPNR=4.5 测试水分受限蒸散发
     """
     
     test_vars = ["EVWMX","EVSMX","TRAMX","TRA"]
     def setUp(self):
         self.test_data = wl_evtra_testdata1
-        # settings for kiosk
+        # kiosk设置
         self.kiosk = VariableKiosk()
         self.kiosk.register_variable(0, "DVS", type="S", publish=True)
         self.kiosk.register_variable(0, "LAI", type="S", publish=True)
         self.kiosk.register_variable(0, "SM", type="S", publish=True)
-        # Initialize ET module
+        # 初始化ET模块
         cropdata = {}
         for key in ["CFET", "KDIFTB", "DEPNR","IOX","IAIRDU", "CRAIRC"]:
             cropdata[key] = wl_parvalue_dict1[key]
@@ -67,7 +67,7 @@ class Test_WaterLimitedEvapotranspiration1(unittest.TestCase):
         self.evtra = Evapotranspiration(dummyday, self.kiosk, parvalues)
     
     def runTest(self):
-        day = date(2000,1,1) # dummy date value
+        day = date(2000,1,1) # 虚拟日期值
         for drvref in self.test_data:
             self.kiosk.set_variable(0, "LAI", drvref.LAI)
             self.kiosk.set_variable(0, "DVS", drvref.DVS)
@@ -80,18 +80,18 @@ class Test_WaterLimitedEvapotranspiration1(unittest.TestCase):
 
 
 class Test_WaterLimitedEvapotranspiration2(unittest.TestCase):
-    """Testing Wat-lim evapotranspiration with DEPNR=2.5
+    """用 DEPNR=2.5 测试水分受限蒸散发
     """
     
     test_vars = ["EVWMX","EVSMX","TRAMX","TRA"]
     def setUp(self):
         self.test_data = wl_evtra_testdata2
-        # settings for kiosk
+        # kiosk设置
         self.kiosk = VariableKiosk()
         self.kiosk.register_variable(0, "DVS", type="S", publish=True)
         self.kiosk.register_variable(0, "LAI", type="S", publish=True)
         self.kiosk.register_variable(0, "SM", type="S", publish=True)
-        # Initialize ET module
+        # 初始化ET模块
         cropdata = {}
         for key in ["CFET", "KDIFTB", "DEPNR","IOX","IAIRDU", "CRAIRC"]:
             cropdata[key] = wl_parvalue_dict2[key]
@@ -104,7 +104,7 @@ class Test_WaterLimitedEvapotranspiration2(unittest.TestCase):
         self.evtra = Evapotranspiration(dummyday, self.kiosk, parvalues)
     
     def runTest(self):
-        day = date(2000,1,1) # dummy date value
+        day = date(2000,1,1) # 虚拟日期值
         for drvref in self.test_data:
             self.kiosk.set_variable(0, "LAI", drvref.LAI)
             self.kiosk.set_variable(0, "DVS", drvref.DVS)
@@ -117,7 +117,7 @@ class Test_WaterLimitedEvapotranspiration2(unittest.TestCase):
 
             
 def suite():
-    """ This defines all the tests of a module"""
+    """ 定义该模块的所有测试 """
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(Test_PotentialEvapotranspiration))
     suite.addTest(unittest.makeSuite(Test_WaterLimitedEvapotranspiration1))
